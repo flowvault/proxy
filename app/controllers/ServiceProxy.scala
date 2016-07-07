@@ -140,15 +140,13 @@ class ServiceProxyImpl @Inject () (
     */
   private[this] def proxyHeaders(headers: Headers, authData: Option[FlowAuthData]): Headers = {
     val headersToAdd = Seq(
+      Constants.Headers.FlowService -> name,
+      Constants.Headers.Host -> definition.host,
+      Constants.Headers.ForwardedHost -> headers.get(Constants.Headers.Host).getOrElse("")
+    ) ++ Seq(
       authData.map { data =>
         Constants.Headers.FlowAuth -> flowAuth.jwt(data)
       },
-      Some(
-        Constants.Headers.FlowService -> name
-      ),
-      Some(
-        Constants.Headers.Host -> definition.host
-      ),
       (
         headers.get("Content-Type") match {
           case None => Some("Content-Type" -> DefaultContentType)
@@ -157,7 +155,7 @@ class ServiceProxyImpl @Inject () (
       )
     ).flatten
 
-    val cleanHeaders = Constants.Headers.all.foldLeft(headers) { case (h, n) => h.remove(n) }
+    val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(headers) { case (h, n) => h.remove(n) }
 
     headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
   }
