@@ -24,6 +24,7 @@ class ProxyConfigFetcher @Inject() (
     * Loads service definitions from the specified URI
     */
   def load(uri: String): Either[Seq[String], ProxyConfig] = {
+    Logger.info(s"ProxyConfigFetcher: fetching configuration from uri[$uri]")
     val contents = Source.fromURL(uri).mkString
     ServiceParser.parse(contents)
   }

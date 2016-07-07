@@ -5,9 +5,9 @@ package lib
   */
 sealed trait InternalRoute {
 
+  def host: String
   def method: String
   def path: String
-  def service: Service
 
   private[this] val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
 
@@ -22,7 +22,7 @@ sealed trait InternalRoute {
       case true => {
         requestPath.split("/").toList match {
           case empty :: org :: rest => Some(org)
-          case _ => sys.error(s"Service[${service.name}] $method $path: Could not extract organization from path[$requestPath]")
+          case _ => sys.error(s"$method $host$requestPath: Could not extract organization")
         }
       }
     }
@@ -35,7 +35,7 @@ object InternalRoute {
   /**
     * Represents a static route (e.g. /organizations) with no wildcards
     */
-  case class Static(method: String, path: String, service: Service) extends InternalRoute {
+  case class Static(host: String, method: String, path: String) extends InternalRoute {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
   }
@@ -46,7 +46,7 @@ object InternalRoute {
     * that replaces any ":xxx" with a pattern of one or more
     * characters that are not a '/'
     */
-  case class Dynamic(method: String, path: String, service: Service) extends InternalRoute {
+  case class Dynamic(host: String, method: String, path: String) extends InternalRoute {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 
@@ -79,10 +79,10 @@ object InternalRoute {
 
   }
 
-  def apply(route: Route, service: Service): InternalRoute = {
+  def apply(route: Route, host: String): InternalRoute = {
     route.path.indexOf(":") >= 0 match {
-      case true => Dynamic(route.method, route.path, service)
-      case false => Static(route.method, route.path, service)
+      case true => Dynamic(host = host, method = route.method, path = route.path)
+      case false => Static(host = host, method = route.method, path = route.path)
     }
   }
 
