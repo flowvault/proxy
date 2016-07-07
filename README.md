@@ -18,12 +18,17 @@ API Proxy server that is hosted at https://api.flow.io
 
 ## Bypassing proxy
 
-You can manually specify to which server to route a request by adding
-a request header named X-Flow-Service with the name of the service to
-route to (e.g. 'organization').
+We support manually configuring the behavior of the proxy on a per
+request basis via the following headers:
 
-If this header is detected, you must provide an authorization header
-for a user that is a member of the flow 'organization'.
+  - X-Flow-Host (e.g. http://localhost:6291) - if specified, we
+    forward the request to this host
+
+  - X-Flow-Service (e.g. 'organization') - if specified, we forward
+    the request to this service
+
+If you specify a header, you must also specify an Authorization header
+for a user that is a member of the 'flow' organization.
 
 ## Future features:
 
