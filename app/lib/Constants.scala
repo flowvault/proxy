@@ -6,6 +6,7 @@ object Constants {
 
     val FlowAuth = "X-Flow-Auth"
     val FlowService = "X-Flow-Service"
+    val FlowHost = "X-Flow-Host"
 
   }
 

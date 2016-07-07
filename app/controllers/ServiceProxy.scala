@@ -15,7 +15,12 @@ import play.api.mvc._
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Constants, FlowAuth, Service}
+import lib.{Constants, FlowAuth}
+
+case class ServiceProxyDefinition(
+  host: String,
+  name: String
+)
 
 /**
   * Service Proxy is responsible for proxying all requests to a given
@@ -39,7 +44,7 @@ object ServiceProxy {
   val DefaultContextName = s"default-service-context"
 
   trait Factory {
-    def apply(service: Service): ServiceProxy
+    def apply(definition: ServiceProxyDefinition): ServiceProxy
   }
 }
 
@@ -56,21 +61,21 @@ class ServiceProxyImpl @Inject () (
   system: ActorSystem,
   ws: WSClient,
   flowAuth: FlowAuth,
-  @Assisted service: Service
+  @Assisted definition: ServiceProxyDefinition
 ) extends ServiceProxy with Controller{
 
   private[this] implicit val (ec, name) = {
-    val name = s"${service.name}-context"
+    val name = s"${definition.name}-context"
     Try {
       system.dispatchers.lookup(name)
     } match {
       case Success(ec) => {
-        Logger.info(s"ServiceProxy[${service.name}] using configured execution context[${name}]")
+        Logger.info(s"ServiceProxy[${definition.name}] using configured execution context[$name]")
         (ec, name)
       }
 
       case Failure(_) => {
-        Logger.warn(s"ServiceProxy[${service.name}] execution context[${name}] not found - using ${ServiceProxy.DefaultContextName}")
+        Logger.warn(s"ServiceProxy[${definition.name}] execution context[${name}] not found - using ${ServiceProxy.DefaultContextName}")
         (system.dispatchers.lookup(ServiceProxy.DefaultContextName), ServiceProxy.DefaultContextName)
       }
     }
@@ -90,18 +95,18 @@ class ServiceProxyImpl @Inject () (
     role: Option[String]
   ) = {
     val requestId = UUID.randomUUID.toString()
-    Logger.info(s"[${service.name}] ${request.method} ${request.path} to ${service.host} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
+    Logger.info(s"[${definition.name}] ${request.method} ${request.path} to ${definition.host} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
 
     val finalHeaders = proxyHeaders(
       request.headers,
       (
         userId.map { uid =>
           Constants.Headers.FlowAuth -> flowAuth.jwt(userId = uid, organization = organization, role = role)
-        } ++ Seq(Constants.Headers.FlowService -> service.name)
+        } ++ Seq(Constants.Headers.FlowService -> name)
       )
     )
 
-    val req = ws.url(service.host + request.path)
+    val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
       .withMethod(request.method)
       .withHeaders(finalHeaders.headers: _*)
@@ -116,7 +121,7 @@ class ServiceProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        Logger.info(s"[${service.name}] ${request.method} ${request.path} ${response.status} ${timeToFirstByteMs}ms requestId[$requestId]")
+        Logger.info(s"[${definition.name}] ${request.method} ${request.path} ${response.status} ${timeToFirstByteMs}ms requestId[$requestId]")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {

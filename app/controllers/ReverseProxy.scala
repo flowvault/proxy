@@ -45,11 +45,13 @@ class ReverseProxy @Inject () (
     Logger.info(s"ReverseProxy loading config version: ${index.config.version}")
     Map(
       index.config.services.map { s =>
-        (s.name -> serviceProxyFactory(s))
+        (s.host -> serviceProxyFactory(ServiceProxyDefinition(host = s.host, name = s.name)))
       }: _*
     )
   }
 
+  private[this] val dynamicPoxies = scala.collection.mutable.Map[String, ServiceProxy]()
+  
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
@@ -95,7 +97,7 @@ class ReverseProxy @Inject () (
         case Right(internalRoute) => {
           internalRoute.organization(request.path) match {
             case None  => {
-              lookup(internalRoute.service).proxy(
+              lookup(internalRoute.host).proxy(
                 request,
                 userId = userId,
                 organization = None,
@@ -116,7 +118,7 @@ class ReverseProxy @Inject () (
                     }
 
                     case Some(membership) => {
-                      lookup(internalRoute.service).proxy(
+                      lookup(internalRoute.host).proxy(
                         request,
                         userId = Some(uid),
                         organization = Some(org),
@@ -134,19 +136,24 @@ class ReverseProxy @Inject () (
   }
 
   /**
-    * Resolves the incoming method and path to a specific interanl route.
+    * Resolves the incoming method and path to a specific internal route. Also implements
+    * overrides from incoming request headers:
     * 
-    * @param serviceNameOverride If specified, we verify that we have a auth token identifying
-    *                            a user that is a member of the flow organization. If so, we
-    *                            use this service name. Otherwise we return an error.
+    *   - headers['X-Flow-Service']: If specified we use this service name
+    *   - headers['X-Flow-Host']: If specified we use this host
+    * 
+    * If any override headers are specified, we alsoverify that we
+    * have an auth token identifying a user that is a member of the
+    * flow organization. Otherwise we return an error.
     */
   private[this] def resolve(request: Request[RawBuffer], userId: Option[String]): Future[Either[Result, InternalRoute]] = {
     val method = request.method
     val path = request.path
     val serviceNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowService)
+    val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)
 
-    serviceNameOverride match {
-      case None => Future {
+    (serviceNameOverride.isEmpty && hostOverride.isEmpty) match {
+      case true => Future {
         index.resolve(method, path) match {
           case None => {
             Logger.info(s"Unrecognized path[$path] - returning 404")
@@ -159,11 +166,11 @@ class ReverseProxy @Inject () (
         }
       }
 
-      case Some(name) => {
+      case false => {
         userId match {
           case None => Future {
             Left(
-              unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowService}]")
+              unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowService} or ${Constants.Headers.FlowHost}]")
             )
           }
 
@@ -176,23 +183,40 @@ class ReverseProxy @Inject () (
               }
 
               case Some(_) => {
-                findServiceByName(name) match {
-                  case None => {
-                    Left(
-                      notFound(s"Invalid service name from Request Header[${Constants.Headers.FlowService}]")
-                    )
+                val route = Route(
+                  method = method,
+                  path = path
+                )
+                
+                hostOverride match {
+                  case Some(host) => {
+                    (host.startsWith("http://") || host.startsWith("https://")) match {
+                      case true => Right(
+                        InternalRoute(route, host)
+                      )
+                      case false => Left(
+                        unprocessableEntity(s"Value for ${Constants.Headers.FlowHost} header must start with http:// or https://")
+                      )
+                    }
                   }
 
-                  case Some(svc) => {
-                    Right(
-                      InternalRoute(
-                        route = Route(
-                          method = method,
-                          path = path
-                        ),
-                        service = svc
-                      )
-                    )
+                  case None => {
+                    val name = serviceNameOverride.getOrElse {
+                      sys.error("Expected service name to be set")
+                    }
+                    findServiceByName(name) match {
+                      case None => {
+                        Left(
+                          unprocessableEntity(s"Invalid service name from Request Header[${Constants.Headers.FlowService}]")
+                        )
+                      }
+
+                      case Some(svc) => {
+                        Right(
+                          InternalRoute(route, svc.host)
+                        )
+                      }
+                    }
                   }
                 }
               }
@@ -203,9 +227,15 @@ class ReverseProxy @Inject () (
     }
   }
   
-  private[this] def lookup(service: Service): ServiceProxy = {
-    proxies.get(service.name).getOrElse {
-      sys.error(s"Service[${service.name}] no proxy found")
+  private[this] def lookup(host: String): ServiceProxy = {
+    proxies.get(host).getOrElse {
+      // TODO: This only happens for flow engineers sending requests
+      // to specific hosts. Should we lock?
+      dynamicPoxies.get(host).getOrElse {
+        val proxy = serviceProxyFactory(ServiceProxyDefinition(host = host, name = "fallback"))
+        dynamicPoxies += (host -> proxy)
+        proxy
+      }
     }
   }
 
@@ -215,6 +245,10 @@ class ReverseProxy @Inject () (
 
   private[this] def notFound(message: String) = {
     NotFound(errorJson("not_found", message))
+  }
+
+  private[this] def unprocessableEntity(message: String) = {
+    UnprocessableEntity(errorJson("validation_error", message))
   }
 
   private[this] def errorJson(key: String, message: String) = {
