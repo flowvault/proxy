@@ -15,6 +15,12 @@ class ServiceParserSpec extends PlaySpec with OneServerPerSuite {
     ServiceParser.parse("   ") must be(Left(Seq("Nothing to parse")))
   }
 
+  "hostHeaderValue" in {
+    Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
+      ServiceProxyDefinition(host, "user").hostHeaderValue must be("user.api.flow.io")
+    }
+  }
+
   "single service w/ no operations" in {
     val spec = """
 version: 0.0.1

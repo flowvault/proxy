@@ -3,7 +3,7 @@ package controllers
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
-import concurrent.ExecutionContext
+import java.net.URI
 import java.util.UUID
 import java.util.concurrent.Executors
 import javax.inject.Inject
@@ -12,7 +12,7 @@ import play.api.http.Status
 import play.api.inject.Module
 import play.api.libs.ws.{StreamedResponse, WSClient, WSRequest}
 import play.api.mvc._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
 import lib.{Constants, FlowAuth, FlowAuthData}
@@ -20,7 +20,11 @@ import lib.{Constants, FlowAuth, FlowAuthData}
 case class ServiceProxyDefinition(
   host: String,
   name: String
-)
+) {
+
+  val hostHeaderValue = (new URI(host)).getHost
+
+}
 
 /**
   * Service Proxy is responsible for proxying all requests to a given
@@ -141,7 +145,7 @@ class ServiceProxyImpl @Inject () (
   private[this] def proxyHeaders(headers: Headers, authData: Option[FlowAuthData]): Headers = {
     val headersToAdd = Seq(
       Constants.Headers.FlowService -> name,
-      Constants.Headers.Host -> definition.host,
+      Constants.Headers.Host -> definition.hostHeaderValue,
       Constants.Headers.ForwardedHost -> headers.get(Constants.Headers.Host).getOrElse("")
     ) ++ Seq(
       authData.map { data =>
