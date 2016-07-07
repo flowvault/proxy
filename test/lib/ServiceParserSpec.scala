@@ -1,6 +1,6 @@
 package lib
 
-import controllers.{ServiceProxy, ServiceProxyImpl}
+import controllers.{ServiceProxy, ServiceProxyDefinition, ServiceProxyImpl}
 import org.scalatest._
 import org.scalatestplus.play._
 import play.api.test._
@@ -92,7 +92,7 @@ services:
 
         // make sure all services have a defined execution context
         config.services.filter { svc =>
-          serviceProxyFactory(svc).asInstanceOf[ServiceProxyImpl].executionContextName == ServiceProxy.DefaultContextName
+          serviceProxyFactory(ServiceProxyDefinition(svc.host, svc.name)).asInstanceOf[ServiceProxyImpl].executionContextName == ServiceProxy.DefaultContextName
         }.map(_.name).toList match {
           case Nil => {}
           case names => {

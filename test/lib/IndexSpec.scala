@@ -45,16 +45,16 @@ class IndexSpec extends PlaySpec with OneServerPerSuite {
     s.resolve("GET", "/tmp") must be(None)
 
     // static
-    s.resolve("GET", "/organizations").map(_.service.name) must be(Some("organization"))
-    s.resolve("POST", "/organizations").map(_.service.name) must be(Some("organization"))
-    s.resolve("GET", "/users").map(_.service.name) must be(Some("user"))
-    s.resolve("POST", "/users").map(_.service.name) must be(Some("user"))
+    s.resolve("GET", "/organizations").map(_.host) must be(Some("https://organization.api.flow.io"))
+    s.resolve("POST", "/organizations").map(_.host) must be(Some("https://organization.api.flow.io"))
+    s.resolve("GET", "/users").map(_.host) must be(Some("https://user.api.flow.io"))
+    s.resolve("POST", "/users").map(_.host) must be(Some("https://user.api.flow.io"))
 
     // dynamic
-    s.resolve("GET", "/organizations/flow").map(_.service.name) must be(Some("organization"))
-    s.resolve("PUT", "/organizations/flow").map(_.service.name) must be(Some("organization"))
-    s.resolve("GET", "/users/usr-201606-128367123").map(_.service.name) must be(Some("user"))
-    s.resolve("PUT", "/users/usr-201606-128367123").map(_.service.name) must be(Some("user"))
+    s.resolve("GET", "/organizations/flow").map(_.host) must be(Some("https://organization.api.flow.io"))
+    s.resolve("PUT", "/organizations/flow").map(_.host) must be(Some("https://organization.api.flow.io"))
+    s.resolve("GET", "/users/usr-201606-128367123").map(_.host) must be(Some("https://user.api.flow.io"))
+    s.resolve("PUT", "/users/usr-201606-128367123").map(_.host) must be(Some("https://user.api.flow.io"))
   }
 
   // We leave this here as a simple way to evaluate impact
