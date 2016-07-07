@@ -8,7 +8,7 @@ import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.Membership
 import io.flow.token.v0.models.TokenReference
 import javax.inject.{Inject, Singleton}
-import lib.{Authorization, AuthorizationParser, Config, Constants, Index, InternalRoute, FlowAuth, Route, Service, ProxyConfigFetcher}
+import lib.{Authorization, AuthorizationParser, Config, Constants, Index, InternalRoute, FlowAuth, FlowAuthData, Route, Service, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -99,9 +99,13 @@ class ReverseProxy @Inject () (
             case None  => {
               lookup(internalRoute.host).proxy(
                 request,
-                userId = userId,
-                organization = None,
-                role = None
+                userId.map { uid =>
+                  FlowAuthData(
+                    userId = uid,
+                    organization = None,
+                    role = None
+                  )
+                }
               )
             }
 
@@ -120,9 +124,13 @@ class ReverseProxy @Inject () (
                     case Some(membership) => {
                       lookup(internalRoute.host).proxy(
                         request,
-                        userId = Some(uid),
-                        organization = Some(org),
-                        role = Some(membership.role.toString)
+                        Some(
+                          FlowAuthData(
+                            userId = uid,
+                            organization = Some(org),
+                          role = Some(membership.role.toString)
+                          )
+                        )
                       )
                     }
                   }
@@ -294,7 +302,7 @@ class ReverseProxy @Inject () (
       user = Some(userId),
       organization = Some(organization),
       limit = 1,
-      requestHeaders = Seq(Constants.Headers.FlowAuth -> flowAuth.jwt(userId, organization = None, role = None))
+      requestHeaders = Seq(Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData(userId, organization = None, role = None)))
     ).map { memberships =>
       memberships.headOption
     }.recover {

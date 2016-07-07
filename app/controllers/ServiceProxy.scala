@@ -15,7 +15,7 @@ import play.api.mvc._
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Constants, FlowAuth}
+import lib.{Constants, FlowAuth, FlowAuthData}
 
 case class ServiceProxyDefinition(
   host: String,
@@ -32,9 +32,7 @@ trait ServiceProxy {
 
   def proxy(
     request: Request[RawBuffer],
-    userId: Option[String],
-    organization: Option[String],
-    role: Option[String]
+    auth: Option[FlowAuthData]
   ): Future[play.api.mvc.Result]
 
 }
@@ -90,21 +88,12 @@ class ServiceProxyImpl @Inject () (
 
   override final def proxy(
     request: Request[RawBuffer],
-    userId: Option[String],
-    organization: Option[String],
-    role: Option[String]
+    auth: Option[FlowAuthData]
   ) = {
     val requestId = UUID.randomUUID.toString()
-    Logger.info(s"[${definition.name}] ${request.method} ${request.path} to ${definition.host} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
+    Logger.info(s"[${definition.name}] ${request.method} ${request.path} to ${definition.host} requestId[$requestId]")
 
-    val finalHeaders = proxyHeaders(
-      request.headers,
-      (
-        userId.map { uid =>
-          Constants.Headers.FlowAuth -> flowAuth.jwt(userId = uid, organization = organization, role = role)
-        } ++ Seq(Constants.Headers.FlowService -> name)
-      )
-    )
+    val finalHeaders = proxyHeaders(request.headers, auth)
 
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
@@ -145,19 +134,30 @@ class ServiceProxyImpl @Inject () (
 
   /**
     * Modifies headers by:
+    *   - removing X-Flow-* headers if they were set
     *   - adding a default content-type
-    *   - adding all additional headers specified
+    *   - 
     */
-  private[this] def proxyHeaders(headers: Headers, additional: Iterable[(String, String)]): Headers = {
-    val all = (
-      headers.get("Content-Type") match {
-        case None => headers.add("Content-Type" -> DefaultContentType)
-        case Some(_) => headers
-      }
-    ).remove(Constants.Headers.FlowAuth).remove(Constants.Headers.FlowService)
-    additional.foldLeft(all) { case (h, (k, v)) => h.remove(k).add(k -> v) }
-  }
+  private[this] def proxyHeaders(headers: Headers, authData: Option[FlowAuthData]): Headers = {
+    val headersToAdd = Seq(
+      authData.map { data =>
+        Constants.Headers.FlowAuth -> flowAuth.jwt(data)
+      },
+      Some(
+        Constants.Headers.FlowService -> name
+      ),
+      (
+        headers.get("Content-Type") match {
+          case None => Some("Content-Type" -> DefaultContentType)
+          case Some(_) => None
+        }
+      )
+    ).flatten
 
+    val cleanHeaders = Constants.Headers.all.foldLeft(headers) { case (h, n) => h.remove(n) }
+
+    headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
+  }
 
   private[this] def toLongSafe(value: String): Option[Long] = {
     Try {
