@@ -1,12 +1,14 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
+import lib.Config
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
 
 @Singleton
 class Internal @Inject() (
+  config: Config,
   reverseProxy: ReverseProxy
 ) extends Controller {
 
@@ -15,17 +17,29 @@ class Internal @Inject() (
   )
 
   def getHealthcheck() = Action { request =>
-    reverseProxy.index.config.services.toList match {
+    config.missing.toList match {
       case Nil => {
-        UnprocessableEntity(
-          Json.toJson(
-            Seq("No services are configured")
-          )
-        )
+        reverseProxy.index.config.services.toList match {
+          case Nil => {
+            UnprocessableEntity(
+              Json.toJson(
+                Seq("No services are configured")
+              )
+            )
+          }
+
+          case _ => {
+            Ok(HealthyJson)
+          }
+        }
       }
 
-      case _ => {
-        Ok(HealthyJson)
+      case missing => {
+        UnprocessableEntity(
+          Json.toJson(
+            Seq("Missing environment variables: " + missing.mkString(", "))
+          )
+        )
       }
     }
   }
