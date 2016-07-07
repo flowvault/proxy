@@ -8,7 +8,9 @@ object Constants {
     val FlowService = "X-Flow-Service"
     val FlowHost = "X-Flow-Host"
 
-    val all = Seq(FlowAuth, FlowService, FlowHost)
+    val Host = "Host"
+
+    val all = Seq(FlowAuth, FlowService, FlowHost, Host)
 
   }
 

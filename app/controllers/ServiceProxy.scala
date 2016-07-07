@@ -146,6 +146,9 @@ class ServiceProxyImpl @Inject () (
       Some(
         Constants.Headers.FlowService -> name
       ),
+      Some(
+        Constants.Headers.Host -> host
+      ),
       (
         headers.get("Content-Type") match {
           case None => Some("Content-Type" -> DefaultContentType)
