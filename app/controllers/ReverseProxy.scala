@@ -277,9 +277,8 @@ class ReverseProxy @Inject () (
     * valid token.
     */
   private[this] def resolveToken(token: String): Future[Option[UserReference]] = {
-    // Once token is released, switch to: tokenClient.tokens.postAuthentications(AuthenticationForm(token = token)).map { t =>
-    tokenClient.tokens.get(token = Some(token)).map { results =>
-      results.headOption.map(_.user)
+    tokenClient.tokens.postAuthentications(AuthenticationForm(token = token)).map { t =>
+      Some(t.user)
     }.recover {
       case io.flow.token.v0.errors.UnitResponse(404) => {
         None
