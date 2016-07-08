@@ -1,12 +1,12 @@
 package controllers
 
 import akka.actor.ActorSystem
-import io.flow.common.v0.models.Error
+import io.flow.common.v0.models.{Error, UserReference}
 import io.flow.common.v0.models.json._
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.Membership
-import io.flow.token.v0.models.TokenReference
+import io.flow.token.v0.models.AuthenticationForm
 import javax.inject.{Inject, Singleton}
 import lib.{Authorization, AuthorizationParser, Config, Constants, Index, InternalRoute, FlowAuth, FlowAuthData, Route, Service, ProxyConfigFetcher}
 import play.api.Logger
@@ -75,8 +75,8 @@ class ReverseProxy @Inject () (
           case None => Future {
             unauthorized(s"API Token is not valid")
           }
-          case Some(ref) => {
-            proxyPostAuth(request, userId = Some(ref.user.id))
+          case Some(user) => {
+            proxyPostAuth(request, userId = Some(user.id))
           }
         }
       }
@@ -276,9 +276,10 @@ class ReverseProxy @Inject () (
     * Queries token service to check if the specified token is a known
     * valid token.
     */
-  private[this] def resolveToken(token: String): Future[Option[TokenReference]] = {
-    tokenClient.tokens.getByToken(token).map { tokenReference =>
-      Some(tokenReference)
+  private[this] def resolveToken(token: String): Future[Option[UserReference]] = {
+    // Once token is released, switch to: tokenClient.tokens.postAuthentications(AuthenticationForm(token = token)).map { t =>
+    tokenClient.tokens.get(token = Some(token)).map { results =>
+      results.headOption.map(_.user)
     }.recover {
       case io.flow.token.v0.errors.UnitResponse(404) => {
         None

@@ -25,10 +25,6 @@ val credsToUse = Option(System.getenv("ARTIFACTORY_USERNAME")) match {
 
 lazy val commonSettings: Seq[Setting[_]] = Seq(
   name <<= name("proxy-" + _),
-//  libraryDependencies ++= Seq(
-//    specs2 % Test,
-//    "org.scalatest" %% "scalatest" % "2.2.6" % Test
-//  ),
   scalacOptions += "-feature",
   sources in (Compile,doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false,
@@ -36,4 +32,3 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
   resolvers += "Artifactory" at "https://flow.artifactoryonline.com/flow/libs-release/"
 )
-version := "0.0.6"
