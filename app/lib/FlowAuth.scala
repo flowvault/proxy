@@ -2,6 +2,8 @@ package lib
 
 import authentikat.jwt.{JwtClaimsSet, JwtHeader, JsonWebToken}
 import javax.inject.{Inject, Singleton}
+import org.joda.time.DateTime
+import org.joda.time.format.ISODateTimeFormat.dateTime
 
 case class FlowAuthData(
   userId: String,
@@ -9,9 +11,12 @@ case class FlowAuthData(
   role: Option[String]
 ) {
 
+  private[this] val createdAt = new DateTime()
+
   def toMap(): Map[String, String] = {
     Map(
       "user_id" -> Some(userId),
+      "created_at" -> Some(dateTime.print(createdAt)),
       "organization" -> organization,
       "role" -> role
     ).flatMap { case (key, value) => value.map { v => (key -> v)} }

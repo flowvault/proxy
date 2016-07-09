@@ -36,8 +36,7 @@ class ReverseProxy @Inject () (
     new OrganizationClient(baseUrl = svc.host)
   }
 
-  private[this] val tokenServiceUrl = config.requiredString("service.token.uri")
-  private[this] val tokenClient = new TokenClient(baseUrl = tokenServiceUrl)
+  private[this] val tokenClient = new TokenClient(baseUrl = config.requiredString("service.token.uri"))
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
@@ -285,7 +284,7 @@ class ReverseProxy @Inject () (
       }
 
       case ex: Throwable => {
-        sys.error(s"Could not communicate with token service at[$tokenServiceUrl]: $ex")
+        sys.error(s"Could not communicate with token service at[${tokenClient.baseUrl}]: $ex")
       }
     }
   }
@@ -311,7 +310,7 @@ class ReverseProxy @Inject () (
         None
       }
       case ex: Throwable => {
-        sys.error(s"Could not communicate with token service at[$tokenServiceUrl]: $ex")
+        sys.error(s"Could not communicate with organization service at[${organizationClient.baseUrl}]: $ex")
       }
     }
   }
