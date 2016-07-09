@@ -11,7 +11,7 @@ case class FlowAuthData(
   role: Option[String]
 ) {
 
-  private[this] val createdAt = new DateTime()
+  private[lib] val createdAt = new DateTime()
 
   def toMap(): Map[String, String] = {
     Map(
