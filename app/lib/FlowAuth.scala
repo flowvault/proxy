@@ -1,14 +1,39 @@
 package lib
 
+import io.flow.organization.v0.models.OrganizationAuthorization
 import authentikat.jwt.{JwtClaimsSet, JwtHeader, JsonWebToken}
 import javax.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat.dateTime
 
+object FlowAuthData {
+
+  /**
+   * Creates a flow auth data object with only the user id
+   */
+  def user(userId: String) = FlowAuthData(
+    userId = userId,
+    organization = None,
+    role = None,
+    environment = None
+  )
+
+  /**
+   * Creates a flow auth data object for the user and org
+   */
+  def org(userId: String, organization: String, orgAuth: OrganizationAuthorization) = FlowAuthData(
+    userId = userId,
+    organization = Some(organization),
+    role = Some(orgAuth.role.toString),
+    environment = Some(orgAuth.environment.toString)
+  )
+  
+}
 case class FlowAuthData(
   userId: String,
   organization: Option[String],
-  role: Option[String]
+  role: Option[String],
+  environment: Option[String]
 ) {
 
   private[lib] val createdAt = new DateTime()
@@ -18,7 +43,8 @@ case class FlowAuthData(
       "user_id" -> Some(userId),
       "created_at" -> Some(dateTime.print(createdAt)),
       "organization" -> organization,
-      "role" -> role
+      "role" -> role,
+      "environment" -> environment
     ).flatMap { case (key, value) => value.map { v => (key -> v)} }
   }
 

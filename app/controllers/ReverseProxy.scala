@@ -6,7 +6,7 @@ import io.flow.common.v0.models.json._
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.Membership
-import io.flow.token.v0.models.AuthenticationForm
+import io.flow.token.v0.models.TokenAuthenticationForm
 import javax.inject.{Inject, Singleton}
 import lib.{Authorization, AuthorizationParser, Config, Constants, Index, InternalRoute, FlowAuth, FlowAuthData, Route, Service, ProxyConfigFetcher}
 import play.api.Logger
@@ -36,7 +36,13 @@ class ReverseProxy @Inject () (
     new OrganizationClient(baseUrl = svc.host)
   }
 
-  private[this] val tokenClient = new TokenClient(baseUrl = config.requiredString("service.token.uri"))
+  private[this] val tokenClient = {
+    val svc = findServiceByName("token").getOrElse {
+      sys.error("There is no service named 'token' in the current config: " + config)
+    }
+    Logger.info(s"Creating TokenClient w/ baseUrl[${svc.host}]")
+    new TokenClient(baseUrl = svc.host)
+  }
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
@@ -99,11 +105,7 @@ class ReverseProxy @Inject () (
               lookup(internalRoute.host).proxy(
                 request,
                 userId.map { uid =>
-                  FlowAuthData(
-                    userId = uid,
-                    organization = None,
-                    role = None
-                  )
+                  FlowAuthData.user(uid)
                 }
               )
             }
@@ -115,21 +117,15 @@ class ReverseProxy @Inject () (
                 }
 
                 case Some(uid) => {
-                  resolveMembership(uid, org).flatMap {
+                  resolveOrganizationAuthorization(uid, org).flatMap {
                     case None => Future {
                       unauthorized(s"Not authorized to access $org or the organization does not exist")
                     }
 
-                    case Some(membership) => {
+                    case Some(auth) => {
                       lookup(internalRoute.host).proxy(
                         request,
-                        Some(
-                          FlowAuthData(
-                            userId = uid,
-                            organization = Some(org),
-                          role = Some(membership.role.toString)
-                          )
-                        )
+                        Some(auth)
                       )
                     }
                   }
@@ -182,7 +178,7 @@ class ReverseProxy @Inject () (
           }
 
           case Some(uid) => {
-            resolveMembership(uid, Constants.FlowOrganizationId).map {
+            resolveOrganizationAuthorization(uid, Constants.FlowOrganizationId).map {
               case None => {
                 Left(
                   unauthorized(s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
@@ -276,7 +272,7 @@ class ReverseProxy @Inject () (
     * valid token.
     */
   private[this] def resolveToken(token: String): Future[Option[UserReference]] = {
-    tokenClient.tokens.postAuthentications(AuthenticationForm(token = token)).map { t =>
+    tokenClient.tokens.postAuthentications(TokenAuthenticationForm(token = token)).map { t =>
       Some(t.user)
     }.recover {
       case io.flow.token.v0.errors.UnitResponse(404) => {
@@ -290,23 +286,24 @@ class ReverseProxy @Inject () (
   }
 
   /**
-    * Queries organization service to check if the specified user is a
-    * member of the specified organization.
+    * Queries organization service to authorize this user for this
+    * organization and also pulls the organization's environment.
     */
-  private[this] def resolveMembership(
+  private[this] def resolveOrganizationAuthorization(
     userId: String,
     organization: String
-  ): Future[Option[Membership]] = {
-    organizationClient.memberships.get(
-      user = Some(userId),
-      organization = Some(organization),
-      limit = 1,
-      requestHeaders = Seq(Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData(userId, organization = None, role = None)))
-    ).map { memberships =>
-      memberships.headOption
+  ): Future[Option[FlowAuthData]] = {
+    organizationClient.organizationAuthorizations.getByOrganization(
+      organization = organization,
+      requestHeaders = Seq(Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData.user(userId)))
+    ).map { orgAuth =>
+      Some(
+        FlowAuthData.org(userId, organization, orgAuth)
+      )
+
     }.recover {
       case io.flow.organization.v0.errors.UnitResponse(401) => {
-        Logger.warn(s"User[$userId] was not authorized to GET /memberships")
+        Logger.warn(s"User[$userId] was not authorized to GET /organization-authorizations/$organization")
         None
       }
       case ex: Throwable => {
@@ -314,4 +311,5 @@ class ReverseProxy @Inject () (
       }
     }
   }
+
 }
