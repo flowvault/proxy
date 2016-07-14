@@ -39,7 +39,7 @@ class ReverseProxy @Inject () (
   private[this] val tokenClient = new TokenClient(baseUrl =
       proxyConfigFetcher.DevHost match {
         case "workstation" => config.requiredString("service.token.uri.workstation")
-        case _ => config.requiredString("service.token.uri.local")
+        case _ => config.requiredString("service.token.uri")
       }
     )
 
