@@ -19,7 +19,7 @@ class ProxyConfigFetcher @Inject() (
 ) {
 
   private[this] lazy val Uri = config.requiredString("proxy.config.uri")
-  private[this] lazy val WorkstationUri = config.requiredString("proxy.config.uri.workstation")
+  private[this] lazy val WorkstationUri = config.requiredString("proxy.config.workstation.uri")
   lazy val DevHost = config.requiredString("dev.host")
 
   /**
