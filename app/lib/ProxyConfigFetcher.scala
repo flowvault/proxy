@@ -19,6 +19,7 @@ class ProxyConfigFetcher @Inject() (
 ) {
 
   private[this] lazy val Uri = config.requiredString("proxy.config.uri")
+  private[this] lazy val DevHost = config.requiredString("dev.host")
 
   /**
     * Loads service definitions from the specified URI
@@ -30,9 +31,15 @@ class ProxyConfigFetcher @Inject() (
   }
 
   private[this] def refresh(): Option[Index] = {
-    load(Uri) match {
+    val uri = DevHost match {
+      case "workstation" =>
+        Uri.replaceFirst("development", "workstation")
+      case _ => Uri
+
+    }
+    load(uri) match {
       case Left(errors) => {
-        Logger.error(s"Failed to load proxy configuration from Uri[$Uri]: $errors")
+        Logger.error(s"Failed to load proxy configuration from Uri[$uri]: $errors")
         None
       }
       case Right(cfg) => {
