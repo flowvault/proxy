@@ -19,6 +19,7 @@ class ProxyConfigFetcher @Inject() (
 ) {
 
   private[this] lazy val Uri = config.requiredString("proxy.config.uri")
+  private[this] lazy val WorkstationUri = config.requiredString("proxy.config.uri.workstation")
   lazy val DevHost = config.requiredString("dev.host")
 
   /**
@@ -32,8 +33,7 @@ class ProxyConfigFetcher @Inject() (
 
   private[this] def refresh(): Option[Index] = {
     val uri = DevHost match {
-      case "workstation" =>
-        Uri.replaceFirst("development", "workstation")
+      case "workstation" => WorkstationUri
       case _ => Uri
 
     }
