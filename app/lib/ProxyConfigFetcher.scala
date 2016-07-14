@@ -19,7 +19,7 @@ class ProxyConfigFetcher @Inject() (
 ) {
 
   private[this] lazy val Uri = config.requiredString("proxy.config.uri")
-  private[this] lazy val DevHost = config.requiredString("dev.host")
+  lazy val DevHost = config.requiredString("dev.host")
 
   /**
     * Loads service definitions from the specified URI

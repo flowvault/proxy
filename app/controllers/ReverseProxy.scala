@@ -36,7 +36,17 @@ class ReverseProxy @Inject () (
     new OrganizationClient(baseUrl = svc.host)
   }
 
-  private[this] val tokenClient = new TokenClient(baseUrl = config.requiredString("service.token.uri"))
+  private[this] val tokenClient = {
+    val tokenUri = config.requiredString("service.token.uri")
+
+    new TokenClient(baseUrl =
+      proxyConfigFetcher.DevHost match {
+        case "workstation" =>
+          tokenUri.replaceFirst("localhost", "172.17.0.1")
+        case _ => tokenUri
+      }
+    )
+  }
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
