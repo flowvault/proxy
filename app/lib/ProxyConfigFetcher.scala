@@ -20,7 +20,7 @@ class ProxyConfigFetcher @Inject() (
 
   private[this] lazy val Uri = config.requiredString("proxy.config.uri")
   private[this] lazy val WorkstationUri = config.requiredString("proxy.config.workstation.uri")
-  lazy val DevHost = config.requiredString("dev.host")
+  lazy val DevEnvironment = config.requiredString("dev.environment")
 
   /**
     * Loads service definitions from the specified URI
@@ -32,7 +32,7 @@ class ProxyConfigFetcher @Inject() (
   }
 
   private[this] def refresh(): Option[Index] = {
-    val uri = DevHost match {
+    val uri = DevEnvironment match {
       case "workstation" => WorkstationUri
       case _ => Uri
 

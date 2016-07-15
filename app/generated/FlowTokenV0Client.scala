@@ -6,13 +6,6 @@
 package io.flow.token.v0.models {
 
   /**
-   * Used to authenticate a given token.
-   */
-  case class AuthenticationForm(
-    token: String
-  )
-
-  /**
    * The actual value of the API token. This is modeled as a separate resource as it
    * is fetched only on demand.
    */
@@ -32,6 +25,13 @@ package io.flow.token.v0.models {
   )
 
   /**
+   * Used to authenticate a given token.
+   */
+  case class TokenAuthenticationForm(
+    token: String
+  )
+
+  /**
    * Used to create a new token for the user authorized by the request. You can only
    * create an API token for your own account.
    */
@@ -45,6 +45,13 @@ package io.flow.token.v0.models {
   case class TokenReference(
     id: String,
     user: io.flow.common.v0.models.UserReference
+  )
+
+  case class TokenVersion(
+    id: String,
+    timestamp: _root_.org.joda.time.DateTime,
+    `type`: io.flow.common.v0.models.ChangeType,
+    token: io.flow.token.v0.models.Token
   )
 
   /**
@@ -90,24 +97,6 @@ package io.flow.token.v0.models {
         import org.joda.time.format.ISODateTimeFormat.dateTime
         val str = dateTime.print(x)
         JsString(str)
-      }
-    }
-
-    implicit def jsonReadsTokenAuthenticationForm: play.api.libs.json.Reads[AuthenticationForm] = {
-      (__ \ "token").read[String].map { x => new AuthenticationForm(token = x) }
-    }
-
-    def jsObjectAuthenticationForm(obj: io.flow.token.v0.models.AuthenticationForm) = {
-      play.api.libs.json.Json.obj(
-        "token" -> play.api.libs.json.JsString(obj.token)
-      )
-    }
-
-    implicit def jsonWritesTokenAuthenticationForm: play.api.libs.json.Writes[AuthenticationForm] = {
-      new play.api.libs.json.Writes[io.flow.token.v0.models.AuthenticationForm] {
-        def writes(obj: io.flow.token.v0.models.AuthenticationForm) = {
-          jsObjectAuthenticationForm(obj)
-        }
       }
     }
 
@@ -159,6 +148,24 @@ package io.flow.token.v0.models {
       }
     }
 
+    implicit def jsonReadsTokenTokenAuthenticationForm: play.api.libs.json.Reads[TokenAuthenticationForm] = {
+      (__ \ "token").read[String].map { x => new TokenAuthenticationForm(token = x) }
+    }
+
+    def jsObjectTokenAuthenticationForm(obj: io.flow.token.v0.models.TokenAuthenticationForm) = {
+      play.api.libs.json.Json.obj(
+        "token" -> play.api.libs.json.JsString(obj.token)
+      )
+    }
+
+    implicit def jsonWritesTokenTokenAuthenticationForm: play.api.libs.json.Writes[TokenAuthenticationForm] = {
+      new play.api.libs.json.Writes[io.flow.token.v0.models.TokenAuthenticationForm] {
+        def writes(obj: io.flow.token.v0.models.TokenAuthenticationForm) = {
+          jsObjectTokenAuthenticationForm(obj)
+        }
+      }
+    }
+
     implicit def jsonReadsTokenTokenForm: play.api.libs.json.Reads[TokenForm] = {
       (__ \ "description").readNullable[String].map { x => new TokenForm(description = x) }
     }
@@ -196,6 +203,32 @@ package io.flow.token.v0.models {
       new play.api.libs.json.Writes[io.flow.token.v0.models.TokenReference] {
         def writes(obj: io.flow.token.v0.models.TokenReference) = {
           jsObjectTokenReference(obj)
+        }
+      }
+    }
+
+    implicit def jsonReadsTokenTokenVersion: play.api.libs.json.Reads[TokenVersion] = {
+      (
+        (__ \ "id").read[String] and
+        (__ \ "timestamp").read[_root_.org.joda.time.DateTime] and
+        (__ \ "type").read[io.flow.common.v0.models.ChangeType] and
+        (__ \ "token").read[io.flow.token.v0.models.Token]
+      )(TokenVersion.apply _)
+    }
+
+    def jsObjectTokenVersion(obj: io.flow.token.v0.models.TokenVersion) = {
+      play.api.libs.json.Json.obj(
+        "id" -> play.api.libs.json.JsString(obj.id),
+        "timestamp" -> play.api.libs.json.JsString(_root_.org.joda.time.format.ISODateTimeFormat.dateTime.print(obj.timestamp)),
+        "type" -> play.api.libs.json.JsString(obj.`type`.toString),
+        "token" -> jsObjectToken(obj.token)
+      )
+    }
+
+    implicit def jsonWritesTokenTokenVersion: play.api.libs.json.Writes[TokenVersion] = {
+      new play.api.libs.json.Writes[io.flow.token.v0.models.TokenVersion] {
+        def writes(obj: io.flow.token.v0.models.TokenVersion) = {
+          jsObjectTokenVersion(obj)
         }
       }
     }
@@ -324,6 +357,29 @@ package io.flow.token.v0 {
         }
       }
 
+      override def getVersions(
+        id: _root_.scala.Option[Seq[String]] = None,
+        tokenId: _root_.scala.Option[Seq[String]] = None,
+        limit: Long = 25,
+        offset: Long = 0,
+        sort: String = "journal_timestamp",
+        requestHeaders: Seq[(String, String)] = Nil
+      )(implicit ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[Seq[io.flow.token.v0.models.TokenVersion]] = {
+        val queryParameters = Seq(
+          Some("limit" -> limit.toString),
+          Some("offset" -> offset.toString),
+          Some("sort" -> sort)
+        ).flatten ++
+          id.getOrElse(Nil).map("id" -> _) ++
+          tokenId.getOrElse(Nil).map("token_id" -> _)
+
+        _executeRequest("GET", s"/tokens/versions", queryParameters = queryParameters, requestHeaders = requestHeaders).map {
+          case r if r.status == 200 => _root_.io.flow.token.v0.Client.parseJson("Seq[io.flow.token.v0.models.TokenVersion]", r, _.validate[Seq[io.flow.token.v0.models.TokenVersion]])
+          case r if r.status == 401 => throw new io.flow.token.v0.errors.UnitResponse(r.status)
+          case r => throw new io.flow.token.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 200, 401")
+        }
+      }
+
       override def getById(
         id: String,
         requestHeaders: Seq[(String, String)] = Nil
@@ -349,15 +405,17 @@ package io.flow.token.v0 {
       }
 
       override def postAuthentications(
-        authenticationForm: io.flow.token.v0.models.AuthenticationForm,
+        tokenAuthenticationForm: io.flow.token.v0.models.TokenAuthenticationForm,
         requestHeaders: Seq[(String, String)] = Nil
       )(implicit ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[io.flow.token.v0.models.TokenReference] = {
-        val payload = play.api.libs.json.Json.toJson(authenticationForm)
+        val payload = play.api.libs.json.Json.toJson(tokenAuthenticationForm)
 
         _executeRequest("POST", s"/tokens/authentications", body = Some(payload), requestHeaders = requestHeaders).map {
           case r if r.status == 200 => _root_.io.flow.token.v0.Client.parseJson("io.flow.token.v0.models.TokenReference", r, _.validate[io.flow.token.v0.models.TokenReference])
+          case r if r.status == 401 => throw new io.flow.token.v0.errors.UnitResponse(r.status)
           case r if r.status == 404 => throw new io.flow.token.v0.errors.UnitResponse(r.status)
-          case r => throw new io.flow.token.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 200, 404")
+          case r if r.status == 422 => throw new io.flow.token.v0.errors.ErrorsResponse(r)
+          case r => throw new io.flow.token.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 200, 401, 404, 422")
         }
       }
 
@@ -397,7 +455,9 @@ package io.flow.token.v0 {
 
         _executeRequest("POST", s"/token-validations", body = Some(payload), requestHeaders = requestHeaders).map {
           case r if r.status == 200 => _root_.io.flow.token.v0.Client.parseJson("io.flow.token.v0.models.Validation", r, _.validate[io.flow.token.v0.models.Validation])
-          case r => throw new io.flow.token.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 200")
+          case r if r.status == 401 => throw new io.flow.token.v0.errors.UnitResponse(r.status)
+          case r if r.status == 422 => throw new io.flow.token.v0.errors.ErrorsResponse(r)
+          case r => throw new io.flow.token.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 200, 401, 422")
         }
       }
     }
@@ -526,6 +586,15 @@ package io.flow.token.v0 {
       requestHeaders: Seq[(String, String)] = Nil
     )(implicit ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[Seq[io.flow.token.v0.models.Token]]
 
+    def getVersions(
+      id: _root_.scala.Option[Seq[String]] = None,
+      tokenId: _root_.scala.Option[Seq[String]] = None,
+      limit: Long = 25,
+      offset: Long = 0,
+      sort: String = "journal_timestamp",
+      requestHeaders: Seq[(String, String)] = Nil
+    )(implicit ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[Seq[io.flow.token.v0.models.TokenVersion]]
+
     /**
      * Get metadata for the token with this ID
      */
@@ -548,7 +617,7 @@ package io.flow.token.v0 {
      * body to enusre that the token itself is not logged in the request logs.
      */
     def postAuthentications(
-      authenticationForm: io.flow.token.v0.models.AuthenticationForm,
+      tokenAuthenticationForm: io.flow.token.v0.models.TokenAuthenticationForm,
       requestHeaders: Seq[(String, String)] = Nil
     )(implicit ec: scala.concurrent.ExecutionContext): scala.concurrent.Future[io.flow.token.v0.models.TokenReference]
 

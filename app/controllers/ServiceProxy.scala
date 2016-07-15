@@ -140,7 +140,6 @@ class ServiceProxyImpl @Inject () (
     * Modifies headers by:
     *   - removing X-Flow-* headers if they were set
     *   - adding a default content-type
-    *   - 
     */
   private[this] def proxyHeaders(headers: Headers, authData: Option[FlowAuthData]): Headers = {
     val headersToAdd = Seq(
