@@ -76,7 +76,7 @@ class FlowAuthSpec extends PlaySpec with OneServerPerSuite {
     d4.toMap must be(
       Map(
         "user_id" -> "5",
-        "created_at" -> dateTime.print(d3.createdAt),
+        "created_at" -> dateTime.print(d4.createdAt),
         "organization" -> "flow",
         "role" -> "member",
         "environment" -> "production"
