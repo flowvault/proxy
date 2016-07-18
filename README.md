@@ -47,14 +47,18 @@ http://localhost:9000/_internal_/config
 
 ## Flow Configuration
 
-Development:
+Running locally:
 
-    proxy.config.uri="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
+    PROXY_CONFIG_URI=https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config JWT_SALT=test sbt
 
-Workstation:
+Development configuration file:
 
-    proxy.config.uri="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/workstation.config"
+    PROXY_CONFIG_URI="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
 
-Production:
+Workstation configuration file:
 
-    proxy.config.uri="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
+    PROXY_CONFIG_URI="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/workstation.config"
+
+Production configuration file:
+
+    PROXY_CONFIG_URI="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
