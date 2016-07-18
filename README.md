@@ -44,3 +44,17 @@ View current configuration, including all services and routes:
 ```
 http://localhost:9000/_internal_/config
 ```
+
+## Flow Configuration
+
+Development:
+
+    proxy.config.uri="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
+
+Workstation:
+
+    proxy.config.uri="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/workstation.config"
+
+Production:
+
+    proxy.config.uri="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
