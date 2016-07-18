@@ -21,11 +21,23 @@ class LoggingFilter @Inject() (implicit val mat: Materializer, ec: ExecutionCont
            (requestHeader: RequestHeader): Future[Result] = {
 
     val startTime = System.currentTimeMillis
+    val headerMap = requestHeader.headers.toMap
 
     nextFilter(requestHeader).map { result =>
       val endTime = System.currentTimeMillis
       val requestTime = endTime - startTime
-      Logger.info(s"${requestHeader.method} ${requestHeader.host}${requestHeader.uri} ${result.header.status} ${requestTime}ms")
+
+      val line = Seq(
+        requestHeader.method,
+        s"${requestHeader.host}${requestHeader.uri}",
+        result.header.status,
+        s"${requestTime}ms",
+        headerMap.getOrElse("User-Agent", Nil).mkString(","),
+        headerMap.getOrElse("X-Forwarded-For", Nil).mkString(","),
+        headerMap.getOrElse("CF-Connecting-IP", Nil).mkString(",")
+      ).mkString(" ")
+
+      Logger.info(line)
 
       result.withHeaders("Request-Time" -> requestTime.toString)
     }
