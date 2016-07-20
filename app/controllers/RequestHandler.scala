@@ -7,16 +7,23 @@ import play.api.http._
 import play.api.mvc._
 import scala.runtime.AbstractPartialFunction
 
+/**
+  * We implement our own request handler to inject a custom router
+  * that implements the reverse proxy.
+  */
 class RequestHandler @Inject() (
   errorHandler: HttpErrorHandler,
   configuration: HttpConfiguration,
   filters: HttpFilters,
-  myRouter: Router
+  router: Router
 ) extends DefaultHttpRequestHandler(
-  myRouter, errorHandler, configuration, filters
+  router, errorHandler, configuration, filters
 )
 
-
+/**
+  * Exposes a few /_internal_ routes explicitly; otherwise delegates
+  * the route to the reverse proxy.
+  */
 class Router @Inject() (
   internal: Internal,
   proxy: ReverseProxy
