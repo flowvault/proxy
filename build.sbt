@@ -7,6 +7,7 @@ scalaVersion in ThisBuild := "2.11.8"
 lazy val root = project
   .in(file("."))
   .enablePlugins(PlayScala)
+  .enablePlugins(NewRelic)
   .settings(commonSettings: _*)
   .settings(
     libraryDependencies ++= Seq(
