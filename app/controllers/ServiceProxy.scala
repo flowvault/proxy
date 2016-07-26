@@ -99,11 +99,29 @@ class ServiceProxyImpl @Inject () (
 
     val finalHeaders = proxyHeaders(request.headers, auth)
 
+    // TODO: Move to own method
+    val query = request.queryString.isEmpty match {
+      case true => {
+        Nil
+      }
+      case false => {
+        val tmp = scala.collection.mutable.ListBuffer[(String, String)]()
+        request.queryString.foreach { case (key, values) =>
+          values.foreach { value =>
+            tmp += (key -> value)
+          }
+        }
+        tmp.toSeq
+      }
+    }
+
+    println(s"QUERY: $query")
+
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
       .withMethod(request.method)
       .withHeaders(finalHeaders.headers: _*)
-      .withQueryString(request.queryString.mapValues(_.head).toSeq: _*)
+      .withQueryString(query: _*)
       .withBody(request.body.asBytes().get)
 
     val startMs = System.currentTimeMillis
