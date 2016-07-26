@@ -48,6 +48,27 @@ object ServiceProxy {
   trait Factory {
     def apply(definition: ServiceProxyDefinition): ServiceProxy
   }
+
+  /**
+    * Map the query string to a seq of query parameters.
+   */
+  def query(incoming: Map[String, Seq[String]]): Seq[(String, String)] = {
+    incoming.isEmpty match {
+      case true => {
+        Nil
+      }
+      case false => {
+        val tmp = scala.collection.mutable.ListBuffer[(String, String)]()
+          incoming.foreach { case (key, values) =>
+            values.foreach { value =>
+            tmp += (key -> value)
+            }
+          }
+        tmp.toSeq
+      }
+    }
+  }
+
 }
 
 class ServiceProxyModule extends AbstractModule {
@@ -99,27 +120,11 @@ class ServiceProxyImpl @Inject () (
 
     val finalHeaders = proxyHeaders(request.headers, auth)
 
-    // TODO: Move to own method
-    val query = request.queryString.isEmpty match {
-      case true => {
-        Nil
-      }
-      case false => {
-        val tmp = scala.collection.mutable.ListBuffer[(String, String)]()
-        request.queryString.foreach { case (key, values) =>
-          values.foreach { value =>
-            tmp += (key -> value)
-          }
-        }
-        tmp.toSeq
-      }
-    }
-
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
       .withMethod(request.method)
       .withHeaders(finalHeaders.headers: _*)
-      .withQueryString(query: _*)
+      .withQueryString(ServiceProxy.query(request.queryString): _*)
       .withBody(request.body.asBytes().get)
 
     val startMs = System.currentTimeMillis
