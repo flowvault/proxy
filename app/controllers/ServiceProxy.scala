@@ -115,8 +115,6 @@ class ServiceProxyImpl @Inject () (
       }
     }
 
-    println(s"QUERY: $query")
-
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
       .withMethod(request.method)
