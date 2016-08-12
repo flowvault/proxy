@@ -13,7 +13,7 @@ lazy val root = project
     libraryDependencies ++= Seq(
       filters,
       ws,
-      "com.jason-goodwin" %% "authentikat-jwt" % "0.4.1",
+      "com.jason-goodwin" %% "authentikat-jwt" % "0.4.3",
       "org.yaml" % "snakeyaml" % "1.17",
       "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test"
     )
@@ -33,4 +33,4 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
   resolvers += "Artifactory" at "https://flow.artifactoryonline.com/flow/libs-release/"
 )
-version := "0.0.16"
+
