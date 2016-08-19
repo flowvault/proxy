@@ -59,7 +59,9 @@ class ReverseProxy @Inject () (
   private[this] val dynamicPoxies = scala.collection.mutable.Map[String, ServiceProxy]()
   
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
-    val requestId = UUID.randomUUID.toString
+    val requestId: String = request.headers.get(Constants.Headers.FlowRequestId).getOrElse {
+      "api-" + UUID.randomUUID.toString
+    }
 
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
