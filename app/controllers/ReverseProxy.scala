@@ -141,8 +141,15 @@ class ReverseProxy @Inject () (
 
             case Some(org) => {
               userId match {
-                case None => Future {
-                  unauthorized("You must set a valid Authorization header")
+                case None => {
+                  lookup(internalRoute.host).proxy(
+                    requestId,
+                    request,
+                    method,
+                    userId.map { uid =>
+                      FlowAuthData.user(requestId, uid)
+                    }
+                  )
                 }
 
                 case Some(uid) => {
