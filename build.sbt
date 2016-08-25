@@ -14,6 +14,7 @@ lazy val root = project
       filters,
       ws,
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.3",
+      "com.typesafe.play" %% "play-json" % "2.5.6",
       "org.yaml" % "snakeyaml" % "1.17",
       "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test"
     )
