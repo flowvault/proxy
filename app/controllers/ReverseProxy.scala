@@ -109,8 +109,19 @@ class ReverseProxy @Inject () (
     }
   }
 
-  private[this] def proxyPostAuth(requestId: String, request: Request[RawBuffer], userId: Option[String]): Future[Result] = {
-    resolve(requestId, request, userId).flatMap { result =>
+  private[this] def proxyPostAuth(
+    requestId: String,
+    request: Request[RawBuffer],
+    userId: Option[String]
+  ): Future[Result] = {
+    // If we have a callback param indicated JSONP, respect the method parameter as well
+    val method = request.queryString.get("callback") match {
+      case None => request.method
+      case Some(_) => request.queryString.get("method").getOrElse(Nil).headOption.map(_.toUpperCase).getOrElse(request.method)
+    }
+    println(s"method[$method]")
+
+    resolve(requestId, method, request, userId).flatMap { result =>
       result match {
         case Left(result) => Future {
           result
@@ -121,6 +132,7 @@ class ReverseProxy @Inject () (
             case None  => {
               lookup(internalRoute.host).proxy(
                 requestId,
+                method,
                 request,
                 userId.map { uid =>
                   FlowAuthData.user(requestId, uid)
@@ -143,6 +155,7 @@ class ReverseProxy @Inject () (
                     case Some(auth) => {
                       lookup(internalRoute.host).proxy(
                         requestId,
+                        method,
                         request,
                         Some(auth)
                       )
@@ -168,8 +181,7 @@ class ReverseProxy @Inject () (
     * have an auth token identifying a user that is a member of the
     * flow organization. Otherwise we return an error.
     */
-  private[this] def resolve(requestId: String, request: Request[RawBuffer], userId: Option[String]): Future[Either[Result, InternalRoute]] = {
-    val method = request.method
+  private[this] def resolve(requestId: String, method: String, request: Request[RawBuffer], userId: Option[String]): Future[Either[Result, InternalRoute]] = {
     val path = request.path
     val serviceNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowService)
     val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)

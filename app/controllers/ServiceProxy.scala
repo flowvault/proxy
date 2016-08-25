@@ -39,6 +39,7 @@ trait ServiceProxy {
 
   def proxy(
     requestId: String,
+    method: String,
     request: Request[RawBuffer],
     auth: Option[FlowAuthData]
   ): Future[play.api.mvc.Result]
@@ -75,8 +76,12 @@ object ServiceProxy {
     *  @param incoming A map of query parameter keys to sequences of their values.
     *  @return A sequence of keys, each paired with exactly one value.
     */
-  def query(incoming: Map[String, Seq[String]]): Seq[(String, String)] = {
-    incoming.map { case (k, vs) => vs.map(k -> _) }.flatten.toSeq
+  def query(
+    incoming: Map[String, Seq[String]]
+  ): Seq[(String, String)] = {
+    incoming.map { case (k, vs) =>
+      vs.map(k -> _)
+    }.flatten.toSeq
   }
 }
 
@@ -122,16 +127,73 @@ class ServiceProxyImpl @Inject () (
 
   override final def proxy(
     requestId: String,
+    method: String,
     request: Request[RawBuffer],
     auth: Option[FlowAuthData]
   ) = {
-    Logger.info(s"[proxy] ${request.method} ${request.path} to ${definition.nameLabel}:${definition.host} requestId $requestId")
+    Logger.info(s"[proxy] $method ${request.path} to ${definition.nameLabel}:${definition.host} requestId $requestId")
 
-    val finalHeaders = proxyHeaders(requestId, request.headers, auth)
+    request.queryString.get("callback").getOrElse(Nil).headOption match {
+      case Some(callback) => jsonp(requestId, callback, method, request, auth)
+      case None => standard(requestId, method, request, auth)
+    }
+  }
+
+  private[this] def jsonp(
+    requestId: String,
+    callback: String,
+    method: String,
+    request: Request[RawBuffer],
+    auth: Option[FlowAuthData]
+  ) = {
+    val ignore = Seq("callback", "method")
+    val body = ServiceProxy.query(
+      request.queryString
+    ).flatMap { case (name, value) =>
+        ignore.contains(name) match {
+          case true => None
+          case false => Some(
+            "%s=%s".format(name, value) // TODO Encode
+          )
+        }
+    }.mkString("&")
+
+    val finalHeaders = proxyHeaders(requestId, request.headers, auth).
+      remove("Content-Type").
+      add("Content-Type" -> "application/x-www-form-urlencoded")
+
+    println("JSON P BODY: " + body)
+    println("Headers: " + finalHeaders)    
 
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
-      .withMethod(request.method)
+      .withMethod(method)
+      .withHeaders(finalHeaders.headers: _*)
+      .withBody(body)
+
+    val startMs = System.currentTimeMillis
+    req.execute.map { response =>
+      val timeToFirstByteMs = System.currentTimeMillis - startMs
+      val finalBody = callback + "(" + response.body + ")"
+
+      // TODO: Add envelope
+      Logger.info(s"[proxy] $method ${request.path} ${definition.nameLabel}:${definition.host} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+
+      Ok(finalBody).as("application/javascript; charset=utf-8")
+    }
+  }
+
+  private[this] def standard(
+    requestId: String,
+    method: String,
+    request: Request[RawBuffer],
+    auth: Option[FlowAuthData]
+  ) = {
+    val finalHeaders = proxyHeaders(requestId, request.headers, auth)
+  
+    val req = ws.url(definition.host + request.path)
+      .withFollowRedirects(false)
+      .withMethod(method)
       .withHeaders(finalHeaders.headers: _*)
       .withQueryString(ServiceProxy.query(request.queryString): _*)
       .withBody(request.body.asBytes().get)
@@ -144,7 +206,7 @@ class ServiceProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.nameLabel}:${definition.host} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] $method ${request.path} ${definition.nameLabel}:${definition.host} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
