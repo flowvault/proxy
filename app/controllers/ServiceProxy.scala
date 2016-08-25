@@ -152,15 +152,24 @@ class ServiceProxyImpl @Inject () (
     ).flatMap { case (name, value) =>
         ignore.contains(name) match {
           case true => None
-          case false => Some(
-            "%s=%s".format(name, value) // TODO Encode
-          )
+          case false => {
+            Some(
+              name match {
+                case "expiration_year" | "expiration_month" => {
+                  """"%s": %s""".format(name, value) // TODO Encode
+                }
+                case _ => {
+                  """"%s": "%s"""".format(name, value) // TODO Encode
+                }
+              }
+            )
+          }
         }
-    }.mkString("&")
+    }.mkString("{\n", ",\n", "\n}")
 
     val finalHeaders = proxyHeaders(requestId, request.headers, auth).
       remove("Content-Type").
-      add("Content-Type" -> "application/x-www-form-urlencoded")
+      add("Content-Type" -> DefaultContentType)
 
     println("JSON P BODY: " + body)
     println("Headers: " + finalHeaders)    
