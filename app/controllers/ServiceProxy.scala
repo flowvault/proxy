@@ -120,11 +120,13 @@ class ServiceProxyImpl @Inject () (
 
   val executionContextName: String = name
 
+  private[this] val ApplicationJsonContentType = "application/json"
+  private[this] val UrlFormEncodedContentType = "application/x-www-form-urlencoded"
+
   // WS Client defaults to application/octet-stream. Given this proxy
   // is for APIs only, assume JSON if no content type header is
   // provided.
-  private[this] val DefaultContentType = "application/json"
-  private[this] val UrlFormEncodedContentType = "application/x-www-form-urlencoded"
+  private[this] val DefaultContentType = ApplicationJsonContentType
 
   override final def proxy(
     requestId: String,
@@ -151,9 +153,7 @@ class ServiceProxyImpl @Inject () (
       request.queryString - "method" - "callback"
     )
 
-    val finalHeaders = proxyHeaders(requestId, request.headers, auth).
-      remove("Content-Type").
-      add("Content-Type" -> DefaultContentType)
+    val finalHeaders = proxyHeaders(requestId, request.headers, auth, contentType = Some(ApplicationJsonContentType))
 
     println("JSON P BODY: " + body)
     println("Headers: " + finalHeaders)    
@@ -188,25 +188,33 @@ class ServiceProxyImpl @Inject () (
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
       .withMethod(method)
-      .withHeaders(finalHeaders.headers: _*)
       .withQueryString(ServiceProxy.query(request.queryString): _*)
 
-    val requestWithBody = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
+    val finalRequest = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
+
+      // We turn url form encoded into application/json
       case UrlFormEncodedContentType => {
         val b: String = request.body.asBytes().get.decodeString("UTF-8")
         val newBody = FormData.toJson(FormData.parseEncoded(b))
-        println("newBody: $newBody")
-        req.withBody(newBody)
+        val finalHeaders = proxyHeaders(requestId, request.headers, auth, contentType = Some(ApplicationJsonContentType))
+        println(s"newBody: $newBody")
+
+        req
+          .withHeaders(finalHeaders.headers: _*)
+          .withBody(newBody)
       }
+
       case _ => {
-        req.withBody(request.body.asBytes().get)
+        val finalHeaders = proxyHeaders(requestId, request.headers, auth)
+        req
+          .withHeaders(finalHeaders.headers: _*)
+          .withBody(request.body.asBytes().get)
       }
     }
-  
     
     val startMs = System.currentTimeMillis
 
-    requestWithBody.stream.map {
+    finalRequest.stream.map {
       case StreamedResponse(response, body) => {
         val timeToFirstByteMs = System.currentTimeMillis - startMs
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
@@ -238,8 +246,16 @@ class ServiceProxyImpl @Inject () (
     * Modifies headers by:
     *   - removing X-Flow-* headers if they were set
     *   - adding a default content-type
+    * 
+    * @param contentType specify to force content type
     */
-  private[this] def proxyHeaders(requestId: String, headers: Headers, authData: Option[FlowAuthData]): Headers = {
+  private[this] def proxyHeaders(
+    requestId: String,
+    headers: Headers,
+    authData: Option[FlowAuthData],
+    contentType: Option[String] = None
+  ): Headers = {
+
     val headersToAdd = Seq(
       Constants.Headers.FlowService -> name,
       Constants.Headers.FlowRequestId -> requestId,
@@ -260,7 +276,13 @@ class ServiceProxyImpl @Inject () (
 
     val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(headers) { case (h, n) => h.remove(n) }
 
-    headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
+    val h = headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
+
+    // Force content type if specified
+    contentType match {
+      case None => h
+      case Some(ct) => h.remove("Content-Type").add("Content-Type" -> ct)
+    }
   }
 
   private[this] def toLongSafe(value: String): Option[Long] = {
