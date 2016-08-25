@@ -131,7 +131,7 @@ class ServiceProxyImpl @Inject () (
     request: Request[RawBuffer],
     auth: Option[FlowAuthData]
   ) = {
-    Logger.info(s"[proxy] $method ${request.path} to ${definition.nameLabel}:${definition.host} requestId $requestId")
+    Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.nameLabel}] $method ${definition.host}${request.path} requestId $requestId")
 
     request.queryString.get("callback").getOrElse(Nil).headOption match {
       case Some(callback) => jsonp(requestId, callback, method, request, auth)
@@ -183,10 +183,11 @@ class ServiceProxyImpl @Inject () (
     val startMs = System.currentTimeMillis
     req.execute.map { response =>
       val timeToFirstByteMs = System.currentTimeMillis - startMs
-      val finalBody = callback + "(" + response.body + ")"
+      // Prefix is to avoid a JSONP/Flash vulnerability
+      val finalBody = "/**/" + callback + "(" + response.body + ")"
 
       // TODO: Add envelope
-      Logger.info(s"[proxy] $method ${request.path} ${definition.nameLabel}:${definition.host} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+      Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.nameLabel}:$method ${definition.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
       Ok(finalBody).as("application/javascript; charset=utf-8")
     }
@@ -215,7 +216,7 @@ class ServiceProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        Logger.info(s"[proxy] $method ${request.path} ${definition.nameLabel}:${definition.host} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.nameLabel}:$method ${definition.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
