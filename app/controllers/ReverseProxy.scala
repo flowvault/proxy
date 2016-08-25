@@ -119,7 +119,6 @@ class ReverseProxy @Inject () (
       case None => request.method
       case Some(_) => request.queryString.get("method").getOrElse(Nil).headOption.map(_.toUpperCase).getOrElse(request.method)
     }
-    println(s"method[$method]")
 
     resolve(requestId, method, request, userId).flatMap { result =>
       result match {
@@ -132,8 +131,8 @@ class ReverseProxy @Inject () (
             case None  => {
               lookup(internalRoute.host).proxy(
                 requestId,
-                method,
                 request,
+                method,
                 userId.map { uid =>
                   FlowAuthData.user(requestId, uid)
                 }
@@ -155,8 +154,8 @@ class ReverseProxy @Inject () (
                     case Some(auth) => {
                       lookup(internalRoute.host).proxy(
                         requestId,
-                        method,
                         request,
+                        method,
                         Some(auth)
                       )
                     }
