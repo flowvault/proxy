@@ -263,11 +263,17 @@ class ServiceProxyImpl @Inject () (
       },
 
       (
+        headers.get("cf-connecting-ip").map { ip =>  // IP Address from cloudflare
+          Constants.Headers.FlowIp -> ip
+        }
+      ),
+
+      (
         headers.get("Content-Type") match {
           case None => Some("Content-Type" -> DefaultContentType)
           case Some(_) => None
         }
-      )
+      )      
     ).flatten
 
     val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(headers) { case (h, n) => h.remove(n) }
