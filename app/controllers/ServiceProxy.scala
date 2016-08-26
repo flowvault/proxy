@@ -15,6 +15,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
 import lib.{Constants, FlowAuth, FlowAuthData, FormData}
+  import play.api.libs.json.{JsValue, Json}
+
 
 case class ServiceProxyDefinition(
   host: String,
@@ -167,13 +169,25 @@ class ServiceProxyImpl @Inject () (
     req.execute.map { response =>
       val timeToFirstByteMs = System.currentTimeMillis - startMs
       // Prefix is to avoid a JSONP/Flash vulnerability
-      val finalBody = "/**/" + callback + "(" + response.body + ")"
+      val finalBody = "/**/" + callback + "(" + jsonpEnvelope(response.status, response.allHeaders, response.body) + ")"
 
       // TODO: Add envelope
       Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.nameLabel}:$method ${definition.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
       Ok(finalBody).as("application/javascript; charset=utf-8")
     }
+  }
+
+  /**
+    * Create the 
+    */
+  private[this] def jsonpEnvelope(
+    status: Int,
+    headers: Map[String,Seq[String]],
+    body: String
+  ): String = {
+    val jsonHeaders = Json.toJson(headers)
+    s"""{\n  "status": $status,\n  "headers": ${jsonHeaders},\n  "body": $body\n}"""
   }
 
   private[this] def standard(
