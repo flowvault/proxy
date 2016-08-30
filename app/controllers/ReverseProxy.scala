@@ -51,25 +51,18 @@ class ReverseProxy @Inject () (
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
     val all = scala.collection.mutable.Map[String, ServerProxy]()
     index.config.servers.map { s =>
-      all.remove(s.host) match {
-        case None => {
-          all += (s.host -> serverProxyFactory(ServerProxyDefinition(host = s.host, names = Seq(s.name))))
+      all.isDefinedAt(s.name) match {
+        case true => {
+          sys.error(s"Duplicate server with name[${s.name}]")
         }
-        case Some(existing) => {
-          all += (
-            s.host -> serverProxyFactory(
-              existing.definition.copy(
-                names = existing.definition.names ++ Seq(s.name))
-            )
-          )
+        case false => {
+          all += (s.host -> serverProxyFactory(ServerProxyDefinition(s)))
         }
       }
     }
     all.toMap
   }
 
-  private[this] val dynamicPoxies = scala.collection.mutable.Map[String, ServerProxy]()
-  
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
     val requestId: String = request.headers.get(Constants.Headers.FlowRequestId).getOrElse {
       "api" + UUID.randomUUID.toString.replaceAll("-", "") // make easy to cut & paste
@@ -129,7 +122,7 @@ class ReverseProxy @Inject () (
         case Right(operation) => {
           operation.route.organization(request.path) match {
             case None  => {
-              lookup(operation.server.host).proxy(
+              lookup(operation.server.name).proxy(
                 requestId,
                 request,
                 method,
@@ -142,7 +135,7 @@ class ReverseProxy @Inject () (
             case Some(org) => {
               userId match {
                 case None => {
-                  lookup(operation.server.host).proxy(
+                  lookup(operation.server.name).proxy(
                     requestId,
                     request,
                     method,
@@ -159,7 +152,7 @@ class ReverseProxy @Inject () (
                     }
 
                     case Some(auth) => {
-                      lookup(operation.server.host).proxy(
+                      lookup(operation.server.name).proxy(
                         requestId,
                         request,
                         method,
@@ -279,15 +272,9 @@ class ReverseProxy @Inject () (
     }
   }
   
-  private[this] def lookup(host: String): ServerProxy = {
-    proxies.get(host).getOrElse {
-      // TODO: This only happens for flow engineers sending requests
-      // to specific hosts. Should we lock?
-      dynamicPoxies.get(host).getOrElse {
-        val proxy = serverProxyFactory(ServerProxyDefinition(host = host, names = Seq("fallback")))
-        dynamicPoxies += (host -> proxy)
-        proxy
-      }
+  private[this] def lookup(name: String): ServerProxy = {
+    proxies.get(name).getOrElse {
+      sys.error(s"No proxy defined for the server with name[$name]")
     }
   }
 

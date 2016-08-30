@@ -14,18 +14,18 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Constants, FlowAuth, FlowAuthData, FormData}
-  import play.api.libs.json.{JsValue, Json}
-
+import lib.{Constants, FlowAuth, FlowAuthData, FormData, Server}
+import play.api.libs.json.{JsValue, Json}
 
 case class ServerProxyDefinition(
-  host: String,
-  names: SeqString]
+  server: Server
 ) {
 
-  val contextName = names.sorted.head + "-context"
-  val nameLabel = names.sorted.mkString(",")
-  val hostHeaderValue = (new URI(host)).getHost
+  val contextName = s"${server.name}-context"
+
+  val hostHeaderValue = Option((new URI(server.host)).getHost).getOrElse {
+    sys.error(s"Could not parse host from server[$server]")
+  }
 
 }
 
@@ -109,12 +109,12 @@ class ServerProxyImpl @Inject () (
       system.dispatchers.lookup(name)
     } match {
       case Success(ec) => {
-        Logger.info(s"ServerProxy[${definition.nameLabel}] using configured execution context[$name]")
+        Logger.info(s"ServerProxy[${definition.server.name}] using configured execution context[$name]")
         (ec, name)
       }
 
       case Failure(_) => {
-        Logger.warn(s"ServerProxy[${definition.nameLabel}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
+        Logger.warn(s"ServerProxy[${definition.server.name}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
         (system.dispatchers.lookup(ServerProxy.DefaultContextName), ServerProxy.DefaultContextName)
       }
     }
@@ -136,7 +136,7 @@ class ServerProxyImpl @Inject () (
     method: String,
     auth: Option[FlowAuthData]
   ) = {
-    Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.nameLabel}] $method ${definition.host}${request.path} requestId $requestId")
+    Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] $method ${definition.server.host}${request.path} requestId $requestId")
 
     request.queryString.get("callback").getOrElse(Nil).headOption match {
       case Some(callback) => {
@@ -159,7 +159,7 @@ class ServerProxyImpl @Inject () (
     val body = FormData.toJson(request.queryString - "method" - "callback")
     val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, auth), ApplicationJsonContentType)
 
-    val req = ws.url(definition.host + request.path)
+    val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(method)
       .withHeaders(finalHeaders.headers: _*)
@@ -171,8 +171,7 @@ class ServerProxyImpl @Inject () (
       // Prefix is to avoid a JSONP/Flash vulnerability
       val finalBody = "/**/" + callback + "(" + jsonpEnvelope(response.status, response.allHeaders, response.body) + ")"
 
-      // TODO: Add envelope
-      Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.nameLabel}:$method ${definition.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+      Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
       Ok(finalBody).as("application/javascript; charset=utf-8")
     }
@@ -197,7 +196,7 @@ class ServerProxyImpl @Inject () (
     auth: Option[FlowAuthData]
   ) = {
     val finalHeaders = proxyHeaders(requestId, request.headers, request.method, auth)
-    val req = ws.url(definition.host + request.path)
+    val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(method)
       .withQueryString(ServerProxy.query(request.queryString): _*)
@@ -230,7 +229,7 @@ class ServerProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.nameLabel}:$method ${definition.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
