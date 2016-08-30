@@ -16,9 +16,16 @@ case class ProxyConfig(
 ) {
 
   def merge(other: ProxyConfig) = {
+    other.servers.find { s => servers.find(_.name == s.name).isDefined } match {
+      case None => //
+      case Some(existing) => {
+        sys.error(s"Duplicate server named[${existing.name}] -- cannot merge configuration files")
+      }
+    }
+
     ProxyConfig(
       sources = sources ++ other.sources,
-      servers = servers ++ other.servers.filter { s => servers.find(_.name == s.name).isEmpty },
+      servers = servers ++ other.servers,
       operations = operations ++ other.operations
     )
   }

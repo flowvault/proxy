@@ -20,7 +20,7 @@ import lib.{Constants, FlowAuth, FlowAuthData, FormData}
 
 case class ServerProxyDefinition(
   host: String,
-  names: Seq[String]
+  names: SeqString]
 ) {
 
   val contextName = names.sorted.head + "-context"

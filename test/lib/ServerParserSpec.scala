@@ -104,11 +104,15 @@ operations:
         }
 
         val index = Index(config)
-        Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
+        Seq(
+          ("GET", "/users", "user"),
+          ("GET", "/organizations", "organization"),
+          ("GET", "/:organization/catalog", "catalog")
+        ).foreach { case (method, path, server) =>
           val op = index.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
           }
-          op.server.name must be("organization")
+          op.server.name must be(server)
           op.route.method must be(method)
           op.route.path must be(path)
         }
@@ -149,11 +153,15 @@ operations:
         }
 
         val index = Index(config)
-        Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
+        Seq(
+          ("GET", "/users", "user"),
+          ("GET", "/organizations", "organization"),
+          ("GET", "/:organization/catalog", "catalog")
+        ).foreach { case (method, path, server) =>
           val op = index.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
           }
-          op.server.name must be("organization")
+          op.server.name must be(server)
           op.route.method must be(method)
           op.route.path must be(path)
         }
@@ -176,8 +184,15 @@ operations:
     }
 
     val index = Index(config)
-    index.resolve("GET", "/test/currency/rates").get.route.path must be("/:organization/currency/rates")
-    index.resolve("GET", "/internal/currency/rates/test").get.route.path must be("/internal/currency/rates/:organization")
+    val op1 = index.resolve("GET", "/test/currency/rates").get
+    op1.server.name must be("currency")
+    op1.route.method must be("GET")
+    op1.route.path must be("/:organization/currency/rates")
+
+    val op2 = index.resolve("GET", "/internal/currency/rates").get
+    op2.server.name must be("currency-internal")
+    op2.route.method must be("GET")
+    op2.route.path must be("/internal/currency/rates")
   }
   
 }
