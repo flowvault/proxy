@@ -5,9 +5,13 @@ package lib
   */
 sealed trait Route {
 
-  def host: String
   def method: String
   def path: String
+
+  /**
+    * Returns true if this route matches the specified method and path
+    */
+  def matches(incomingMethod: String, incomingPath: String): Boolean
 
   private[this] val InternalOrganization = "flow"
 
@@ -16,7 +20,7 @@ sealed trait Route {
 
   assert(
     (isInternal && !hasOrganization) || !isInternal,
-    s"Route cannot both be internal and have an organization: $host $method $path"
+    s"Route cannot both be internal and have an organization: $method $path"
   )
 
   /**
@@ -33,7 +37,7 @@ sealed trait Route {
           case true => {
             requestPath.split("/").toList match {
               case empty :: org :: rest => Some(org)
-              case _ => sys.error(s"$method $host$requestPath: Could not extract organization")
+              case _ => sys.error(s"$method $requestPath: Could not extract organization")
             }
           }
         }
@@ -48,9 +52,13 @@ object Route {
   /**
     * Represents a static route (e.g. /organizations) with no wildcards
     */
-  case class Static(host: String, method: String, path: String) extends Route {
+  case class Static(method: String, path: String) extends Route {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
+
+    override def matches(incomingMethod: String, incomingPath: String) = {
+      method == incomingMethod && path == incomingPath
+    }
   }
 
   /**
@@ -59,7 +67,7 @@ object Route {
     * that replaces any ":xxx" with a pattern of one or more
     * characters that are not a '/'
     */
-  case class Dynamic(host: String, method: String, path: String) extends Route {
+  case class Dynamic(method: String, path: String) extends Route {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 
@@ -78,7 +86,7 @@ object Route {
         "$"
     ).r
 
-    def matches(incomingMethod: String, incomingPath: String): Boolean = {
+    override def matches(incomingMethod: String, incomingPath: String): Boolean = {
       method == incomingMethod match {
         case true => incomingPath match {
           case pattern() => true
@@ -92,10 +100,10 @@ object Route {
 
   }
 
-  def apply(method: String, path: String, host: String): Route = {
+  def apply(method: String, path: String): Route = {
     path.indexOf(":") >= 0 match {
-      case true => Dynamic(host = host, method = method, path = path)
-      case false => Static(host = host, method = method, path = path)
+      case true => Dynamic(method = method, path = path)
+      case false => Static(method = method, path = path)
     }
   }
 

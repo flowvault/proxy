@@ -9,7 +9,7 @@ import io.flow.organization.v0.models.Membership
 import io.flow.token.v0.models.TokenAuthenticationForm
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import lib.{Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData, Route, Server, ProxyConfigFetcher}
+import lib.{Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData, Operation, Route, Server, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -126,10 +126,10 @@ class ReverseProxy @Inject () (
           result
         }
 
-        case Right(route) => {
-          route.organization(request.path) match {
+        case Right(operation) => {
+          operation.route.organization(request.path) match {
             case None  => {
-              lookup(route.host).proxy(
+              lookup(operation.server.host).proxy(
                 requestId,
                 request,
                 method,
@@ -142,7 +142,7 @@ class ReverseProxy @Inject () (
             case Some(org) => {
               userId match {
                 case None => {
-                  lookup(route.host).proxy(
+                  lookup(operation.server.host).proxy(
                     requestId,
                     request,
                     method,
@@ -159,7 +159,7 @@ class ReverseProxy @Inject () (
                     }
 
                     case Some(auth) => {
-                      lookup(route.host).proxy(
+                      lookup(operation.server.host).proxy(
                         requestId,
                         request,
                         method,
@@ -177,17 +177,22 @@ class ReverseProxy @Inject () (
   }
 
   /**
-    * Resolves the incoming method and path to a specific internal route. Also implements
+    * Resolves the incoming method and path to a specific operation. Also implements
     * overrides from incoming request headers:
     * 
     *   - headers['X-Flow-Server']: If specified we use this server name
     *   - headers['X-Flow-Host']: If specified we use this host
     * 
-    * If any override headers are specified, we alsoverify that we
+    * If any override headers are specified, we also verify that we
     * have an auth token identifying a user that is a member of the
     * flow organization. Otherwise we return an error.
     */
-  private[this] def resolve(requestId: String, method: String, request: Request[RawBuffer], userId: Option[String]): Future[Either[Result, Route]] = {
+  private[this] def resolve(
+    requestId: String,
+    method: String,
+    request: Request[RawBuffer],
+    userId: Option[String]
+  ): Future[Either[Result, Operation]] = {
     val path = request.path
     val serverNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowServer)
     val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)
@@ -200,8 +205,8 @@ class ReverseProxy @Inject () (
             Left(NotFound)
           }
 
-          case Some(ir) => {
-            Right(ir)
+          case Some(operation) => {
+            Right(operation)
           }
         }
       }
@@ -227,10 +232,12 @@ class ReverseProxy @Inject () (
                   case Some(host) => {
                     (host.startsWith("http://") || host.startsWith("https://")) match {
                       case true => Right(
-                        Route(
-                          method = method,
-                          path = path,
-                          host = host
+                        Operation(
+                          route = Route(
+                            method = method,
+                            path = path
+                          ),
+                          server = Server(name = "override", host = host)
                         )
                       )
                       case false => Left(
@@ -250,12 +257,14 @@ class ReverseProxy @Inject () (
                         )
                       }
 
-                      case Some(svc) => {
+                      case Some(server) => {
                         Right(
-                          Route(
-                            method = method,
-                            path = path,
-                            host = svc.host
+                          Operation(
+                            Route(
+                              method = method,
+                              path = path
+                            ),
+                            server = server
                           )
                         )
                       }

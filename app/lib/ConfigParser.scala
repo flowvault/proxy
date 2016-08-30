@@ -37,7 +37,7 @@ object ConfigParser {
 
           val version = getString(all, "version")
 
-          val servers: Seq[InternalServer] = toArray(all.get("servers")).map { objJs =>
+          val servers: Seq[InternalServer] = getArray(all, "servers").map { objJs =>
             val obj = toMap(objJs)
             InternalServer(
               name = getString(obj, "name"),
@@ -45,7 +45,7 @@ object ConfigParser {
             )
           }
 
-          val operations: Seq[InternalOperation] = toArray(all.get("operations")).map { objJs =>
+          val operations: Seq[InternalOperation] = getArray(all, "operations").map { objJs =>
             val obj = toMap(objJs)
             InternalOperation(
               method = getString(obj, "method"),
@@ -78,6 +78,10 @@ object ConfigParser {
     obj.get(name).map(_.toString.trim).getOrElse("")
   }  
 
+  def getArray(obj: Map[String, Any], name: String): Seq[Any] = {
+    obj.get(name).map(_.asInstanceOf[java.util.List[Object]].asScala.toSeq).getOrElse(Nil)
+  }  
+
   private[this] def toMap(value: Any): Map[String, Any] = {
     value match {
       case map: java.util.HashMap[_, _] => {
@@ -88,18 +92,6 @@ object ConfigParser {
 
       case _ => {
         Map.empty
-      }
-    }
-  }
-
-  private[this] def toArray(value: Any): Seq[Any] = {
-    value match {
-      case list: java.util.List[_] => {
-        list.asScala.toSeq
-      }
-
-      case _ => {
-        Nil
       }
     }
   }

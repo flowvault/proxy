@@ -79,9 +79,9 @@ operations:
           sources = Seq(source.copy(version = "1.2.3")),
           servers = Seq(user),
           operations = Seq(
-            Operation(Route("GET", "/users", "user"), user),
-            Operation(Route("POST", "/users", "user"), user),
-            Operation(Route("GET", "/users/:id", "user"), user)
+            Operation(Route("GET", "/users"), user),
+            Operation(Route("POST", "/users"), user),
+            Operation(Route("GET", "/users/:id"), user)
           )
         )
       )
@@ -106,11 +106,12 @@ operations:
 
         val index = Index(config)
         Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
-          val r = index.resolve(method, path).getOrElse {
+          val op = index.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
           }
-          r.method must be(method)
-          r.path must be(path)
+          op.server.name must be("organization")
+          op.route.method must be(method)
+          op.route.path must be(path)
         }
 
         // make sure all servers have a defined execution context
@@ -150,11 +151,12 @@ operations:
 
         val index = Index(config)
         Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
-          val r = index.resolve(method, path).getOrElse {
+          val op = index.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
           }
-          r.method must be(method)
-          r.path must be(path)
+          op.server.name must be("organization")
+          op.route.method must be(method)
+          op.route.path must be(path)
         }
       }
     }
@@ -175,8 +177,8 @@ operations:
     }
 
     val index = Index(config)
-    index.resolve("GET", "/test/currency/rates").get.path must be("/:organization/currency/rates")
-    index.resolve("GET", "/internal/currency/rates/test").get.path must be("/internal/currency/rates/:organization")
+    index.resolve("GET", "/test/currency/rates").get.route.path must be("/:organization/currency/rates")
+    index.resolve("GET", "/internal/currency/rates/test").get.route.path must be("/internal/currency/rates/:organization")
   }
   
 }

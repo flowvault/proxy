@@ -137,8 +137,7 @@ case class InternalOperation(
               Operation(
                 Route(
                   method = method,
-                  path = path,
-                  host = s.host
+                  path = path
                 ),
                 server = s
               )
