@@ -97,10 +97,10 @@ operations:
 
       case Right(config) => {
         Seq("user", "organization", "catalog").foreach { name =>
-          val svc = config.servers.find(_.name == name).getOrElse {
+          val server = config.servers.find(_.name == name).getOrElse {
             sys.error(s"Failed to find server[$name]")
           }
-          svc.host must be(s"https://$name.api.flow.io")
+          server.host must be(s"https://$name.api.flow.io")
         }
 
         val index = Index(config)
@@ -146,10 +146,10 @@ operations:
           "organization" -> "http://localhost:6081",
           "catalog" -> "http://localhost:6071"
         ).foreach { case (name, host) =>
-          val svc = config.servers.find(_.name == name).getOrElse {
+          val server = config.servers.find(_.name == name).getOrElse {
             sys.error(s"Failed to find server[$name]")
           }
-          svc.host must be(host)
+          server.host must be(host)
         }
 
         val index = Index(config)
