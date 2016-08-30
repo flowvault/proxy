@@ -31,7 +31,7 @@ class Router @Inject() (
 
   override def routes = new AbstractPartialFunction[RequestHeader, Handler] {
     override def applyOrElse[A <: RequestHeader, B >: Handler](request: A, default: A => B) = {
-      (request.method, request.path, request.headers.get(Constants.Headers.FlowService)) match {
+      (request.method, request.path, request.headers.get(Constants.Headers.FlowServer)) match {
         case ("GET", "/_internal_/healthcheck", None) => internal.getHealthcheck
         case ("GET", "/_internal_/config", None) => internal.getConfig
         case _ => proxy.handle

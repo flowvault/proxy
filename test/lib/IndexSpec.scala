@@ -14,33 +14,32 @@ class IndexSpec extends PlaySpec with OneServerPerSuite {
   )
 
   "resolves route" in {
-    val services = Seq(
-      Service(
-        "organization",
-        "https://organization.api.flow.io",
-        routes = Seq(
-          Route("GET", "/organizations"),
-          Route("POST", "/organizations"),
-          Route("GET", "/organizations/:id"),
-          Route("PUT", "/organizations/:id")
-        )
-      ),
-      Service(
-        "user",
-        "https://user.api.flow.io",
-        routes = Seq(
-          Route("GET", "/users"),
-          Route("POST", "/users"),
-          Route("GET", "/users/:id"),
-          Route("PUT", "/users/:id")
-        )
-      )
+    val org = Server(
+      "organization",
+      "https://organization.api.flow.io"
     )
+    val user = Server(
+      "user",
+      "https://user.api.flow.io"
+    )
+    val servers = Seq(org, user)
 
+    val operations = Seq(
+      Operation(Route("GET", "/organizations", "organization"), org),
+      Operation(Route("POST", "/organizations", "organization"), org),
+      Operation(Route("GET", "/organizations/:id", "organization"), org),
+      Operation(Route("PUT", "/organizations/:id", "organization"), org),
+      Operation(Route("GET", "/users", "user"), user),
+      Operation(Route("POST", "/users", "user"), user),
+      Operation(Route("GET", "/users/:id", "user"), user),
+      Operation(Route("PUT", "/users/:id", "user"), user)
+    )
+    
     val s = Index(
       ProxyConfig(
         sources = Seq(source),
-        services = services
+        servers = servers,
+        operations = operations
       )
     )
 
@@ -67,20 +66,14 @@ class IndexSpec extends PlaySpec with OneServerPerSuite {
   "performance measurement" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     val contents = Source.fromURL(uri).mkString
-    ServiceParser.parse(source.uri, contents) match {
-      case Left(errors) => {
-        sys.error(s"Failed to parse config at URI[$uri]: $errors")
-      }
-      case Right(config) => {
-        val index = Index(config)
+    val config = ConfigParser.parse(source.uri, contents).validate().right.get
+    val index = Index(config)
 
-        val ms = time(100) { () =>
-          index.resolve("GET", "/flow/catalog/items")
-          index.resolve("GET", "/organizations")
-        }
-        //println(s"ms: $ms")
-      }
+    val ms = time(100) { () =>
+      index.resolve("GET", "/flow/catalog/items")
+      index.resolve("GET", "/organizations")
     }
+    //println(s"ms: $ms")
   }
 
   def time(numberIterations: Int = 10000)(f: () => Unit): Long = {

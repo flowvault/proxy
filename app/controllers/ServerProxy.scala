@@ -18,7 +18,7 @@ import lib.{Constants, FlowAuth, FlowAuthData, FormData}
   import play.api.libs.json.{JsValue, Json}
 
 
-case class ServiceProxyDefinition(
+case class ServerProxyDefinition(
   host: String,
   names: Seq[String]
 ) {
@@ -30,14 +30,14 @@ case class ServiceProxyDefinition(
 }
 
 /**
-  * Service Proxy is responsible for proxying all requests to a given
-  * service. The primary purpose of the proxy is to segment our thread
-  * pools by service - so if one service is having difficulty, it is
-  * less likely to impact other services.
+  * Server Proxy is responsible for proxying all requests to a given
+  * server. The primary purpose of the proxy is to segment our thread
+  * pools by server - so if one server is having difficulty, it is
+  * less likely to impact other servers.
   */
-trait ServiceProxy {
+trait ServerProxy {
 
-  def definition: ServiceProxyDefinition
+  def definition: ServerProxyDefinition
 
   def proxy(
     requestId: String,
@@ -48,12 +48,12 @@ trait ServiceProxy {
 
 }
 
-object ServiceProxy {
+object ServerProxy {
 
-  val DefaultContextName = s"default-service-context"
+  val DefaultContextName = s"default-server-context"
 
   trait Factory {
-    def apply(definition: ServiceProxyDefinition): ServiceProxy
+    def apply(definition: ServerProxyDefinition): ServerProxy
   }
 
   /**
@@ -87,21 +87,21 @@ object ServiceProxy {
   }
 }
 
-class ServiceProxyModule extends AbstractModule {
+class ServerProxyModule extends AbstractModule {
   def configure {
     install(new FactoryModuleBuilder()
-      .implement(classOf[ServiceProxy], classOf[ServiceProxyImpl])
-      .build(classOf[ServiceProxy.Factory])
+      .implement(classOf[ServerProxy], classOf[ServerProxyImpl])
+      .build(classOf[ServerProxy.Factory])
     )
   }
 }
 
-class ServiceProxyImpl @Inject () (
+class ServerProxyImpl @Inject () (
   system: ActorSystem,
   ws: WSClient,
   flowAuth: FlowAuth,
-  @Assisted override val definition: ServiceProxyDefinition
-) extends ServiceProxy with Controller{
+  @Assisted override val definition: ServerProxyDefinition
+) extends ServerProxy with Controller{
 
   private[this] implicit val (ec, name) = {
     val name = definition.contextName
@@ -109,13 +109,13 @@ class ServiceProxyImpl @Inject () (
       system.dispatchers.lookup(name)
     } match {
       case Success(ec) => {
-        Logger.info(s"ServiceProxy[${definition.nameLabel}] using configured execution context[$name]")
+        Logger.info(s"ServerProxy[${definition.nameLabel}] using configured execution context[$name]")
         (ec, name)
       }
 
       case Failure(_) => {
-        Logger.warn(s"ServiceProxy[${definition.nameLabel}] execution context[${name}] not found - using ${ServiceProxy.DefaultContextName}")
-        (system.dispatchers.lookup(ServiceProxy.DefaultContextName), ServiceProxy.DefaultContextName)
+        Logger.warn(s"ServerProxy[${definition.nameLabel}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
+        (system.dispatchers.lookup(ServerProxy.DefaultContextName), ServerProxy.DefaultContextName)
       }
     }
   }
@@ -200,7 +200,7 @@ class ServiceProxyImpl @Inject () (
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
       .withMethod(method)
-      .withQueryString(ServiceProxy.query(request.queryString): _*)
+      .withQueryString(ServerProxy.query(request.queryString): _*)
 
     val finalRequest = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
 
@@ -265,7 +265,7 @@ class ServiceProxyImpl @Inject () (
   ): Headers = {
 
     val headersToAdd = Seq(
-      Constants.Headers.FlowService -> name,
+      Constants.Headers.FlowServer -> name,
       Constants.Headers.FlowRequestId -> requestId,
       Constants.Headers.Host -> definition.hostHeaderValue,
       Constants.Headers.ForwardedHost -> headers.get(Constants.Headers.Host).getOrElse(""),

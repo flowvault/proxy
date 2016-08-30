@@ -17,25 +17,21 @@ case class Index(config: ProxyConfig) {
 
   /**
     * Create two indexes of the routes:
-    *   - static routes are simple lookups by path (Map[String, InternalRoute])
-    *   - dynamic routes is a map from the HTTP Method to a list of routes to try (Seq[InternalRoute])
+    *   - static routes are simple lookups by path (Map[String, Route])
+    *   - dynamic routes is a map from the HTTP Method to a list of routes to try (Seq[Route])
     */
   private[this] val (staticRouteMap, dynamicRoutes) = {
-    val all: Seq[InternalRoute] = config.services.flatMap { s =>
-      s.routes.map { r =>
-        InternalRoute(r, s.host)
-      }
-    }
+    val all: Seq[Route] = config.operations.map { _.route }
 
     val dynamicRoutes = all.flatMap {
-      case r: InternalRoute.Dynamic => Some(r)
-      case r: InternalRoute.Static => None
+      case r: Route.Dynamic => Some(r)
+      case r: Route.Static => None
     }
 
     // Map from method name to list of internal routes
-    var dynamicRouteMap = scala.collection.mutable.Map[String, Seq[InternalRoute.Dynamic]]()
+    var dynamicRouteMap = scala.collection.mutable.Map[String, Seq[Route.Dynamic]]()
     all.foreach {
-      case r: InternalRoute.Dynamic => {
+      case r: Route.Dynamic => {
         dynamicRouteMap.get(r.method) match {
           case None => {
             dynamicRouteMap += (r.method -> Seq(r))
@@ -45,13 +41,13 @@ case class Index(config: ProxyConfig) {
           }
         }
       }
-      case r: InternalRoute.Static => {
+      case r: Route.Static => {
       }
     }
 
     val staticRoutes = all.flatMap {
-      case r: InternalRoute.Dynamic => None
-      case r: InternalRoute.Static => Some(r)
+      case r: Route.Dynamic => None
+      case r: Route.Static => Some(r)
     }
 
     val staticRouteMap = Map(
@@ -65,7 +61,7 @@ case class Index(config: ProxyConfig) {
     (staticRouteMap, dynamicRouteMap.toMap)
   }
 
-  final def resolve(method: String, path: String): Option[InternalRoute] = {
+  final def resolve(method: String, path: String): Option[Route] = {
     staticRouteMap.get(routeKey(method, path)) match {
       case None => {
         dynamicRoutes.get(method.toUpperCase) match {

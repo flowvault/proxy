@@ -9,7 +9,7 @@ import io.flow.organization.v0.models.Membership
 import io.flow.token.v0.models.TokenAuthenticationForm
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import lib.{Authorization, AuthorizationParser, Config, Constants, Index, InternalRoute, FlowAuth, FlowAuthData, Route, Service, ProxyConfigFetcher}
+import lib.{Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData, Route, Server, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -24,22 +24,22 @@ class ReverseProxy @Inject () (
   config: Config,
   flowAuth: FlowAuth,
   proxyConfigFetcher: ProxyConfigFetcher,
-  serviceProxyFactory: ServiceProxy.Factory
+  serverProxyFactory: ServerProxy.Factory
 ) extends Controller {
 
   val index: Index = proxyConfigFetcher.current()
 
   private[this] val organizationClient = {
-    val svc = findServiceByName("organization").getOrElse {
-      sys.error("There is no service named 'organization' in the current config: " + config)
+    val svc = findServerByName("organization").getOrElse {
+      sys.error("There is no server named 'organization' in the current config: " + config)
     }
     Logger.info(s"Creating OrganizationClient w/ baseUrl[${svc.host}]")
     new OrganizationClient(baseUrl = svc.host)
   }
 
   private[this] val tokenClient = {
-    val svc = findServiceByName("token").getOrElse {
-      sys.error("There is no service named 'token' in the current config: " + config)
+    val svc = findServerByName("token").getOrElse {
+      sys.error("There is no server named 'token' in the current config: " + config)
     }
     Logger.info(s"Creating TokenClient w/ baseUrl[${svc.host}]")
     new TokenClient(baseUrl = svc.host)
@@ -47,17 +47,17 @@ class ReverseProxy @Inject () (
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
-  private[this] val proxies: Map[String, ServiceProxy] = {
+  private[this] val proxies: Map[String, ServerProxy] = {
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
-    val all = scala.collection.mutable.Map[String, ServiceProxy]()
-    index.config.services.map { s =>
+    val all = scala.collection.mutable.Map[String, ServerProxy]()
+    index.config.servers.map { s =>
       all.remove(s.host) match {
         case None => {
-          all += (s.host -> serviceProxyFactory(ServiceProxyDefinition(host = s.host, names = Seq(s.name))))
+          all += (s.host -> serverProxyFactory(ServerProxyDefinition(host = s.host, names = Seq(s.name))))
         }
         case Some(existing) => {
           all += (
-            s.host -> serviceProxyFactory(
+            s.host -> serverProxyFactory(
               existing.definition.copy(
                 names = existing.definition.names ++ Seq(s.name))
             )
@@ -68,7 +68,7 @@ class ReverseProxy @Inject () (
     all.toMap
   }
 
-  private[this] val dynamicPoxies = scala.collection.mutable.Map[String, ServiceProxy]()
+  private[this] val dynamicPoxies = scala.collection.mutable.Map[String, ServerProxy]()
   
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
     val requestId: String = request.headers.get(Constants.Headers.FlowRequestId).getOrElse {
@@ -126,10 +126,10 @@ class ReverseProxy @Inject () (
           result
         }
 
-        case Right(internalRoute) => {
-          internalRoute.organization(request.path) match {
+        case Right(route) => {
+          route.organization(request.path) match {
             case None  => {
-              lookup(internalRoute.host).proxy(
+              lookup(route.host).proxy(
                 requestId,
                 request,
                 method,
@@ -142,7 +142,7 @@ class ReverseProxy @Inject () (
             case Some(org) => {
               userId match {
                 case None => {
-                  lookup(internalRoute.host).proxy(
+                  lookup(route.host).proxy(
                     requestId,
                     request,
                     method,
@@ -159,7 +159,7 @@ class ReverseProxy @Inject () (
                     }
 
                     case Some(auth) => {
-                      lookup(internalRoute.host).proxy(
+                      lookup(route.host).proxy(
                         requestId,
                         request,
                         method,
@@ -180,19 +180,19 @@ class ReverseProxy @Inject () (
     * Resolves the incoming method and path to a specific internal route. Also implements
     * overrides from incoming request headers:
     * 
-    *   - headers['X-Flow-Service']: If specified we use this service name
+    *   - headers['X-Flow-Server']: If specified we use this server name
     *   - headers['X-Flow-Host']: If specified we use this host
     * 
     * If any override headers are specified, we alsoverify that we
     * have an auth token identifying a user that is a member of the
     * flow organization. Otherwise we return an error.
     */
-  private[this] def resolve(requestId: String, method: String, request: Request[RawBuffer], userId: Option[String]): Future[Either[Result, InternalRoute]] = {
+  private[this] def resolve(requestId: String, method: String, request: Request[RawBuffer], userId: Option[String]): Future[Either[Result, Route]] = {
     val path = request.path
-    val serviceNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowService)
+    val serverNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowServer)
     val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)
 
-    (serviceNameOverride.isEmpty && hostOverride.isEmpty) match {
+    (serverNameOverride.isEmpty && hostOverride.isEmpty) match {
       case true => Future {
         index.resolve(method, path) match {
           case None => {
@@ -210,7 +210,7 @@ class ReverseProxy @Inject () (
         userId match {
           case None => Future {
             Left(
-              unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowService} or ${Constants.Headers.FlowHost}]")
+              unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
             )
           }
 
@@ -223,16 +223,15 @@ class ReverseProxy @Inject () (
               }
 
               case Some(_) => {
-                val route = Route(
-                  method = method,
-                  path = path
-                )
-                
                 hostOverride match {
                   case Some(host) => {
                     (host.startsWith("http://") || host.startsWith("https://")) match {
                       case true => Right(
-                        InternalRoute(route, host)
+                        Route(
+                          method = method,
+                          path = path,
+                          host = host
+                        )
                       )
                       case false => Left(
                         unprocessableEntity(s"Value for ${Constants.Headers.FlowHost} header must start with http:// or https://")
@@ -241,19 +240,23 @@ class ReverseProxy @Inject () (
                   }
 
                   case None => {
-                    val name = serviceNameOverride.getOrElse {
-                      sys.error("Expected service name to be set")
+                    val name = serverNameOverride.getOrElse {
+                      sys.error("Expected server name to be set")
                     }
-                    findServiceByName(name) match {
+                    findServerByName(name) match {
                       case None => {
                         Left(
-                          unprocessableEntity(s"Invalid service name from Request Header[${Constants.Headers.FlowService}]")
+                          unprocessableEntity(s"Invalid server name from Request Header[${Constants.Headers.FlowServer}]")
                         )
                       }
 
                       case Some(svc) => {
                         Right(
-                          InternalRoute(route, svc.host)
+                          Route(
+                            method = method,
+                            path = path,
+                            host = svc.host
+                          )
                         )
                       }
                     }
@@ -267,12 +270,12 @@ class ReverseProxy @Inject () (
     }
   }
   
-  private[this] def lookup(host: String): ServiceProxy = {
+  private[this] def lookup(host: String): ServerProxy = {
     proxies.get(host).getOrElse {
       // TODO: This only happens for flow engineers sending requests
       // to specific hosts. Should we lock?
       dynamicPoxies.get(host).getOrElse {
-        val proxy = serviceProxyFactory(ServiceProxyDefinition(host = host, names = Seq("fallback")))
+        val proxy = serverProxyFactory(ServerProxyDefinition(host = host, names = Seq("fallback")))
         dynamicPoxies += (host -> proxy)
         proxy
       }
@@ -299,13 +302,13 @@ class ReverseProxy @Inject () (
     )
   }
 
-  private[this] def findServiceByName(name: String): Option[Service] = {
-    index.config.services.find(_.name == name)
+  private[this] def findServerByName(name: String): Option[Server] = {
+    index.config.servers.find(_.name == name)
   }
 
 
   /**
-    * Queries token service to check if the specified token is a known
+    * Queries token server to check if the specified token is a known
     * valid token.
     */
   private[this] def resolveToken(requestId: String, token: String): Future[Option[UserReference]] = {
@@ -320,13 +323,13 @@ class ReverseProxy @Inject () (
       }
 
       case ex: Throwable => {
-        sys.error(s"Could not communicate with token service at[${tokenClient.baseUrl}]: $ex")
+        sys.error(s"Could not communicate with token server at[${tokenClient.baseUrl}]: $ex")
       }
     }
   }
 
   /**
-    * Queries organization service to authorize this user for this
+    * Queries organization server to authorize this user for this
     * organization and also pulls the organization's environment.
     */
   private[this] def resolveOrganizationAuthorization(
@@ -350,7 +353,7 @@ class ReverseProxy @Inject () (
         None
       }
       case ex: Throwable => {
-        sys.error(s"Could not communicate with organization service at[${organizationClient.baseUrl}]: $ex")
+        sys.error(s"Could not communicate with organization server at[${organizationClient.baseUrl}]: $ex")
       }
     }
   }

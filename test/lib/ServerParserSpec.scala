@@ -1,15 +1,15 @@
 package lib
 
-import controllers.{ServiceProxy, ServiceProxyDefinition, ServiceProxyImpl}
+import controllers.{ServerProxy, ServerProxyDefinition, ServerProxyImpl}
 import org.scalatest._
 import org.scalatestplus.play._
 import play.api.test._
 import play.api.test.Helpers._
 import scala.io.Source
 
-class ServiceParserSpec extends PlaySpec with OneServerPerSuite {
+class ServerParserSpec extends PlaySpec with OneServerPerSuite {
 
-  private[this] lazy val serviceProxyFactory = play.api.Play.current.injector.instanceOf[ServiceProxy.Factory]
+  private[this] lazy val serverProxyFactory = play.api.Play.current.injector.instanceOf[ServerProxy.Factory]
 
   val uri = "file:///test"
 
@@ -19,59 +19,69 @@ class ServiceParserSpec extends PlaySpec with OneServerPerSuite {
   )
 
   "empty" in {
-    ServiceParser.parse(uri, "   ") must be(Left(Seq("Nothing to parse")))
+    ConfigParser.parse(uri, "   ").validate() must be(Left(Seq("Nothing to parse")))
   }
 
   "hostHeaderValue" in {
     Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
-      ServiceProxyDefinition(host, Seq("user")).hostHeaderValue must be("user.api.flow.io")
+      ServerProxyDefinition(host, Seq("user")).hostHeaderValue must be("user.api.flow.io")
     }
   }
 
-  "single service w/ no operations" in {
+  "single server w/ no operations" in {
     val spec = """
 version: 0.0.1
-services:
-  test:
+
+servers:
+  - name: test
     host: https://test.api.flow.io
 """
-    ServiceParser.parse(uri, spec) must be(
+    ConfigParser.parse(uri, spec).validate() must be(
       Right(
         ProxyConfig(
           sources = Seq(source),
-          services = Seq(
-            Service("test", "https://test.api.flow.io", routes = Nil)
-          )
+          servers = Seq(
+            Server("test", "https://test.api.flow.io")
+          ),
+          operations = Nil
         )
       )
     )
   }
 
-  "single service w/ operations" in {
+  "single server w/ operations" in {
     val spec = """
 version: 1.2.3
-services:
-  user:
+
+servers:
+  - name: user
     host: https://user.api.flow.io
-    operations:
-      - GET /users
-      - POST /users
-      - GET /users/:id
+
+operations:
+  - method: GET
+    path: /users
+    server: user
+  - method: POST
+    path: /users
+    server: user
+  - method: GET
+    path: /users/:id
+    server: user
 """
-    ServiceParser.parse(uri, spec) must be(
+    val user = Server(
+      "user",
+      "https://user.api.flow.io"
+    )
+
+    ConfigParser.parse(uri, spec) must be(
       Right(
         ProxyConfig(
           sources = Seq(source.copy(version = "1.2.3")),
-          services = Seq(
-            Service(
-              "user",
-              "https://user.api.flow.io",
-              routes = Seq(
-                Route("GET", "/users"),
-                Route("POST", "/users"),
-                Route("GET", "/users/:id")
-              )
-            )
+          servers = Seq(user),
+          operations = Seq(
+            Operation(Route("GET", "/users", "user"), user),
+            Operation(Route("POST", "/users", "user"), user),
+            Operation(Route("GET", "/users/:id", "user"), user)
           )
         )
       )
@@ -81,15 +91,15 @@ services:
   "latest production config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
     val contents = Source.fromURL(uri).mkString
-    ServiceParser.parse(uri, contents) match {
+    ConfigParser.parse(uri, contents).validate match {
       case Left(errors) => {
         sys.error(s"Failed to parse config at URI[$uri]: $errors")
       }
 
       case Right(config) => {
         Seq("user", "organization", "catalog").foreach { name =>
-          val svc = config.services.find(_.name == name).getOrElse {
-            sys.error(s"Failed to find service[$name]")
+          val svc = config.servers.find(_.name == name).getOrElse {
+            sys.error(s"Failed to find server[$name]")
           }
           svc.host must be(s"https://$name.api.flow.io")
         }
@@ -103,15 +113,15 @@ services:
           r.path must be(path)
         }
 
-        // make sure all services have a defined execution context
-        config.services.filter { svc =>
-          serviceProxyFactory(
-            ServiceProxyDefinition(svc.host, Seq(svc.name))
-          ).asInstanceOf[ServiceProxyImpl].executionContextName == ServiceProxy.DefaultContextName
+        // make sure all servers have a defined execution context
+        config.servers.filter { svc =>
+          serverProxyFactory(
+            ServerProxyDefinition(svc.host, Seq(svc.name))
+          ).asInstanceOf[ServerProxyImpl].executionContextName == ServerProxy.DefaultContextName
         }.map(_.name).toList match {
           case Nil => {}
           case names => {
-            sys.error("All services must have their own execution context. Please update conf/base.conf to add contexts named: " + names.map { n => s"$n-context" }.sorted.mkString(", "))
+            sys.error("All servers must have their own execution context. Please update conf/base.conf to add contexts named: " + names.map { n => s"$n-context" }.sorted.mkString(", "))
           }
         }
       }
@@ -121,7 +131,7 @@ services:
   "latest development config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     val contents = Source.fromURL(uri).mkString
-    ServiceParser.parse(uri, contents) match {
+    ConfigParser.parse(uri, contents).validate() match {
       case Left(errors) => {
         sys.error(s"Failed to parse config at URI[$uri]: $errors")
       }
@@ -132,8 +142,8 @@ services:
           "organization" -> "http://localhost:6081",
           "catalog" -> "http://localhost:6071"
         ).foreach { case (name, host) =>
-          val svc = config.services.find(_.name == name).getOrElse {
-            sys.error(s"Failed to find service[$name]")
+          val svc = config.servers.find(_.name == name).getOrElse {
+            sys.error(s"Failed to find server[$name]")
           }
           svc.host must be(host)
         }
@@ -159,8 +169,8 @@ services:
     val config = proxyConfigFetcher.load(uris).right.get
 
     Seq("currency", "currency-internal").foreach { name =>
-      config.services.find(_.name == name).getOrElse {
-        sys.error(s"Failed to find service[$name]")
+      config.servers.find(_.name == name).getOrElse {
+        sys.error(s"Failed to find server[$name]")
       }
     }
 

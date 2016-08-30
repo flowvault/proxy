@@ -6,7 +6,7 @@ object Constants {
 
     val FlowAuth = "X-Flow-Auth"
     val FlowRequestId = "X-Flow-Request-Id"
-    val FlowService = "X-Flow-Service"
+    val FlowServer = "X-Flow-Server"
     val FlowHost = "X-Flow-Host"
     val FlowIp = "X-Flow-Ip"
 
@@ -16,11 +16,11 @@ object Constants {
     val ForwardedOrigin = "X-Forwarded-Origin"
     val ForwardedMethod = "X-Forwarded-Method"
 
-    val namesToRemove = Seq(FlowAuth, FlowRequestId, FlowService, FlowHost, Host, Origin, ForwardedOrigin, ForwardedMethod)
+    val namesToRemove = Seq(FlowAuth, FlowRequestId, FlowServer, FlowHost, Host, Origin, ForwardedOrigin, ForwardedMethod)
   }
 
   /**
-    * For some features (like specifying explicitly to which service
+    * For some features (like specifying explicitly to which server
     * to route the request), we verify that the requesting user is a
     * member of this organization.
     */

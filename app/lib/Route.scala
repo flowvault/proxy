@@ -3,7 +3,7 @@ package lib
 /**
   * Manages paths, matching an incoming request to a known path
   */
-sealed trait InternalRoute {
+sealed trait Route {
 
   def host: String
   def method: String
@@ -43,12 +43,12 @@ sealed trait InternalRoute {
 
 }
 
-object InternalRoute {
+object Route {
 
   /**
     * Represents a static route (e.g. /organizations) with no wildcards
     */
-  case class Static(host: String, method: String, path: String) extends InternalRoute {
+  case class Static(host: String, method: String, path: String) extends Route {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
   }
@@ -59,7 +59,7 @@ object InternalRoute {
     * that replaces any ":xxx" with a pattern of one or more
     * characters that are not a '/'
     */
-  case class Dynamic(host: String, method: String, path: String) extends InternalRoute {
+  case class Dynamic(host: String, method: String, path: String) extends Route {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 
@@ -92,10 +92,10 @@ object InternalRoute {
 
   }
 
-  def apply(route: Route, host: String): InternalRoute = {
-    route.path.indexOf(":") >= 0 match {
-      case true => Dynamic(host = host, method = route.method, path = route.path)
-      case false => Static(host = host, method = route.method, path = route.path)
+  def apply(method: String, path: String, host: String): Route = {
+    path.indexOf(":") >= 0 match {
+      case true => Dynamic(host = host, method = method, path = path)
+      case false => Static(host = host, method = method, path = path)
     }
   }
 

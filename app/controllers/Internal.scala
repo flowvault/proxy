@@ -19,11 +19,11 @@ class Internal @Inject() (
   def getHealthcheck() = Action { request =>
     config.missing.toList match {
       case Nil => {
-        reverseProxy.index.config.services.toList match {
+        reverseProxy.index.config.operations.toList match {
           case Nil => {
             UnprocessableEntity(
               Json.toJson(
-                Seq("No services are configured")
+                Seq("No operations are configured")
               )
             )
           }
@@ -53,16 +53,19 @@ class Internal @Inject() (
             "version" -> source.version
           )
         },
-        "services" -> reverseProxy.index.config.services.map { service =>
+
+        "servers" -> reverseProxy.index.config.servers.map { server =>
           Json.obj(
-            "name" -> service.name,
-            "host" -> service.host,
-            "routes" -> service.routes.map { r =>
-              Json.obj(
-                "method" -> r.method,
-                "path" -> r.path
-              )
-            }
+            "name" -> server.name,
+            "host" -> server.host
+          )
+        },
+
+        "operations" -> reverseProxy.index.config.operations.map { op =>
+          Json.obj(
+            "method" -> op.route.method,
+            "path" -> op.route.path,
+            "server" -> op.server.name
           )
         }
       )
