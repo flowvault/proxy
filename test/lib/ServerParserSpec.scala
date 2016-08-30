@@ -19,7 +19,9 @@ class ServerParserSpec extends PlaySpec with OneServerPerSuite {
   )
 
   "empty" in {
-    ConfigParser.parse(uri, "   ").validate() must be(Left(Seq("Nothing to parse")))
+    ConfigParser.parse(uri, "   ").validate() must be(
+      Left(Seq("Missing uri", "Missing version"))
+    )
   }
 
   "hostHeaderValue" in {
@@ -73,17 +75,14 @@ operations:
       "https://user.api.flow.io"
     )
 
-    ConfigParser.parse(uri, spec) must be(
-      Right(
-        ProxyConfig(
-          sources = Seq(source.copy(version = "1.2.3")),
-          servers = Seq(user),
-          operations = Seq(
-            Operation(Route("GET", "/users"), user),
-            Operation(Route("POST", "/users"), user),
-            Operation(Route("GET", "/users/:id"), user)
-          )
-        )
+    val cfg = ConfigParser.parse(uri, spec).validate.right.get
+    cfg.sources must be(Seq(source.copy(version = "1.2.3")))
+    cfg.servers must be(Seq(user))
+    cfg.operations must be(
+      Seq(
+        Operation(Route("GET", "/users"), user),
+        Operation(Route("POST", "/users"), user),
+        Operation(Route("GET", "/users/:id"), user)
       )
     )
   }
