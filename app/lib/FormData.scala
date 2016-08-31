@@ -7,7 +7,7 @@ import play.api.libs.json._
   */
 object FormData {
 
-  private[this] val KnownStrings = Seq("number")
+  private[this] val KnownStrings = Seq("number", "cvv")
 
   def parseEncoded(value: String): Map[String, Seq[String]] = {
     val data = scala.collection.mutable.Map[String, Seq[String]]()
