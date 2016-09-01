@@ -4,11 +4,15 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+    reference:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     organization:
       version: latest
       generators:
-        play_2_4_client: app/generated
+        play_2_5_client: app/generated
     token:
       version: latest
       generators:
-        play_2_4_client: app/generated
+        play_2_5_client: app/generated

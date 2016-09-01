@@ -24,7 +24,8 @@ class ReverseProxy @Inject () (
   config: Config,
   flowAuth: FlowAuth,
   proxyConfigFetcher: ProxyConfigFetcher,
-  serverProxyFactory: ServerProxy.Factory
+  serverProxyFactory: ServerProxy.Factory,
+  ws: play.api.libs.ws.WSClient
 ) extends Controller {
 
   val index: Index = proxyConfigFetcher.current()
@@ -36,7 +37,7 @@ class ReverseProxy @Inject () (
       sys.error("There is no server named 'organization' in the current config: " + index.config.sources.map(_.uri))
     }
     Logger.info(s"Creating OrganizationClient w/ baseUrl[${server.host}]")
-    new OrganizationClient(baseUrl = server.host)
+    new OrganizationClient(ws, baseUrl = server.host)
   }
 
   private[this] val tokenClient = {
@@ -44,7 +45,7 @@ class ReverseProxy @Inject () (
       sys.error("There is no server named 'token' in the current config: " + index.config.sources.map(_.uri))
     }
     Logger.info(s"Creating TokenClient w/ baseUrl[${server.host}]")
-    new TokenClient(baseUrl = server.host)
+    new TokenClient(ws, baseUrl = server.host)
   }
 
   private[this] val proxies: Map[String, ServerProxy] = {
