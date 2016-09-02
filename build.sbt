@@ -15,6 +15,7 @@ lazy val root = project
       ws,
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.3",
       "com.typesafe.play" %% "play-json" % "2.5.6",
+      "io.flow" %% "lib-apidoc-json-validation" % "0.0.2",
       "org.yaml" % "snakeyaml" % "1.17",
       "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test"
     )

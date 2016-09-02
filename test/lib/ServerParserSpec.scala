@@ -26,7 +26,7 @@ class ServerParserSpec extends PlaySpec with OneServerPerSuite {
 
   "hostHeaderValue" in {
     Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
-      ServerProxyDefinition(Server("user", host)).hostHeaderValue must be("user.api.flow.io")
+      ServerProxyDefinition(Server("user", host), ApidocServices.Empty).hostHeaderValue must be("user.api.flow.io")
     }
   }
 
@@ -120,7 +120,7 @@ operations:
         // make sure all servers have a defined execution context
         config.servers.filter { server =>
           serverProxyFactory(
-            ServerProxyDefinition(server)
+            ServerProxyDefinition(server, ApidocServices.Empty)
           ).asInstanceOf[ServerProxyImpl].executionContextName == ServerProxy.DefaultContextName
         }.map(_.name).toList match {
           case Nil => {}

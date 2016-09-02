@@ -3,6 +3,7 @@ package controllers
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
+import io.flow.lib.apidoc.json.validation.FormData
 import java.net.URI
 import java.util.concurrent.Executors
 import javax.inject.Inject
@@ -14,11 +15,12 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Constants, FlowAuth, FlowAuthData, FormData, Server}
+import lib.{Constants, FlowAuth, FlowAuthData, Server}
 import play.api.libs.json.{JsValue, Json}
 
 case class ServerProxyDefinition(
-  server: Server
+  server: Server,
+  apidocServices: lib.ApidocServices // TODO Move higher level
 ) {
 
   val contextName = s"${server.name}-context"
@@ -156,37 +158,47 @@ class ServerProxyImpl @Inject () (
     method: String,
     auth: Option[FlowAuthData]
   ) = {
-    val body = FormData.toJson(request.queryString - "method" - "callback")
-    val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, auth), ApplicationJsonContentType)
+    val formData = FormData.toJson(request.queryString - "method" - "callback")
+    definition.apidocServices.validate(method, request.path, formData) match {
+      case Left(errors) => {
+        val finalBody = jsonpEnvelope(callback, 422, Map(), errors.toString)
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} 422")
+        Future(Ok(finalBody).as("application/javascript; charset=utf-8"))
+      }
 
-    val req = ws.url(definition.server.host + request.path)
-      .withFollowRedirects(false)
-      .withMethod(method)
-      .withHeaders(finalHeaders.headers: _*)
-      .withBody(body)
+      case Right(body) => {
+        val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, auth), ApplicationJsonContentType)
 
-    val startMs = System.currentTimeMillis
-    req.execute.map { response =>
-      val timeToFirstByteMs = System.currentTimeMillis - startMs
-      // Prefix is to avoid a JSONP/Flash vulnerability
-      val finalBody = "/**/" + callback + "(" + jsonpEnvelope(response.status, response.allHeaders, response.body) + ")"
+        val req = ws.url(definition.server.host + request.path)
+          .withFollowRedirects(false)
+          .withMethod(method)
+          .withHeaders(finalHeaders.headers: _*)
+          .withBody(body)
 
-      Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
-
-      Ok(finalBody).as("application/javascript; charset=utf-8")
+        val startMs = System.currentTimeMillis
+        req.execute.map { response =>
+          val timeToFirstByteMs = System.currentTimeMillis - startMs
+          val finalBody = jsonpEnvelope(callback, response.status, response.allHeaders, response.body)
+          Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+          Ok(finalBody).as("application/javascript; charset=utf-8")
+        }
+      }
     }
   }
 
   /**
-    * Create the 
+    * Create the jsonp envelope to passthrough response status, response headers
     */
   private[this] def jsonpEnvelope(
+    callback: String,
     status: Int,
     headers: Map[String,Seq[String]],
     body: String
   ): String = {
+    // Prefix /**/ is to avoid a JSONP/Flash vulnerability
     val jsonHeaders = Json.toJson(headers)
-    s"""{\n  "status": $status,\n  "headers": ${jsonHeaders},\n  "body": $body\n}"""
+    "/**/" + s"""$callback({\n  "status": $status,\n  "headers": ${jsonHeaders},\n  "body": $body\n})""" +
+    ")"
   }
 
   private[this] def standard(

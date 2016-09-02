@@ -9,7 +9,7 @@ import io.flow.organization.v0.models.Membership
 import io.flow.token.v0.models.TokenAuthenticationForm
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import lib.{Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData, Operation, Route, Server, ProxyConfigFetcher}
+import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData, Operation, Route, Server, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -24,6 +24,7 @@ class ReverseProxy @Inject () (
   config: Config,
   flowAuth: FlowAuth,
   proxyConfigFetcher: ProxyConfigFetcher,
+  apidocServicesFetcher: ApidocServicesFetcher,
   serverProxyFactory: ServerProxy.Factory,
   ws: play.api.libs.ws.WSClient
 ) extends Controller {
@@ -48,6 +49,8 @@ class ReverseProxy @Inject () (
     new TokenClient(ws, baseUrl = server.host)
   }
 
+  private[this] val apidocServices = apidocServicesFetcher.current()
+  
   private[this] val proxies: Map[String, ServerProxy] = {
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
     val all = scala.collection.mutable.Map[String, ServerProxy]()
@@ -57,7 +60,7 @@ class ReverseProxy @Inject () (
           sys.error(s"Duplicate server with name[${s.name}]")
         }
         case false => {
-          all += (s.name -> serverProxyFactory(ServerProxyDefinition(s)))
+          all += (s.name -> serverProxyFactory(ServerProxyDefinition(s, apidocServices)))
         }
       }
     }
