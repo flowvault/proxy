@@ -5,6 +5,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.flow.lib.apidoc.json.validation.FormData
 import java.net.URI
+import java.util.UUID
 import java.util.concurrent.Executors
 import javax.inject.Inject
 import play.api.Logger
@@ -235,6 +236,7 @@ class ServerProxyImpl @Inject () (
               .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
               .withBody(validatedBody)
               .stream
+              .recover { case ex: Throwable => errorHandler(requestId, request, ex) }
           }
         }
       }
@@ -281,8 +283,20 @@ class ServerProxyImpl @Inject () (
     }
   }
 
-  def makeErrors(errors: Seq[String]): JsValue = {
-    println("ERRORS: " + errors)
+  private[this] def errorHandler(
+    requestId: String,
+    request: Request[RawBuffer],
+    ex: Throwable
+  ) = {
+    val errorId = "api" + UUID.randomUUID.toString.replaceAll("-", "")
+    Logger.error(s"[proxy] FlowError [$errorId] ${request.method} ${request.path} $requestId: ${ex.getMessage}", ex)
+    InternalServerError
+  }
+
+  /**
+    * Generate error message compatible with flow 'error' type
+    */
+  private[this] def makeErrors(errors: Seq[String]): JsValue = {
     JsArray(
       errors.map { error =>
         Json.obj("code" -> "validation_error", "message" -> error)
