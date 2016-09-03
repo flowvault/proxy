@@ -226,7 +226,7 @@ class ServerProxyImpl @Inject () (
             Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
             Future(
               UnprocessableEntity(
-                Json.toJson(makeErrors(errors))
+                Json.toJson(makeErrors("validation_error", errors))
               ).withHeaders("X-Flow-Proxy-Validation" -> "apidoc")
             )
           }
@@ -290,16 +290,17 @@ class ServerProxyImpl @Inject () (
   ) = {
     val errorId = "api" + UUID.randomUUID.toString.replaceAll("-", "")
     Logger.error(s"[proxy] FlowError [$errorId] ${request.method} ${request.path} $requestId: ${ex.getMessage}", ex)
-    InternalServerError
+    val msg = s"A server error has occurred (#$errorId)"
+    InternalServerError(makeErrors("server_error", Seq(msg)))
   }
 
   /**
     * Generate error message compatible with flow 'error' type
     */
-  private[this] def makeErrors(errors: Seq[String]): JsValue = {
+  private[this] def makeErrors(code: String, errors: Seq[String]): JsValue = {
     JsArray(
       errors.map { error =>
-        Json.obj("code" -> "validation_error", "message" -> error)
+        Json.obj("code" -> code, "message" -> error)
       }
     )
   }
