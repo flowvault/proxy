@@ -16,7 +16,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
 import lib.{Constants, FlowAuth, FlowAuthData, Route, Server}
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsArray, JsValue, Json}
 
 case class ServerProxyDefinition(
   server: Server,
@@ -162,7 +162,7 @@ class ServerProxyImpl @Inject () (
     definition.multiService.validate(route.method, route.path, formData) match {
       case Left(errors) => {
         val finalBody = jsonpEnvelope(callback, 422, Map(), errors.toString)
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422")
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
         Future(Ok(finalBody).as("application/javascript; charset=utf-8"))
       }
 
@@ -213,28 +213,47 @@ class ServerProxyImpl @Inject () (
       .withMethod(route.method)
       .withQueryString(ServerProxy.query(request.queryString): _*)
 
-    val finalRequest = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
+    val response = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
 
       // We turn url form encoded into application/json
       case UrlFormEncodedContentType => {
         val b: String = request.body.asBytes().get.decodeString("UTF-8")
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
-        req
-          .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
-          .withBody(newBody)
+        definition.multiService.validate(route.method, route.path, newBody) match {
+          case Left(errors) => {
+            Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
+            Future(
+              UnprocessableEntity(
+                Json.toJson(makeErrors(errors))
+              ).withHeaders("X-Flow-Proxy-Validation" -> "apidoc")
+            )
+          }
+
+          case Right(validatedBody) => {
+            req
+              .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
+              .withBody(validatedBody)
+              .stream
+          }
+        }
       }
 
       case _ => {
         req
           .withHeaders(finalHeaders.headers: _*)
           .withBody(request.body.asBytes().get)
+          .stream
       }
     }
     
     val startMs = System.currentTimeMillis
 
-    finalRequest.stream.map {
+    response.map {
+      case r: Result => {
+        r
+      }
+
       case StreamedResponse(response, body) => {
         val timeToFirstByteMs = System.currentTimeMillis - startMs
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
@@ -260,6 +279,15 @@ class ServerProxyImpl @Inject () (
         sys.error("Unhandled response: " + other)
       }
     }
+  }
+
+  def makeErrors(errors: Seq[String]): JsValue = {
+    println("ERRORS: " + errors)
+    JsArray(
+      errors.map { error =>
+        Json.obj("code" -> "validation_error", "message" -> error)
+      }
+    )
   }
 
   /**
