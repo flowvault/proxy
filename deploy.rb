@@ -54,7 +54,7 @@ def deploy(node, version)
   end
 end
 
-def wait_for_healthcheck(uri, timeout_ms=15000, sleep_between_internal_ms=1000, started_at=Time.now)
+def wait_for_healthcheck(uri, timeout_seconds=3, sleep_between_interval_seconds=1, started_at=Time.now)
   url = URI.parse(uri)
   req = Net::HTTP::Get.new(url.to_s)
 
@@ -71,15 +71,15 @@ def wait_for_healthcheck(uri, timeout_ms=15000, sleep_between_internal_ms=1000, 
     puts "  - healthy"
   else
     duration = Time.now - started_at
-    if duration*1000 > timeout_ms
-      puts "ERROR: Timeout waiting for healthcheck: #{uri}"
+    if duration > timeout_seconds
+      puts "ERROR: Timeout exceeded[%s seconds] waiting for healthcheck: %s" % [timeout_seconds, uri]
       exit(1)
     end
   
-    puts "  - waiting for healthcheck. sleeping for %s ms" % sleep_between_internal_ms
-    sleep(sleep_between_internal_ms / 1000.0)
+    puts "  - waiting for healthcheck to succeed. timeout[%s seconds]. sleeping for %s seconds" % [timeout_seconds, sleep_between_interval_seconds]
+    sleep(sleep_between_interval_seconds)
 
-    wait_for_healthcheck(uri, timeout_ms, sleep_between_internal_ms, started_at)
+    wait_for_healthcheck(uri, timeout_seconds, sleep_between_interval_seconds, started_at)
   end
 end
 
