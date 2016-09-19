@@ -94,4 +94,4 @@ nodes.each do |node|
 end
 duration = Time.now - start
 
-puts "Proxy version %s deployed successfully. Total duration: %s seconds" % [version, duration]
+puts "Proxy version %s deployed successfully. Total duration: %s seconds" % [version, duration.to_i]
