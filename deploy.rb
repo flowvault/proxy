@@ -83,6 +83,7 @@ def wait_for_healthcheck(uri, timeout_seconds=30, sleep_between_interval_seconds
   end
 end
 
+start = Time.now
 nodes.each do |node|
   puts node
   puts "  - Deploying version #{version}"
@@ -90,3 +91,6 @@ nodes.each do |node|
   wait_for_healthcheck("http://#{node}:#{PORT}/_internal_/healthcheck")
   puts ""
 end
+duration = Time.now - start
+
+puts "Proxy version %s deployed successfully. Total duration: %s seconds" % [version, duration]
