@@ -58,6 +58,7 @@ def wait_for_healthcheck(uri, timeout_seconds=30, sleep_between_interval_seconds
   url = URI.parse(uri)
   req = Net::HTTP::Get.new(url.to_s)
 
+  puts "  - Checking health: #{uri}"  
   body = begin
            res = Net::HTTP.start(url.host, url.port) {|http|
              http.request(req)
