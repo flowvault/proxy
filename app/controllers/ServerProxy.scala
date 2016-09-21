@@ -79,12 +79,18 @@ object ServerProxy {
     *  }}}
     *  
     *  @param incoming A map of query parameter keys to sequences of their values.
-    *  @return A sequence of keys, each paired with exactly one value.
+    *  @return A sequence of keys, each paired with exactly one value. The keys are further
+    *          normalized to match Flow expectations (e.g. number[] => number)
     */
   def query(
     incoming: Map[String, Seq[String]]
   ): Seq[(String, String)] = {
-    incoming.map { case (k, vs) =>
+    println("incoming: " + incoming)
+    println("toJson: " + FormData.toJson(incoming))
+    println("toEncoded: " + FormData.toEncoded(FormData.toJson(incoming)))
+    val rewritten = FormData.parseEncoded(FormData.toEncoded(FormData.toJson(incoming)))
+    println("rewritten: " + rewritten)
+    rewritten.map { case (k, vs) =>
       vs.map(k -> _)
     }.flatten.toSeq
   }
@@ -213,10 +219,27 @@ class ServerProxyImpl @Inject () (
     auth: Option[FlowAuthData]
   ) = {
     val finalHeaders = proxyHeaders(requestId, request.headers, request.method, auth)
+    val originalQuery: Map[String, Seq[String]] = request.queryString
+    val finalQuery: Seq[(String, String)] = ServerProxy.query(originalQuery)
+
+    val (originalPathWithQuery, rewrittenPathWithQuery) = originalQuery.isEmpty match {
+      case true => (request.path, request.path)
+      case false => {
+        val orig = originalQuery.map { case (key, values) =>
+          values.map { v =>
+            "%s=%s".format(key, v)
+          }.mkString("&")
+        }
+
+        val rewritten = finalQuery.map { case (key, value) => "%s=%s".format(key, value) }.mkString("&")
+        (s"${request.path}?$orig", s"${request.path}?$rewritten")
+      }
+    }
+
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
-      .withQueryString(ServerProxy.query(request.queryString): _*)
+      .withQueryString(finalQuery: _*)
 
     val response = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
 
@@ -227,7 +250,7 @@ class ServerProxyImpl @Inject () (
 
         definition.multiService.validate(route.method, route.path, newBody) match {
           case Left(errors) => {
-            Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
+            Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
             Future(
               UnprocessableEntity(
                 Json.toJson(makeValidationErrors(errors))
@@ -256,7 +279,7 @@ class ServerProxyImpl @Inject () (
           }
         } match {
           case Failure(e) => {
-            Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 invalid json")
+            Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 invalid json")
             Future(
               UnprocessableEntity(
                 Json.toJson(makeErrors("invalid_json", Seq(s"The body of an application/json request must contain valid json: ${e.getMessage}")))
@@ -267,7 +290,7 @@ class ServerProxyImpl @Inject () (
           case Success(js) => {
             definition.multiService.validate(route.method, route.path, js) match {
               case Left(errors) => {
-                Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
+                Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
                 Future(
                   UnprocessableEntity(
                     Json.toJson(makeValidationErrors(errors))
@@ -308,7 +331,7 @@ class ServerProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] ${request.method} $originalPathWithQuery ${definition.server.name}:${route.method} ${definition.server.host}$rewrittenPathWithQuery ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
