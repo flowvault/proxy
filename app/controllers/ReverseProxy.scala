@@ -1,8 +1,9 @@
 package controllers
 
 import akka.actor.ActorSystem
-import io.flow.common.v0.models.{Error, UserReference}
-import io.flow.common.v0.models.json._
+import io.flow.error.v0.models.ValidationError
+import io.flow.error.v0.models.json._
+import io.flow.common.v0.models.UserReference
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.Membership
@@ -285,21 +286,21 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def unauthorized(message: String) = {
-    NotFound(errorJson("authorization_failed", message))
+    NotFound(errorJson(message))
   }
 
   private[this] def notFound(message: String) = {
-    NotFound(errorJson("not_found", message))
+    NotFound(errorJson(message))
   }
 
   private[this] def unprocessableEntity(message: String) = {
-    UnprocessableEntity(errorJson("validation_error", message))
+    UnprocessableEntity(errorJson(message))
   }
 
-  private[this] def errorJson(key: String, message: String) = {
+  private[this] def errorJson(message: String) = {
     Json.toJson(
-      Seq(
-        Error(key, message)
+      ValidationError(
+        messages = Seq(message)
       )
     )
   }

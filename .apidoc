@@ -4,6 +4,10 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+    error:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     reference:
       version: latest
       generators:
