@@ -1,8 +1,6 @@
 package controllers
 
 import akka.actor.ActorSystem
-import io.flow.error.v0.models.GenericError
-import io.flow.error.v0.models.json._
 import io.flow.common.v0.models.UserReference
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
@@ -16,7 +14,6 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import org.apache.commons.codec.binary.Base64
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
 
 @Singleton
 class ReverseProxy @Inject () (
@@ -28,7 +25,7 @@ class ReverseProxy @Inject () (
   apidocServicesFetcher: ApidocServicesFetcher,
   serverProxyFactory: ServerProxy.Factory,
   ws: play.api.libs.ws.WSClient
-) extends Controller {
+) extends Controller with lib.Errors {
 
   val index: Index = proxyConfigFetcher.current()
 
@@ -286,23 +283,15 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def unauthorized(message: String) = {
-    NotFound(errorJson(message))
+    NotFound(genericError(message))
   }
 
   private[this] def notFound(message: String) = {
-    NotFound(errorJson(message))
+    NotFound(genericError(message))
   }
 
   private[this] def unprocessableEntity(message: String) = {
-    UnprocessableEntity(errorJson(message))
-  }
-
-  private[this] def errorJson(message: String) = {
-    Json.toJson(
-      GenericError(
-        messages = Seq(message)
-      )
-    )
+    UnprocessableEntity(genericError(message))
   }
 
   private[this] def findServerByName(name: String): Option[Server] = {

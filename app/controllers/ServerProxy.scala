@@ -3,8 +3,6 @@ package controllers
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
-import io.flow.error.v0.models.GenericError
-import io.flow.error.v0.models.json._
 import io.flow.lib.apidoc.json.validation.FormData
 import java.net.URI
 import java.util.UUID
@@ -108,7 +106,7 @@ class ServerProxyImpl @Inject () (
   ws: WSClient,
   flowAuth: FlowAuth,
   @Assisted override val definition: ServerProxyDefinition
-) extends ServerProxy with Controller{
+) extends ServerProxy with Controller with lib.Errors {
 
   private[this] implicit val (ec, name) = {
     val name = definition.contextName
@@ -166,7 +164,7 @@ class ServerProxyImpl @Inject () (
     val formData = FormData.toJson(request.queryString - "method" - "callback")
     definition.multiService.validate(route.method, route.path, formData) match {
       case Left(errors) => {
-        val finalBody = jsonpEnvelope(callback, 422, Map(), makeGenericError(errors).toString)
+        val finalBody = jsonpEnvelope(callback, 422, Map(), genericErrors(errors).toString)
         Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
         Future(Ok(finalBody).as("application/javascript; charset=utf-8"))
       }
@@ -247,7 +245,7 @@ class ServerProxyImpl @Inject () (
             Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
             Future(
               UnprocessableEntity(
-                makeGenericError(errors)
+                genericErrors(errors)
               ).withHeaders("X-Flow-Proxy-Validation" -> "apidoc")
             )
           }
@@ -276,7 +274,7 @@ class ServerProxyImpl @Inject () (
             Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 invalid json")
             Future(
               UnprocessableEntity(
-                makeGenericError(Seq(s"The body of an application/json request must contain valid json: ${e.getMessage}"))
+                genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
               ).withHeaders("X-Flow-Proxy-Validation" -> "proxy")
             )
           }
@@ -287,7 +285,7 @@ class ServerProxyImpl @Inject () (
                 Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
                 Future(
                   UnprocessableEntity(
-                    makeGenericError(errors)
+                    genericErrors(errors)
                   ).withHeaders("X-Flow-Proxy-Validation" -> "apidoc")
                 )
               }
@@ -355,18 +353,7 @@ class ServerProxyImpl @Inject () (
     val errorId = "api" + UUID.randomUUID.toString.replaceAll("-", "")
     Logger.error(s"[proxy] FlowError [$errorId] ${request.method} ${request.path} $requestId: ${ex.getMessage}", ex)
     val msg = s"A server error has occurred (#$errorId)"
-    InternalServerError(makeGenericError(Seq(msg)))
-  }
-
-  /**
-    * Generate error message compatible with flow 'generic_error' type
-    */
-  private[this] def makeGenericError(errors: Seq[String]): JsValue = {
-    Json.toJson(
-      GenericError(
-        messages = errors
-      )
-    )
+    InternalServerError(genericError(msg))
   }
 
   /**
