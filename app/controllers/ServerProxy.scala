@@ -186,7 +186,7 @@ class ServerProxyImpl @Inject () (
           Ok(finalBody).as("application/javascript; charset=utf-8")
         }.recover {
           case ex: Throwable => {
-            errorHandler(requestId, request, ex)
+            throw new Exception(ex)
           }
         }
       }
@@ -255,7 +255,7 @@ class ServerProxyImpl @Inject () (
               .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
               .withBody(validatedBody)
               .stream
-              .recover { case ex: Throwable => errorHandler(requestId, request, ex) }
+              .recover { case ex: Throwable => throw new Exception(ex) }
           }
         }
       }
@@ -295,7 +295,7 @@ class ServerProxyImpl @Inject () (
                   .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
                   .withBody(validatedBody)
                   .stream
-                  .recover { case ex: Throwable => errorHandler(requestId, request, ex) }
+                  .recover { case ex: Throwable => throw new Exception(ex) }
               }
             }
           }
@@ -307,7 +307,7 @@ class ServerProxyImpl @Inject () (
           .withHeaders(finalHeaders.headers: _*)
           .withBody(request.body.asBytes().get)
           .stream
-          .recover { case ex: Throwable => errorHandler(requestId, request, ex) }
+          .recover { case ex: Throwable => throw new Exception(ex) }
       }
     }
 
@@ -343,17 +343,6 @@ class ServerProxyImpl @Inject () (
         sys.error("Unhandled response: " + other)
       }
     }
-  }
-
-  private[this] def errorHandler(
-    requestId: String,
-    request: Request[RawBuffer],
-    ex: Throwable
-  ) = {
-    val errorId = "api" + UUID.randomUUID.toString.replaceAll("-", "")
-    Logger.error(s"[proxy] FlowError [$errorId] ${request.method} ${request.path} $requestId: ${ex.getMessage}", ex)
-    val msg = s"A server error has occurred (#$errorId)"
-    InternalServerError(genericError(msg))
   }
 
   /**

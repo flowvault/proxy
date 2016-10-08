@@ -20,7 +20,7 @@ class ErrorHandler extends HttpErrorHandler with Errors {
 
   def onServerError(request: RequestHeader, ex: Throwable) = {
     val errorId = generateErrorId()
-    Logger.error(s"[proxy] FlowError $errorId path[${request.path}]: ${ex.getMessage}", ex)
+    Logger.error(s"[proxy] FlowError $errorId ${request.method} ${request.path}: ${ex.getMessage}", ex)
     Future.successful(
       InternalServerError(serverErrors(Seq(s"A server error occurred (err #$errorId)")))
     )
