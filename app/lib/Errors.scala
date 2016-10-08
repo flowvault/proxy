@@ -8,7 +8,7 @@ import java.util.UUID
 trait Errors {
 
   def generateErrorId(): String = {
-    "err-" + UUID.randomUUID.toString.replaceAll("-", "")
+    "err" + UUID.randomUUID.toString.replaceAll("-", "")
   }
 
   def genericError(message: String): JsValue = {
