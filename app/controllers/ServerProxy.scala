@@ -303,11 +303,22 @@ class ServerProxyImpl @Inject () (
       }
 
       case _ => {
-        req
-          .withHeaders(finalHeaders.headers: _*)
-          .withBody(request.body.asBytes().get)
-          .stream
-          .recover { case ex: Throwable => throw new Exception(ex) }
+        request.body.asBytes() match {
+          case None => {
+            req
+              .withHeaders(finalHeaders.headers: _*)
+              .post(request.body.asFile)
+              .recover { case ex: Throwable => throw new Exception(ex) }
+          }
+
+          case Some(bytes) => {
+            req
+              .withHeaders(finalHeaders.headers: _*)
+              .withBody(bytes)
+              .stream
+              .recover { case ex: Throwable => throw new Exception(ex) }
+          }
+        }
       }
     }
 
@@ -339,8 +350,13 @@ class ServerProxyImpl @Inject () (
           }
         }
       }
+
+      case r: play.api.libs.ws.ahc.AhcWSResponse => {
+        Status(r.status)(r.body)
+      }
+
       case other => {
-        sys.error("Unhandled response: " + other)
+        sys.error("Unhandled response: " + other.getClass.getName)
       }
     }
   }
