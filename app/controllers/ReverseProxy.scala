@@ -352,6 +352,7 @@ class ReverseProxy @Inject () (
       Some(
         token.copy(
           organizationId = Some(organization),
+          environment = Some(orgAuth.environment.toString),
           role = Some(orgAuth.role.toString)
         )
       )
