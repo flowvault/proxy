@@ -16,6 +16,12 @@ class Internal @Inject() (
     "status" -> "healthy"
   )
 
+  private[this] val RobotsTxt = "User-agent: *\nDisallow: /"
+
+  def getRobots() = Action { request =>
+    Ok(RobotsTxt)
+  }
+
   def getHealthcheck() = Action { request =>
     config.missing.toList match {
       case Nil => {

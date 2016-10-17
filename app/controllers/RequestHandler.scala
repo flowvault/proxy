@@ -34,6 +34,7 @@ class Router @Inject() (
       (request.method, request.path, request.headers.get(Constants.Headers.FlowServer)) match {
         case ("GET", "/_internal_/healthcheck", None) => internal.getHealthcheck
         case ("GET", "/_internal_/config", None) => internal.getConfig
+        case ("GET", "/robots.txt", None) => internal.getRobots
         case _ => proxy.handle
       }
     }
