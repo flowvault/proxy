@@ -38,10 +38,6 @@ object ResolvedToken {
 
   def fromToken(requestId: String, token: TokenReference): Option[ResolvedToken] = {
     token match {
-      case t: LegacyTokenReference => Some(
-        ResolvedToken.fromUser(requestId, t.user.id)
-      )
-
       case t: OrganizationTokenReference => Some(
         ResolvedToken(
           requestId = requestId,

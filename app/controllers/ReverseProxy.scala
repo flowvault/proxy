@@ -328,7 +328,8 @@ class ReverseProxy @Inject () (
     token: ResolvedToken,
     organization: String
   ): Future[Option[ResolvedToken]] = {
-    (token.environment, token.organizationId) match {
+    val authFuture = (token.environment, token.organizationId) match {
+
       case (Some(env), Some(orgId)) => {
         organizationClient.organizationAuthorizations.post(
           OrganizationAuthorizationForm(
@@ -336,62 +337,37 @@ class ReverseProxy @Inject () (
             environment = Environment(env)
           ),
           requestHeaders = flowAuth.headers(token)
-        ).map { orgAuth =>
-          Some(
-            token.copy(
-              organizationId = Some(organization),
-              role = Some(orgAuth.role.toString)
-            )
-          )
-        }
-      }.recover {
-        case io.flow.organization.v0.errors.UnitResponse(401) => {
-          Logger.warn(s"Token[$token] was not authorized for organization[$orgId] env[$env]")
-          None
-        }
-        case ex: Throwable => {
-          sys.error(s"Could not communicate with organization server at[${organizationClient.baseUrl}]: ${ex.getMessage}")
-        }
+        )
       }
 
       case (_, _) => {
-        // Fetch the environment from organization and use that in the token.
-        getOrganizationById(token, organization).map {
-          case None => None
-          case Some(org) => {
-            Some(
-              token.copy(
-                organizationId = Some(organization),
-                environment = Some(org.environment.toString),
-                role = Some(Role.Member.toString) // TODO
-              )
-            )
-          }
-        }
+        organizationClient.organizationAuthorizations.getByOrganization(
+          organization = organization,
+          requestHeaders = flowAuth.headers(token)
+        )
       }
     }
-  }
 
-  private[this] def getOrganizationById(
-    token: ResolvedToken,
-    organization: String
-  ): Future[Option[Organization]] = {
-    organizationClient.organizations.getById(
-      id = organization,
-      requestHeaders = flowAuth.headers(token)
-    ).map { org =>
-      Some(org)
+    authFuture.map { orgAuth =>
+      Some(
+        token.copy(
+          organizationId = Some(organization),
+          role = Some(orgAuth.role.toString)
+        )
+      )
     }.recover {
       case io.flow.organization.v0.errors.UnitResponse(401) => {
-        Logger.warn(s"Token[$token] was not authorized to getOrganizationById($organization)")
+        Logger.warn(s"Token[$token] was not authorized for organization[$organization]")
         None
       }
+
       case io.flow.organization.v0.errors.UnitResponse(404) => {
         Logger.warn(s"Token[$token] organization[$organization] not found")
         None
       }
+
       case ex: Throwable => {
-        sys.error(s"Could not communicate with organization server at[${organizationClient.baseUrl}]: ${ex.getMessage}")
+        sys.error(s"Error communicating with organization server at[${organizationClient.baseUrl}]: ${ex.getMessage}")
       }
     }
   }
