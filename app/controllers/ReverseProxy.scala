@@ -108,7 +108,7 @@ class ReverseProxy @Inject () (
       }
     }
   }
-
+  
   private[this] def proxyPostAuth(
     requestId: String,
     request: Request[RawBuffer],
@@ -122,47 +122,21 @@ class ReverseProxy @Inject () (
 
     resolve(requestId, method, request, token).flatMap { result =>
       result match {
-        case Left(result) => Future(result)
+        case Left(result) => {
+          Future(result)
+        }
 
         case Right(operation) => {
           operation.route.organization(request.path) match {
-            case None  => {
-              lookup(operation.server.name).proxy(
-                requestId,
-                request,
-                operation.route,
-                token
-              )
+            case None => {
+              operation.route.partner(request.path) match {
+                case None => proxyDefault(operation, requestId, request, token)
+                case Some(partner) => proxyPartner(operation, partner, requestId, request, token)
+              }
             }
 
             case Some(org) => {
-              token match {
-                case None => {
-                  lookup(operation.server.name).proxy(
-                    requestId,
-                    request,
-                    operation.route,
-                    None
-                  )
-                }
-
-                case Some(t) => {
-                  resolveOrganizationAuthorization(t, org).flatMap {
-                    case None => Future(
-                      unauthorized(s"Not authorized to access $org or the organization does not exist")
-                    )
-
-                    case Some(orgToken) => {
-                      lookup(operation.server.name).proxy(
-                        requestId,
-                        request,
-                        operation.route,
-                        Some(orgToken)
-                      )
-                    }
-                  }
-                }
-              }
+              proxyOrganization(operation, org, requestId, request, token)
             }
           }
         }
@@ -170,6 +144,88 @@ class ReverseProxy @Inject () (
     }
   }
 
+
+  private[this] def proxyDefault(
+    operation: Operation,
+    requestId: String,
+    request: Request[RawBuffer],
+    token: Option[ResolvedToken]
+  ): Future[Result] = {
+    lookup(operation.server.name).proxy(
+      requestId,
+      request,
+      operation.route,
+      token
+    )
+  }
+
+  private[this] def proxyOrganization(
+    operation: Operation,
+    organization: String,
+    requestId: String,
+    request: Request[RawBuffer],
+    token: Option[ResolvedToken]
+  ): Future[Result] = {
+    token match {
+      case None => {
+        // Pass to backend w/ no auth headers and let backend enforce
+        // if path requires auth or not. Needed to support use case
+        // like adding a credit card over JSONP
+        proxyDefault(operation, requestId, request, None)
+      }
+
+      case Some(t) => {
+        resolveOrganizationAuthorization(t, organization).flatMap {
+          case None => Future(
+            unauthorized(s"Not authorized to access $organization or the organization does not exist")
+          )
+
+          case Some(orgToken) => {
+            // Use org token here as the data returned came from the
+            // organization service (supports having a sandbox token
+            // on a production org)
+            lookup(operation.server.name).proxy(
+              requestId,
+              request,
+              operation.route,
+              Some(orgToken)
+            )
+          }
+        }
+      }
+    }
+  }
+
+  private[this] def proxyPartner(
+    operation: Operation,
+    partner: String,
+    requestId: String,
+    request: Request[RawBuffer],
+    token: Option[ResolvedToken]
+  ): Future[Result] = {
+    token match {
+      case None => {
+        // Currently all partner requests require authorization. Deny
+        // access as there is no auth token present.
+        Future(
+          unauthorized("Missing authorization headers")
+        )
+      }
+
+      case Some(t) => {
+        t.partnerId == Some(partner) match {
+          case false => Future(
+            unauthorized(s"Not authorized to access $partner or the partner does not exist")
+          )
+
+          case true => {
+            proxyDefault(operation, requestId, request, token)
+          }
+        }
+      }
+    }
+  }
+  
   /**
     * Resolves the incoming method and path to a specific operation. Also implements
     * overrides from incoming request headers:
