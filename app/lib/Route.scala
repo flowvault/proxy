@@ -16,11 +16,17 @@ sealed trait Route {
   private[this] val InternalOrganization = "flow"
 
   private[this] val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
+  private[this] val hasPartner: Boolean = path == "/partners/:partner" || path.startsWith("/partners/:partner/")
   private[this] val isInternal: Boolean = path == "/internal" || path.startsWith("/internal/")
 
   assert(
     (isInternal && !hasOrganization) || !isInternal,
     s"Route cannot both be internal and have an organization: $method $path"
+  )
+
+  assert(
+    (isInternal && !hasPartner) || !isInternal,
+    s"Route cannot both be internal and have a partner: $method $path"
   )
 
   /**
@@ -37,7 +43,7 @@ sealed trait Route {
           case true => {
             requestPath.split("/").toList match {
               case empty :: org :: rest => Some(org)
-              case _ => sys.error(s"$method $requestPath: Could not extract organization")
+              case _ => sys.error(s"$method $requestPath: Could not extract organization from url")
             }
           }
         }
@@ -45,6 +51,23 @@ sealed trait Route {
     }
   }
 
+  /**
+    * By naming convention, if the path starts with /partners/:partner, we
+    * know that we need to authenticate that the requesting user has
+    * access to that partner.
+    */
+  def partner(requestPath: String): Option[String] = {
+    hasPartner match {
+      case false => None
+      case true => {
+        requestPath.split("/").toList match {
+          case empty :: partners :: partner :: rest => Some(partner)
+          case _ => sys.error(s"$method $requestPath: Could not extract partner from url")
+        }
+      }
+    }
+  }
+  
 }
 
 object Route {

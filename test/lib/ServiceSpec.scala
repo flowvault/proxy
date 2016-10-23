@@ -24,4 +24,22 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
     Route("GET", "/:organization/catalog/:id").organization("/flow/catalog/5") must be(Some("flow"))
   }
 
+  "partner" in {
+    Route("GET", "/foo").partner("/partners/foo") must be(None)
+    Route("GET", "/users").partner("/partners/foo") must be(None)
+    Route("GET", "/partners").partner("/partners/foo") must be(None)
+    Route("GET", "/partners").partner("/partners/foo") must be(None)
+    Route("GET", "/partners/catalog").partner("/partners/foo") must be(None)
+    Route("GET", "/partners/:partner").partner("/partners/flow") must be(Some("flow"))
+    Route("GET", "/partners/:partner/catalog").partner("/partners/flow/catalog") must be(Some("flow"))
+    Route("GET", "/partners/:partner/labels").partner("/partners/ql/labels") must be(Some("ql"))
+    Route("GET", "/internal/currency/rates").partner("/internal/currency/rates") must be(None)
+    Route("GET", "/partners/foo/:id").partner("/partners/foo") must be(None)
+    Route("GET", "/users/:id").partner("/partners/foo") must be(None)
+    Route("GET", "/partners/partner/:id").partner("/partners/foo") must be(None)
+    Route("GET", "/partners/partner/catalog/:id").partner("/partners/foo") must be(None)
+    Route("GET", "/partners/:partner/:id").partner("/partners/flow/5") must be(Some("flow"))
+    Route("GET", "/partners/:partner/catalog/:id").partner("/partners/flow/catalog/5") must be(Some("flow"))
+  }
+
 }
