@@ -71,7 +71,7 @@ def deploy(node, version)
   end
 end
 
-def wait_for_healthcheck(uri, timeout_seconds=30, sleep_between_interval_seconds=1, started_at=Time.now)
+def wait_for_healthcheck(uri, timeout_seconds=50, sleep_between_interval_seconds=1, started_at=Time.now)
   url = URI.parse(uri)
   req = Net::HTTP::Get.new(url.to_s)
 
