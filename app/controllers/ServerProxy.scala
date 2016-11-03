@@ -171,9 +171,10 @@ class ServerProxyImpl @Inject () (
     val formData = FormData.toJson(request.queryString - "method" - "callback")
     definition.multiService.validate(route.method, route.path, formData) match {
       case Left(errors) => {
+        val envBody = envelopeBody(422, Map(), genericErrors(errors).toString)
         val finalBody = callback match {
-          case Some(callback) => jsonpEnvelopeBody(callback, 422, Map(), genericErrors(errors).toString)
-          case None => envelopeBody(422, Map(), genericErrors(errors).toString)
+          case Some(callback) => jsonpEnvelopeBody(callback, envBody)
+          case None => envBody
         }
 
         Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
@@ -193,9 +194,10 @@ class ServerProxyImpl @Inject () (
         req.execute.map { response =>
           val timeToFirstByteMs = System.currentTimeMillis - startMs
 
+          val envBody = envelopeBody(response.status, response.allHeaders, response.body)
           val finalBody = callback match {
-            case Some(callback) => jsonpEnvelopeBody(callback, response.status, response.allHeaders, response.body)
-            case None => envelopeBody(response.status, response.allHeaders, response.body)
+            case Some(callback) => jsonpEnvelopeBody(callback, envBody)
+            case None => envBody
           }
 
           Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
@@ -226,14 +228,10 @@ class ServerProxyImpl @Inject () (
     */
   private[this] def jsonpEnvelopeBody(
     callback: String,
-    status: Int,
-    headers: Map[String,Seq[String]],
     body: String
   ): String = {
     // Prefix /**/ is to avoid a JSONP/Flash vulnerability
-    val jsonHeaders = Json.toJson(headers)
-    "/**/" + s"""$callback({\n  "status": $status,\n  "headers": ${jsonHeaders},\n  "body": $body\n})""" +
-    ")"
+    "/**/" + s"""$callback($body)"""
   }
 
   private[this] def standard(
