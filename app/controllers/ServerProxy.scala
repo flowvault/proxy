@@ -149,9 +149,67 @@ class ServerProxyImpl @Inject () (
       }
 
       case None => {
-        standard(requestId, route, request, token)
+        request.queryString.get("envelope").getOrElse(Nil).headOption match {
+          case Some(envelope) => {
+            envelopeStandard(requestId, route, request, token)
+          }
+          case None => {
+            standard(requestId, route, request, token)
+          }
+        }
       }
     }
+  }
+
+  private[this] def envelopeStandard(
+    requestId: String,
+    route: Route,
+    request: Request[RawBuffer],
+    token: Option[ResolvedToken]
+  ) = {
+    val formData = FormData.toJson(request.queryString - "method" - "callback")
+    definition.multiService.validate(route.method, route.path, formData) match {
+      case Left(errors) => {
+        val finalBody = standardEnvelope(422, Map(), genericErrors(errors).toString)
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
+        Future(Ok(finalBody).as("application/javascript; charset=utf-8"))
+      }
+
+      case Right(body) => {
+        val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, token), ApplicationJsonContentType)
+
+        val req = ws.url(definition.server.host + request.path)
+          .withFollowRedirects(false)
+          .withMethod(route.method)
+          .withHeaders(finalHeaders.headers: _*)
+          .withBody(body)
+
+        val startMs = System.currentTimeMillis
+        req.execute.map { response =>
+          val timeToFirstByteMs = System.currentTimeMillis - startMs
+          val finalBody = standardEnvelope(response.status, response.allHeaders, response.body)
+          Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+          Ok(finalBody).as("application/json; charset=utf-8")
+        }.recover {
+          case ex: Throwable => {
+            throw new Exception(ex)
+          }
+        }
+      }
+    }
+
+    standard(requestId, route, request, token)
+  }
+
+  private[this] def standardEnvelope(
+    status: Int,
+    headers: Map[String,Seq[String]],
+    body: String
+  ): String = {
+    val jsonHeaders = Json.toJson(headers)
+    s"""
+      |{\n  "status": $status,\n  "headers": ${jsonHeaders},\n  "body": $body\n}
+    """.stripMargin
   }
 
   private[this] def jsonp(
