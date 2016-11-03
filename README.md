@@ -20,6 +20,8 @@ API Proxy server that is hosted at https://api.flow.io
   - Implements JSONP proxy based on presence of url parameter named 'callback' and optional
     parameter named 'method' that is used to specify the HTTP method to use when proxying request
     to the backend.
+  - Implements all responses in an 'envelope' with HTTP 200 response
+    codes based on presence of url parameter named 'envelope'
   - Converts www form urlencoded strings (body and query for JSONP) into form data, validating
     and converting types according to one or more apidoc schemas (via environment variable
     named APIDOC_SERVICE_URIS)
