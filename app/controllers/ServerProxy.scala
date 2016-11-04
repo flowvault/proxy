@@ -168,7 +168,16 @@ class ServerProxyImpl @Inject () (
     token: Option[ResolvedToken],
     callback: Option[String] = None
   ) = {
-    val formData = FormData.toJson(request.queryString - "method" - "callback")
+    val formData = callback match {
+      case Some(callback) => {
+        FormData.toJson(request.queryString - "method" - "callback")
+      }
+      case None => {
+        val b: String = request.body.asBytes().get.decodeString("UTF-8")
+        FormData.toJson(FormData.parseEncoded(b))
+      }
+    }
+
     definition.multiService.validate(route.method, route.path, formData) match {
       case Left(errors) => {
         val envBody = envelopeBody(422, Map(), genericErrors(errors).toString)
