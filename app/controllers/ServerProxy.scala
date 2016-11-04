@@ -143,18 +143,37 @@ class ServerProxyImpl @Inject () (
   ) = {
     Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId $requestId")
 
+    /**
+      * Common stuff between standard and envelope implementations
+      */
+    val finalHeaders: Headers = proxyHeaders(requestId, request.headers, request.method, token)
+    val originalQuery: Map[String, Seq[String]] = request.queryString
+    val finalQuery: Seq[(String, String)] = ServerProxy.query(originalQuery)
+    val (originalPathWithQuery, rewrittenPathWithQuery): (String, String) = originalQuery.isEmpty match {
+      case true => (request.path, request.path)
+      case false => {
+        val rewritten = finalQuery.map { case (key, value) =>
+          s"$key=$value"
+        }.mkString("&")
+        (request.uri, s"${request.path}?$rewritten")
+      }
+    }
+
+    /**
+      * Choose the type of request based on callback/envelope or standard implementation
+      */
     request.queryString.get("callback").getOrElse(Nil).headOption match {
       case Some(callback) => {
-        envelopeRequest(requestId, request, route, token, callback = Some(callback))
+        envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, request, route, token, callback = Some(callback))
       }
 
       case None => {
         request.queryString.get("envelope").getOrElse(Nil).headOption match {
           case Some(envelope) => {
-            envelopeRequest(requestId, request, route, token)
+            envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, request, route, token)
           }
           case None => {
-            standard(requestId, route, request, token)
+            standard(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, route, request, token)
           }
         }
       }
@@ -162,19 +181,34 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def envelopeRequest(
+    finalHeaders: Headers,
+    finalQuery: Seq[(String, String)],
+    originalPathWithQuery: String,
+    rewrittenPathWithQuery: String,
     requestId: String,
     request: Request[RawBuffer],
     route: Route,
     token: Option[ResolvedToken],
     callback: Option[String] = None
   ) = {
-    val formData = callback match {
+    val finalHeaders = proxyHeaders(requestId, request.headers, request.method, token)
+
+    val formData: JsValue = callback match {
       case Some(callback) => {
         FormData.toJson(request.queryString - "method" - "callback")
       }
       case None => {
-        val b: String = request.body.asBytes().get.decodeString("UTF-8")
-        FormData.toJson(FormData.parseEncoded(b))
+        finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
+          // We turn url form encoded into application/json
+          case UrlFormEncodedContentType => {
+            val b: String = request.body.asBytes().get.decodeString("UTF-8")
+            FormData.toJson(FormData.parseEncoded(b))
+          }
+          case ApplicationJsonContentType => {
+            val b: String = request.body.asBytes().get.decodeString("UTF-8")
+            Json.parse(b)
+          }
+        }
       }
     }
 
@@ -244,25 +278,15 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def standard(
+    finalHeaders: Headers,
+    finalQuery: Seq[(String, String)],
+    originalPathWithQuery: String,
+    rewrittenPathWithQuery: String,
     requestId: String,
     route: Route,
     request: Request[RawBuffer],
     token: Option[ResolvedToken]
   ) = {
-    val finalHeaders = proxyHeaders(requestId, request.headers, request.method, token)
-    val originalQuery: Map[String, Seq[String]] = request.queryString
-    val finalQuery: Seq[(String, String)] = ServerProxy.query(originalQuery)
-
-    val (originalPathWithQuery, rewrittenPathWithQuery) = originalQuery.isEmpty match {
-      case true => (request.path, request.path)
-      case false => {
-        val rewritten = finalQuery.map { case (key, value) =>
-          s"$key=$value"
-        }.mkString("&")
-        (request.uri, s"${request.path}?$rewritten")
-      }
-    }
-
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
