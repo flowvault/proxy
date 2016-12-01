@@ -155,7 +155,9 @@ class ReverseProxy @Inject () (
       requestId,
       request,
       operation.route,
-      token
+      token,
+      None,
+      None
     )
   }
 
@@ -188,7 +190,9 @@ class ReverseProxy @Inject () (
               requestId,
               request,
               operation.route,
-              Some(orgToken)
+              Some(orgToken),
+              Some(organization),
+              None
             )
           }
         }
@@ -219,7 +223,14 @@ class ReverseProxy @Inject () (
           )
 
           case true => {
-            proxyDefault(operation, requestId, request, token)
+            lookup(operation.server.name).proxy(
+              requestId,
+              request,
+              operation.route,
+              token,
+              None,
+              Some(partner)
+            )
           }
         }
       }

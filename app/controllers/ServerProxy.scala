@@ -8,15 +8,17 @@ import java.net.URI
 import java.util.UUID
 import java.util.concurrent.Executors
 import javax.inject.Inject
+
 import play.api.Logger
 import play.api.http.Status
 import play.api.inject.Module
 import play.api.libs.ws.{StreamedResponse, WSClient, WSRequest}
 import play.api.mvc._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Constants, FlowAuth, ResolvedToken, Route, Server}
+import lib._
 import play.api.libs.json.{JsArray, JsValue, Json}
 
 case class ServerProxyDefinition(
@@ -46,7 +48,9 @@ trait ServerProxy {
     requestId: String,
     request: Request[RawBuffer],
     route: Route,
-    token: Option[ResolvedToken]
+    token: Option[ResolvedToken],
+    organization: Option[String] = None,
+    partner: Option[String] = None
   ): Future[play.api.mvc.Result]
 
 }
@@ -102,6 +106,7 @@ class ServerProxyModule extends AbstractModule {
 }
 
 class ServerProxyImpl @Inject () (
+  cloudwatch: Cloudwatch,
   system: ActorSystem,
   ws: WSClient,
   flowAuth: FlowAuth,
@@ -139,7 +144,9 @@ class ServerProxyImpl @Inject () (
     requestId: String,
     request: Request[RawBuffer],
     route: Route,
-    token: Option[ResolvedToken]
+    token: Option[ResolvedToken],
+    organization: Option[String] = None,
+    partner: Option[String] = None
   ) = {
     Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId $requestId")
 
@@ -243,6 +250,7 @@ class ServerProxyImpl @Inject () (
             case None => envBody
           }
 
+          cloudwatch.recordResponseTime(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status)
           Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
           Ok(finalBody).as("application/javascript; charset=utf-8")
         }.recover {
@@ -393,6 +401,7 @@ class ServerProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
+        cloudwatch.recordResponseTime(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status)
         Logger.info(s"[proxy] ${request.method} $originalPathWithQuery ${definition.server.name}:${route.method} ${definition.server.host}$rewrittenPathWithQuery ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
