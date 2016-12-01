@@ -35,7 +35,9 @@ trait Cloudwatch {
     method: String,
     path: String,
     ms: Long,
-    response: Int
+    response: Int,
+    organization: Option[String] = None,
+    partner: Option[String] = None
   )(implicit ec: ExecutionContext)
 }
 
@@ -51,19 +53,24 @@ case class DefaultCloudwatch @Inject()(config: Config, env: Environment) extends
     method: String,
     path: String,
     ms: Long,
-    response: Int
+    response: Int,
+    organization: Option[String] = None,
+    partner: Option[String] = None
   )(implicit ec: ExecutionContext) = Future {
     val dims = Map(
+      "server" -> server,
       "method" -> method,
       "path" -> path,
-      "response" -> response
+      "response" -> response,
+      "organization" -> organization.getOrElse(""),
+      "partner" -> partner.getOrElse("")
     ).map { d =>
       new Dimension().withName(d._1).withValue(d._2.toString)
     }.asJavaCollection
 
     client.putMetricData(
       new PutMetricDataRequest()
-        .withNamespace(server)
+        .withNamespace(MetricName.ResponseTime)
         .withMetricData(
           new MetricDatum()
             .withMetricName(MetricName.ResponseTime)
@@ -82,7 +89,9 @@ case class MockCloudwatch @Inject()() extends Cloudwatch {
     method: String,
     path: String,
     ms: Long,
-    response: Int
+    response: Int,
+    organization: Option[String] = None,
+    partner: Option[String] = None
   )(implicit ec: ExecutionContext) = Future {
     Logger.info(s"MockCloudwatch received server $server method $method path $path $ms ms Response $response")
   }

@@ -171,16 +171,16 @@ class ServerProxyImpl @Inject () (
       */
     request.queryString.get("callback").getOrElse(Nil).headOption match {
       case Some(callback) => {
-        envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, request, route, token, callback = Some(callback))
+        envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, request, route, token, callback = Some(callback), organization = organization, partner = partner)
       }
 
       case None => {
         request.queryString.get("envelope").getOrElse(Nil).headOption match {
           case Some(envelope) => {
-            envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, request, route, token)
+            envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, request, route, token, organization = organization, partner = partner)
           }
           case None => {
-            standard(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, route, request, token)
+            standard(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, route, request, token, organization = organization, partner = partner)
           }
         }
       }
@@ -196,7 +196,9 @@ class ServerProxyImpl @Inject () (
     request: Request[RawBuffer],
     route: Route,
     token: Option[ResolvedToken],
-    callback: Option[String] = None
+    callback: Option[String] = None,
+    organization: Option[String] = None,
+    partner: Option[String] = None
   ) = {
     val finalHeaders = proxyHeaders(requestId, request.headers, request.method, token)
 
@@ -250,7 +252,7 @@ class ServerProxyImpl @Inject () (
             case None => envBody
           }
 
-          cloudwatch.recordResponseTime(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status)
+          cloudwatch.recordResponseTime(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
           Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
           Ok(finalBody).as("application/javascript; charset=utf-8")
         }.recover {
@@ -293,7 +295,9 @@ class ServerProxyImpl @Inject () (
     requestId: String,
     route: Route,
     request: Request[RawBuffer],
-    token: Option[ResolvedToken]
+    token: Option[ResolvedToken],
+    organization: Option[String] = None,
+    partner: Option[String] = None
   ) = {
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
@@ -401,7 +405,7 @@ class ServerProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        cloudwatch.recordResponseTime(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status)
+        cloudwatch.recordResponseTime(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
         Logger.info(s"[proxy] ${request.method} $originalPathWithQuery ${definition.server.name}:${route.method} ${definition.server.host}$rewrittenPathWithQuery ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
