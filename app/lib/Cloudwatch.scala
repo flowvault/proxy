@@ -12,7 +12,7 @@ import play.api.{Configuration, Environment, Logger, Mode}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object MetricName {
+object CloudwatchMetricName {
   val ResponseTime = "response.time"
   val Value = "value"
 }
@@ -59,51 +59,26 @@ case class DefaultCloudwatch @Inject()(config: Config, env: Environment) extends
     partner: Option[String] = None
   )(implicit ec: ExecutionContext) = {
     Future {
-      val dims = (organization, partner) match {
-        case (Some(o), Some(p)) => {
-          Map(
-            "server" -> server,
-            "method" -> method,
-            "path" -> path,
-            "response" -> response,
-            "organization" -> o,
-            "partner" -> p
-          ).map{d => new Dimension().withName(d._1).withValue(d._2.toString)}.asJavaCollection
+      val dims = Map(
+        "server" -> Some(server),
+        "method" -> Some(method),
+        "path" -> Some(path),
+        "response" -> Some(response.toString),
+        "organization" -> organization,
+        "partner" -> partner
+      ).flatMap { t =>
+        t._2 match {
+          case None => None
+          case Some(value) => Some(new Dimension().withName(t._1).withValue(value))
         }
-        case (None, Some(p)) => {
-          Map(
-            "server" -> server,
-            "method" -> method,
-            "path" -> path,
-            "response" -> response,
-            "partner" -> p
-          ).map{d => new Dimension().withName(d._1).withValue(d._2.toString)}.asJavaCollection
-        }
-        case (Some(o), None) => {
-          Map(
-            "server" -> server,
-            "method" -> method,
-            "path" -> path,
-            "response" -> response,
-            "organization" -> o
-          ).map{d => new Dimension().withName(d._1).withValue(d._2.toString)}.asJavaCollection
-        }
-        case _ => {
-          Map(
-            "server" -> server,
-            "method" -> method,
-            "path" -> path,
-            "response" -> response
-          ).map{d => new Dimension().withName(d._1).withValue(d._2.toString)}.asJavaCollection
-        }
-      }
+      }.asJavaCollection
 
       client.putMetricData(
         new PutMetricDataRequest()
-          .withNamespace(MetricName.ResponseTime)
+          .withNamespace(CloudwatchMetricName.ResponseTime)
           .withMetricData(
             new MetricDatum()
-              .withMetricName(MetricName.Value)
+              .withMetricName(CloudwatchMetricName.Value)
               .withUnit(StandardUnit.Milliseconds)
               .withDimensions(dims)
               .withValue(ms.toDouble)
