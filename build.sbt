@@ -13,7 +13,6 @@ lazy val root = project
     libraryDependencies ++= Seq(
       filters,
       ws,
-      "com.librato.metrics" % "librato-java" % "2.0.3",
       "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.60",
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.3",
       "com.typesafe.play" %% "play-json" % "2.5.10",
