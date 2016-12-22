@@ -1,9 +1,9 @@
 package lib
 
-import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
 import javax.inject.{Inject, Singleton}
+
+import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
 import org.apache.commons.codec.binary.Base64
-import play.api.Logger
 
 sealed trait Authorization
 
@@ -49,6 +49,7 @@ object Authorization {
     * Indicates valid user ID was parsed from JWT token
     */
   case class User(id: String) extends Authorization
+
 }
 
 /**
@@ -82,7 +83,12 @@ class AuthorizationParser @Inject() (
       case "Basic" :: value :: Nil => {
         new String(Base64.decodeBase64(value.getBytes)).split(":").toList match {
           case Nil => Authorization.InvalidApiToken
-          case token :: rest => Authorization.Token(token)
+          case token :: _ => {
+            isAscii(token) match {
+              case true => Authorization.Token(token)
+              case false => Authorization.InvalidApiToken
+            }
+          }
         }
       }
 
@@ -99,7 +105,7 @@ class AuthorizationParser @Inject() (
 
   private[this] def jwtIsValid(token: String): Boolean = JsonWebToken.validate(token, config.jwtSalt)
 
-  private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization =
+  private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization = {
     claimsSet.asSimpleMap.toOption match {
       case Some(claims) => {
         claims.get("id") match {
@@ -110,4 +116,14 @@ class AuthorizationParser @Inject() (
 
       case _ => Authorization.InvalidBearer
     }
+  }
+
+  private[this] def isAsciiLetter(c: Char) = {
+    c.isLetter && c <= 'z'
+  }
+
+  private[this] def isAscii(s: String): Boolean = {
+    s.toList.forall(isAsciiLetter(_))
+  }
+
 }
