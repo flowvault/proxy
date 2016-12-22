@@ -3,7 +3,7 @@ package lib
 import javax.inject.{Inject, Singleton}
 
 import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
-import org.apache.commons.codec.binary.Base64
+import org.apache.commons.codec.binary.{Base64, StringUtils}
 
 sealed trait Authorization
 
