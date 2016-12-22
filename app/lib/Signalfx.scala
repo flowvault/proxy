@@ -77,7 +77,7 @@ case class DefaultSignalfx @Inject()(
       ),
       requestHeaders = Seq(("X-SF-TOKEN", token), ("Content-Type", "application/json"))
     ).map { result =>
-      Logger.error(s"Signalfx Response: $result")
+      Logger.info(s"Signalfx Response: $result")
     }.recover {
       case e: Throwable => Logger.error(s"SignalfxError Error calling signalfx: ${e.getMessage}")
     }
