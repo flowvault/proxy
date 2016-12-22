@@ -81,14 +81,10 @@ class AuthorizationParser @Inject() (
   def parse(headerValue: String): Authorization = {
     headerValue.split(" ").toList match {
       case "Basic" :: value :: Nil => {
-        new String(Base64.decodeBase64(value.getBytes)).split(":").toList match {
+
+        new String(Base64.decodeBase64(StringUtils.getBytesUsAscii(value))).split(":").toList match {
           case Nil => Authorization.InvalidApiToken
-          case token :: _ => {
-            isAscii(token) match {
-              case true => Authorization.Token(token)
-              case false => Authorization.InvalidApiToken
-            }
-          }
+          case token :: _ => Authorization.Token(token)
         }
       }
 
@@ -116,14 +112,6 @@ class AuthorizationParser @Inject() (
 
       case _ => Authorization.InvalidBearer
     }
-  }
-
-  private[this] def isAsciiLetter(c: Char) = {
-    c.isLetter && c <= 'z'
-  }
-
-  private[this] def isAscii(s: String): Boolean = {
-    s.toList.forall(isAsciiLetter(_))
   }
 
 }
