@@ -9,6 +9,7 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import javax.inject.Inject
 
+import actors.MetricActor
 import play.api.Logger
 import play.api.http.Status
 import play.api.inject.Module
@@ -106,7 +107,7 @@ class ServerProxyModule extends AbstractModule {
 }
 
 class ServerProxyImpl @Inject () (
-  metrics: MultiMetric,
+  @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
   system: ActorSystem,
   ws: WSClient,
   flowAuth: FlowAuth,
@@ -252,7 +253,7 @@ class ServerProxyImpl @Inject () (
             case None => envBody
           }
 
-          metrics.recordResponseTime(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
+          actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
           Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
           Ok(finalBody).as("application/javascript; charset=utf-8")
         }.recover {
@@ -405,7 +406,7 @@ class ServerProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        metrics.recordResponseTime(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
+        actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
         Logger.info(s"[proxy] ${request.method} $originalPathWithQuery ${definition.server.name}:${route.method} ${definition.server.host}$rewrittenPathWithQuery ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
