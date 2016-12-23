@@ -67,7 +67,7 @@ case class DefaultSignalfx @Inject()(
     }
 
     val datapointForm = DatapointForm(
-      guage = Some(
+      gauge = Some(
         Seq(
           Datapoint(
             metric = SignalfxMetricName.ResponseTime,

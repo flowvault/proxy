@@ -12,7 +12,7 @@ package io.flow.signalfx.v0.models {
   )
 
   case class DatapointForm(
-    guage: _root_.scala.Option[Seq[io.flow.signalfx.v0.models.Datapoint]] = None,
+    gauge: _root_.scala.Option[Seq[io.flow.signalfx.v0.models.Datapoint]] = None,
     counter: _root_.scala.Option[Seq[io.flow.signalfx.v0.models.Datapoint]] = None,
     cumulativeCounter: _root_.scala.Option[Seq[io.flow.signalfx.v0.models.Datapoint]] = None
   )
@@ -73,16 +73,16 @@ package io.flow.signalfx.v0.models {
 
     implicit def jsonReadsSignalfxDatapointForm: play.api.libs.json.Reads[DatapointForm] = {
       (
-        (__ \ "guage").readNullable[Seq[io.flow.signalfx.v0.models.Datapoint]] and
+        (__ \ "gauge").readNullable[Seq[io.flow.signalfx.v0.models.Datapoint]] and
         (__ \ "counter").readNullable[Seq[io.flow.signalfx.v0.models.Datapoint]] and
         (__ \ "cumulative_counter").readNullable[Seq[io.flow.signalfx.v0.models.Datapoint]]
       )(DatapointForm.apply _)
     }
 
     def jsObjectDatapointForm(obj: io.flow.signalfx.v0.models.DatapointForm) = {
-      (obj.guage match {
+      (obj.gauge match {
         case None => play.api.libs.json.Json.obj()
-        case Some(x) => play.api.libs.json.Json.obj("guage" -> play.api.libs.json.Json.toJson(x))
+        case Some(x) => play.api.libs.json.Json.obj("gauge" -> play.api.libs.json.Json.toJson(x))
       }) ++
       (obj.counter match {
         case None => play.api.libs.json.Json.obj()

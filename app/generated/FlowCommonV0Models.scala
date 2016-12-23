@@ -864,14 +864,15 @@ package io.flow.common.v0.models {
   }
 
   /**
-   * Defines the units of time that we support. We confirm with the standard set of
-   * units of time from
-   * http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html
+   * Defines the units of time that we support
    */
   sealed trait UnitOfTime
 
   object UnitOfTime {
 
+    case object Year extends UnitOfTime { override def toString = "year" }
+    case object Month extends UnitOfTime { override def toString = "month" }
+    case object Week extends UnitOfTime { override def toString = "week" }
     case object Day extends UnitOfTime { override def toString = "day" }
     case object Hour extends UnitOfTime { override def toString = "hour" }
     case object Minute extends UnitOfTime { override def toString = "minute" }
@@ -892,7 +893,7 @@ package io.flow.common.v0.models {
      * lower case to avoid collisions with the camel cased values
      * above.
      */
-    val all = Seq(Day, Hour, Minute)
+    val all = Seq(Year, Month, Week, Day, Hour, Minute)
 
     private[this]
     val byName = all.map(x => x.toString.toLowerCase -> x).toMap
