@@ -5,32 +5,46 @@ import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.flow.lib.apidoc.json.validation.FormData
 import java.net.URI
-import java.util.UUID
-import java.util.concurrent.Executors
 import javax.inject.Inject
 
 import actors.MetricActor
+import com.bryzek.apidoc.spec.v0.models.ParameterLocation
 import play.api.Logger
-import play.api.http.Status
-import play.api.inject.Module
-import play.api.libs.ws.{StreamedResponse, WSClient, WSRequest}
+import play.api.libs.ws.{StreamedResponse, WSClient}
 import play.api.mvc._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
 import lib._
-import play.api.libs.json.{JsArray, JsValue, Json}
+import play.api.libs.json.{JsValue, Json}
 
 case class ServerProxyDefinition(
   server: Server,
   multiService: io.flow.lib.apidoc.json.validation.MultiService // TODO Move higher level
 ) {
 
-  val contextName = s"${server.name}-context"
+  val contextName: String = s"${server.name}-context"
 
-  val hostHeaderValue = Option((new URI(server.host)).getHost).getOrElse {
+  val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
     sys.error(s"Could not parse host from server[$server]")
+  }
+
+  /**
+    * Returns the subset of query parameters that are documented as acceptable for this method
+    */
+  def definedQueryParameters(
+    method: String,
+    path: String,
+    allQueryParameters: Seq[(String, String)]
+  ): Seq[(String, String)] = {
+    val definedNames = multiService.parametersFromPath(method, path).getOrElse(Nil).filter { p =>
+      p.location == ParameterLocation.Query
+    }.map(_.name)
+
+    val defined = allQueryParameters.filter { case (key, _) => definedNames.contains(key) }
+    println(s"defined: $defined")
+    defined
   }
 
 }
@@ -82,7 +96,7 @@ object ServerProxy {
     *      ("foo2", "c")
     *    )
     *  }}}
-    *  
+    *
     *  @param incoming A map of query parameter keys to sequences of their values.
     *  @return A sequence of keys, each paired with exactly one value. The keys are further
     *          normalized to match Flow expectations (e.g. number[] => number)
@@ -157,14 +171,14 @@ class ServerProxyImpl @Inject () (
     val finalHeaders: Headers = proxyHeaders(requestId, request.headers, request.method, token)
     val originalQuery: Map[String, Seq[String]] = request.queryString
     val finalQuery: Seq[(String, String)] = ServerProxy.query(originalQuery)
-    val (originalPathWithQuery, rewrittenPathWithQuery): (String, String) = originalQuery.isEmpty match {
-      case true => (request.path, request.path)
-      case false => {
-        val rewritten = finalQuery.map { case (key, value) =>
-          s"$key=$value"
-        }.mkString("&")
-        (request.uri, s"${request.path}?$rewritten")
-      }
+
+    val (originalPathWithQuery, rewrittenPathWithQuery): (String, String) = if (originalQuery.isEmpty) {
+      (request.path, request.path)
+    } else {
+      val rewritten = finalQuery.map { case (key, value) =>
+        s"$key=$value"
+      }.mkString("&")
+      (request.uri, s"${request.path}?$rewritten")
     }
 
     /**
@@ -172,13 +186,13 @@ class ServerProxyImpl @Inject () (
       */
     request.queryString.get("callback").getOrElse(Nil).headOption match {
       case Some(callback) => {
-        envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, request, route, token, callback = Some(callback), organization = organization, partner = partner)
+        envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, requestId, request, route, token, callback = Some(callback), organization = organization, partner = partner)
       }
 
       case None => {
         request.queryString.get("envelope").getOrElse(Nil).headOption match {
           case Some(envelope) => {
-            envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, request, route, token, organization = organization, partner = partner)
+            envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery,requestId, request, route, token, organization = organization, partner = partner)
           }
           case None => {
             standard(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, route, request, token, organization = organization, partner = partner)
@@ -192,7 +206,6 @@ class ServerProxyImpl @Inject () (
     finalHeaders: Headers,
     finalQuery: Seq[(String, String)],
     originalPathWithQuery: String,
-    rewrittenPathWithQuery: String,
     requestId: String,
     request: Request[RawBuffer],
     route: Route,
@@ -241,6 +254,7 @@ class ServerProxyImpl @Inject () (
           .withFollowRedirects(false)
           .withMethod(route.method)
           .withHeaders(finalHeaders.headers: _*)
+          .withQueryString(definition.definedQueryParameters(route.method, route.path, finalQuery): _*)
           .withBody(body)
 
         val startMs = System.currentTimeMillis
@@ -249,7 +263,7 @@ class ServerProxyImpl @Inject () (
 
           val envBody = envelopeBody(response.status, response.allHeaders, response.body)
           val finalBody = callback match {
-            case Some(callback) => jsonpEnvelopeBody(callback, envBody)
+            case Some(cb) => jsonpEnvelopeBody(cb, envBody)
             case None => envBody
           }
 
@@ -458,18 +472,14 @@ class ServerProxyImpl @Inject () (
         Constants.Headers.FlowAuth -> flowAuth.jwt(t)
       },
 
-      (
-        headers.get("cf-connecting-ip").map { ip =>  // IP Address from cloudflare
-          Constants.Headers.FlowIp -> ip
-        }
-      ),
+      headers.get("cf-connecting-ip").map { ip => // IP Address from cloudflare
+        Constants.Headers.FlowIp -> ip
+      },
 
-      (
-        headers.get("Content-Type") match {
-          case None => Some("Content-Type" -> DefaultContentType)
-          case Some(_) => None
-        }
-      )      
+      headers.get("Content-Type") match {
+        case None => Some("Content-Type" -> DefaultContentType)
+        case Some(_) => None
+      }
     ).flatten
 
     val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(headers) { case (h, n) => h.remove(n) }
