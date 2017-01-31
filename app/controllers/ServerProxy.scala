@@ -38,13 +38,18 @@ case class ServerProxyDefinition(
     path: String,
     allQueryParameters: Seq[(String, String)]
   ): Seq[(String, String)] = {
-    val definedNames = multiService.parametersFromPath(method, path).getOrElse(Nil).filter { p =>
-      p.location == ParameterLocation.Query
-    }.map(_.name)
+    multiService.parametersFromPath(method, path) match {
+      case None => {
+        allQueryParameters
+      }
 
-    val defined = allQueryParameters.filter { case (key, _) => definedNames.contains(key) }
-    println(s"defined: $defined")
-    defined
+      case Some(parameters) => {
+        val definedNames = parameters.filter { p =>
+          p.location == ParameterLocation.Query
+        }.map(_.name)
+        allQueryParameters.filter { case (key, _) => definedNames.contains(key) }
+      }
+    }
   }
 
 }
