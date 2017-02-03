@@ -497,8 +497,17 @@ class ServerProxyImpl @Inject () (
     */
   private[this] def clientIp(headers: Headers): Option[String] = {
     headers.get("cf-connecting-ip") match {
-      case None => headers.get("true-client-ip")
       case Some(ip) => Some(ip)
+      case None => headers.get("true-client-ip") match {
+        case Some(ip) => Some(ip)
+        case None => {
+          // Sometimes we see an ip in forwarded-for header even if not in other
+          // ip related headers
+          headers.get("X-Forwarded-For").flatMap { ips =>
+            ips.split(",").headOption
+          }
+        }
+      }
     }
   }
 
