@@ -18,6 +18,11 @@ object LoggingUtil {
     "order_put_form" -> Set("number")
   )
 
+  // Map from apidoc model type to list of fields to whitelist
+  private[this] val BlacklistedModels = Set(
+    "password_change_form"
+  )
+
   /**
     * Accepts a JsValue, redacting any fields that may contain sensitive data
     * @param body The JsValue itself
@@ -27,6 +32,7 @@ object LoggingUtil {
     body: JsValue,
     typ: Option[String] = None
   ): JsValue = {
+    val isModelBlacklisted = typ.map(BlacklistedModels.contains).getOrElse(false)
     val allFieldsToReplace = typ.flatMap(WhiteListByType.get) match {
       case None => GlobalFieldsToReplace
       case Some(whitelist) => GlobalFieldsToReplace.diff(whitelist)
@@ -35,7 +41,7 @@ object LoggingUtil {
     body match {
       case o: JsObject => JsObject(
         o.value.map { case (k, v) =>
-          if (allFieldsToReplace.contains(k.toLowerCase.trim)) {
+          if (isModelBlacklisted || allFieldsToReplace.contains(k.toLowerCase.trim)) {
             val redactedValue = v match {
               case JsNull => JsNull
               case _: JsBoolean => JsBoolean(false)

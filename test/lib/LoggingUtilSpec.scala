@@ -52,4 +52,18 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
       )
     )
   }
+
+  "safeJson with fully redacted form" in {
+    LoggingUtil.safeJson(
+      Json.obj(
+        "current" -> "foo",
+        "new" -> "bar"
+      )
+    ) must equal(
+      Json.obj(
+        "current" -> "xxx",
+        "new" -> "xxx"
+      )
+    )
+  }
 }
