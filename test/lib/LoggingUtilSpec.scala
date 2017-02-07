@@ -58,7 +58,8 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
       Json.obj(
         "current" -> "foo",
         "new" -> "bar"
-      )
+      ),
+      Some("password_change_form")
     ) must equal(
       Json.obj(
         "current" -> "xxx",
