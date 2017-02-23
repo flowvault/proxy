@@ -1,10 +1,14 @@
 package controllers
 
+import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import lib.Config
+
+import lib.{Config, Constants}
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
+
+import scala.concurrent.Future
 
 @Singleton
 class Internal @Inject() (
@@ -18,11 +22,11 @@ class Internal @Inject() (
 
   private[this] val RobotsTxt = "User-agent: *\nDisallow: /"
 
-  def getRobots() = Action { request =>
+  def getRobots = Action { _ =>
     Ok(RobotsTxt)
   }
 
-  def getHealthcheck() = Action { request =>
+  def getHealthcheck = Action { _ =>
     config.missing.toList match {
       case Nil => {
         reverseProxy.index.config.operations.toList match {
@@ -50,7 +54,7 @@ class Internal @Inject() (
     }
   }
 
-  def getConfig() = Action { request =>
+  def getConfig = Action { _ =>
     Ok(
       Json.obj(
         "sources" -> reverseProxy.index.config.sources.map { source =>
@@ -75,6 +79,27 @@ class Internal @Inject() (
           )
         }
       )
+    )
+  }
+
+  def diagnostics = Action.async(parse.raw) { request: Request[RawBuffer] =>
+    val data = Seq(
+      ("method", request.method),
+      ("path", request.path),
+      ("queryString", request.rawQueryString),
+      ("headers", request.headers.headers.sortBy { _._1.toLowerCase }.map { case (k, v) =>
+        s"$k: $v"
+      }.mkString("<ul><li>", "</li>\n<li>\n", "</li></ul>")),
+      ("body class", request.body.getClass.getName),
+      ("body",request.body.asBytes().map(_.decodeString("UTF-8")).getOrElse(""))
+    )
+
+    val msg = data.map { case (k, v) =>
+        s"<h2>$k</h2><blockquote>$v</blockquote>"
+    }.mkString("\n")
+
+    Future.successful(
+      Ok(msg).as("text/html")
     )
   }
 
