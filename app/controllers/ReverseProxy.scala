@@ -117,27 +117,25 @@ class ReverseProxy @Inject () (
     // If we have a callback param indicated JSONP, respect the method parameter as well
     val method = request.queryString.get("callback") match {
       case None => request.method
-      case Some(_) => request.queryString.get("method").getOrElse(Nil).headOption.map(_.toUpperCase).getOrElse(request.method)
+      case Some(_) => request.queryString.getOrElse("method", Nil).headOption.map(_.toUpperCase).getOrElse(request.method)
     }
 
-    resolve(requestId, method, request, token).flatMap { result =>
-      result match {
-        case Left(result) => {
-          Future(result)
-        }
+    resolve(requestId, method, request, token).flatMap {
+      case Left(result) => {
+        Future(result)
+      }
 
-        case Right(operation) => {
-          operation.route.organization(request.path) match {
-            case None => {
-              operation.route.partner(request.path) match {
-                case None => proxyDefault(operation, requestId, request, token)
-                case Some(partner) => proxyPartner(operation, partner, requestId, request, token)
-              }
+      case Right(operation) => {
+        operation.route.organization(request.path) match {
+          case None => {
+            operation.route.partner(request.path) match {
+              case None => proxyDefault(operation, requestId, request, token)
+              case Some(partner) => proxyPartner(operation, partner, requestId, request, token)
             }
+          }
 
-            case Some(org) => {
-              proxyOrganization(operation, org, requestId, request, token)
-            }
+          case Some(org) => {
+            proxyOrganization(operation, org, requestId, request, token)
           }
         }
       }
