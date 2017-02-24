@@ -20,7 +20,3 @@ code:
       version: latest
       generators:
         play_2_5_client: app/generated
-    signalfx:
-      version: latest
-      generators:
-        play_2_5_client: app/generated

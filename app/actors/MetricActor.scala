@@ -1,7 +1,7 @@
 package actors
 
 import akka.actor.{Actor, ActorLogging, ActorSystem}
-import lib.{Cloudwatch, Signalfx}
+import lib.Cloudwatch
 import com.google.inject.AbstractModule
 import play.api.libs.concurrent.AkkaGuiceSupport
 import scala.concurrent.ExecutionContext
@@ -22,8 +22,7 @@ object MetricActor {
 class MetricActor @javax.inject.Inject() (
   config: lib.Config,
   system: ActorSystem,
-  cloudwatch: Cloudwatch,
-  signalfx: Signalfx
+  cloudwatch: Cloudwatch
 ) extends Actor with ActorLogging {
 
   private[this] implicit val ec: ExecutionContext = system.dispatchers.lookup("metric-actor-context")
@@ -31,7 +30,6 @@ class MetricActor @javax.inject.Inject() (
   def receive = akka.event.LoggingReceive {
     case msg @ MetricActor.Messages.Send(server, method, path, ms, response, organization, partner) => {
       cloudwatch.recordResponseTime(server, method, path, ms, response, organization, partner)
-      signalfx.recordResponseTime(server, method, path, ms, response, organization, partner)
     }
 
     case msg: Any => // noop
