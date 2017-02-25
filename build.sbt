@@ -19,7 +19,7 @@ lazy val root = project
       "com.typesafe.play" %% "play-json" % "2.5.12",
       "io.flow" %% "lib-apidoc-json-validation" % "0.0.32",
       "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test",
-      "org.yaml" % "snakeyaml" % "1.17"
+      "org.yaml" % "snakeyaml" % "1.18"
     )
   )
 
