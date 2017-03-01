@@ -189,14 +189,14 @@ class ServerProxyImpl @Inject () (
     /**
       * Choose the type of request based on callback/envelope or standard implementation
       */
-    request.queryString.get("callback").getOrElse(Nil).headOption match {
+    request.queryString.getOrElse("callback", Nil).headOption match {
       case Some(callback) => {
         envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, requestId, request, route, token, callback = Some(callback), organization = organization, partner = partner)
       }
 
       case None => {
-        request.queryString.get("envelope").getOrElse(Nil).headOption match {
-          case Some(envelope) => {
+        request.queryString.getOrElse("envelope", Nil).headOption match {
+          case Some("response") => {
             envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery,requestId, request, route, token, organization = organization, partner = partner)
           }
           case None => {
