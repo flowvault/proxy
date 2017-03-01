@@ -13,6 +13,13 @@ object ProxyRequestBody {
   case class File(file: java.io.File) extends ProxyRequestBody
 }
 
+object ProxyRequest {
+
+  def validate(request: Request[RawBuffer]): Either[Seq[String], ProxyRequest] = {
+    Right(new ProxyRequest(request))
+  }
+}
+
 class ProxyRequest(
   request: Request[RawBuffer]
 ) {
@@ -21,6 +28,9 @@ class ProxyRequest(
   val method: String = request.method
   val path: String = request.path
   val uri: String = request.uri
+
+  val jsonpCallback: Option[String] = request.queryString.getOrElse("callback", Nil).headOption
+  val responseEnvelope: Boolean = jsonpCallback.isDefined || request.queryString.getOrElse("envelope", Nil).contains("response")
 
   val body: ProxyRequestBody= request.body.asBytes() match {
     case None => ProxyRequestBody.File(request.body.asFile)

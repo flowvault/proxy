@@ -189,25 +189,14 @@ class ServerProxyImpl @Inject () (
     /**
       * Choose the type of request based on callback/envelope or standard implementation
       */
-    request.queryString.getOrElse("callback", Nil).headOption match {
-      case Some(callback) => {
-        envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery, requestId, request, route, token, callback = Some(callback), organization = organization, partner = partner)
-      }
-
-      case None => {
-        request.queryString.getOrElse("envelope", Nil).headOption match {
-          case Some("response") => {
-            envelopeRequest(finalHeaders, finalQuery, originalPathWithQuery,requestId, request, route, token, organization = organization, partner = partner)
-          }
-          case None => {
-            standard(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, route, request, token, organization = organization, partner = partner)
-          }
-        }
-      }
+    if (request.responseEnvelope) {
+      envelopeResponse(finalHeaders, finalQuery, originalPathWithQuery, requestId, request, route, token, callback = request.jsonpCallback, organization = organization, partner = partner)
+    } else {
+      standard(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, route, request, token, organization = organization, partner = partner)
     }
   }
 
-  private[this] def envelopeRequest(
+  private[this] def envelopeResponse(
     finalHeaders: Headers,
     finalQuery: Seq[(String, String)],
     originalPathWithQuery: String,

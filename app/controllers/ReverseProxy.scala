@@ -67,7 +67,12 @@ class ReverseProxy @Inject () (
   }
 
   def handle: Action[RawBuffer] = Action.async(parse.raw) { request =>
-    internalHandle(new ProxyRequest(request))
+      ProxyRequest.validate(request) match {
+      case Left(errors) => Future.successful {
+        unprocessableEntity(errors.mkString(", "))
+      }
+      case Right(pr) => internalHandle(pr)
+    }
   }
 
   private[this] def internalHandle(request: ProxyRequest): Future[Result] = {
@@ -360,10 +365,6 @@ class ReverseProxy @Inject () (
     NotFound(genericError(message))
   }
 
-  private[this] def notFound(message: String) = {
-    NotFound(genericError(message))
-  }
-
   private[this] def unprocessableEntity(message: String) = {
     UnprocessableEntity(genericError(message))
   }
@@ -371,7 +372,6 @@ class ReverseProxy @Inject () (
   private[this] def findServerByName(name: String): Option[Server] = {
     index.config.servers.find(_.name == name)
   }
-
 
   /**
     * Queries token server to check if the specified token is a known
