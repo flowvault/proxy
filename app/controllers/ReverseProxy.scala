@@ -66,7 +66,11 @@ class ReverseProxy @Inject () (
     all.toMap
   }
 
-  def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
+  def handle: Action[RawBuffer] = Action.async(parse.raw) { request =>
+    internalHandle(new ProxyRequest(request))
+  }
+
+  private[this] def internalHandle(request: ProxyRequest): Future[Result] = {
     val requestId: String = request.headers.get(Constants.Headers.FlowRequestId).getOrElse {
       "api" + UUID.randomUUID.toString.replaceAll("-", "") // make easy to cut & paste
     }
@@ -111,7 +115,7 @@ class ReverseProxy @Inject () (
   
   private[this] def proxyPostAuth(
     requestId: String,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Future[Result] = {
     // If we have a callback param indicated JSONP, respect the method parameter as well
@@ -146,7 +150,7 @@ class ReverseProxy @Inject () (
   private[this] def proxyDefault(
     operation: Operation,
     requestId: String,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Future[Result] = {
     lookup(operation.server.name).proxy(
@@ -163,7 +167,7 @@ class ReverseProxy @Inject () (
     operation: Operation,
     organization: String,
     requestId: String,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Future[Result] = {
     token match {
@@ -202,7 +206,7 @@ class ReverseProxy @Inject () (
     operation: Operation,
     partner: String,
     requestId: String,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Future[Result] = {
     token match {
@@ -249,7 +253,7 @@ class ReverseProxy @Inject () (
   private[this] def resolve(
     requestId: String,
     method: String,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Future[Either[Result, Operation]] = {
     val path = request.path

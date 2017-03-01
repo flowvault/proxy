@@ -66,7 +66,7 @@ trait ServerProxy {
 
   def proxy(
     requestId: String,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     route: Route,
     token: Option[ResolvedToken],
     organization: Option[String] = None,
@@ -162,7 +162,7 @@ class ServerProxyImpl @Inject () (
 
   override final def proxy(
     requestId: String,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     route: Route,
     token: Option[ResolvedToken],
     organization: Option[String] = None,
@@ -212,7 +212,7 @@ class ServerProxyImpl @Inject () (
     finalQuery: Seq[(String, String)],
     originalPathWithQuery: String,
     requestId: String,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     route: Route,
     token: Option[ResolvedToken],
     callback: Option[String] = None,
@@ -222,18 +222,18 @@ class ServerProxyImpl @Inject () (
     val finalHeaders = proxyHeaders(requestId, request.headers, request.method, token)
 
     val formData: JsValue = callback match {
-      case Some(callback) => {
+      case Some(_) => {
         FormData.toJson(request.queryString - "method" - "callback")
       }
       case None => {
         finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
           // We turn url form encoded into application/json
           case UrlFormEncodedContentType => {
-            val b: String = request.body.asBytes().get.decodeString("UTF-8")
+            val b: String = request.bodyUtf8.get
             FormData.toJson(FormData.parseEncoded(b))
           }
           case ApplicationJsonContentType => {
-            val b: String = request.body.asBytes().get.decodeString("UTF-8")
+            val b: String = request.bodyUtf8.get
             Json.parse(b)
           }
         }
@@ -246,7 +246,7 @@ class ServerProxyImpl @Inject () (
       case Left(errors) => {
         val envBody = envelopeBody(422, Map(), genericErrors(errors).toString)
         val finalBody = callback match {
-          case Some(callback) => jsonpEnvelopeBody(callback, envBody)
+          case Some(cb) => jsonpEnvelopeBody(cb, envBody)
           case None => envBody
         }
 
@@ -316,7 +316,7 @@ class ServerProxyImpl @Inject () (
     rewrittenPathWithQuery: String,
     requestId: String,
     route: Route,
-    request: Request[RawBuffer],
+    request: ProxyRequest,
     token: Option[ResolvedToken],
     organization: Option[String] = None,
     partner: Option[String] = None
@@ -330,7 +330,7 @@ class ServerProxyImpl @Inject () (
 
       // We turn url form encoded into application/json
       case UrlFormEncodedContentType => {
-        val b: String = request.body.asBytes().get.decodeString("UTF-8")
+        val b: String = request.bodyUtf8.get
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
         logFormData(requestId, request.path, route, newBody)
@@ -356,7 +356,7 @@ class ServerProxyImpl @Inject () (
       }
 
       case ApplicationJsonContentType => {
-        val body = request.body.asBytes().get.decodeString("UTF-8")
+        val body = request.bodyUtf8.get
         Try {
           if (body.trim.isEmpty) {
             // e.g. PUT/DELETE with empty body
@@ -400,15 +400,15 @@ class ServerProxyImpl @Inject () (
       }
 
       case _ => {
-        request.body.asBytes() match {
-          case None => {
+        request.body match {
+          case ProxyRequestBody.File(file) => {
             req
               .withHeaders(finalHeaders.headers: _*)
-              .post(request.body.asFile)
+              .post(file)
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
 
-          case Some(bytes) => {
+          case ProxyRequestBody.Bytes(bytes) => {
             req
               .withHeaders(finalHeaders.headers: _*)
               .withBody(bytes)
@@ -426,24 +426,24 @@ class ServerProxyImpl @Inject () (
         r
       }
 
-      case StreamedResponse(response, body) => {
+      case StreamedResponse(r, body) => {
         val timeToFirstByteMs = System.currentTimeMillis - startMs
-        val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
-        val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
+        val contentType: Option[String] = r.headers.get("Content-Type").flatMap(_.headOption)
+        val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
 
-        actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
-        Logger.info(s"[proxy] ${request.method} $originalPathWithQuery ${definition.server.name}:${route.method} ${definition.server.host}$rewrittenPathWithQuery ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+        actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, r.status, organization, partner)
+        Logger.info(s"[proxy] ${request.method} $originalPathWithQuery ${definition.server.name}:${route.method} ${definition.server.host}$rewrittenPathWithQuery ${r.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
           case Some(length) => {
-            Status(response.status).sendEntity(HttpEntity.Streamed(body, Some(length), contentType))
+            Status(r.status).sendEntity(HttpEntity.Streamed(body, Some(length), contentType))
           }
 
           case None => {
             contentType match {
-              case None => Status(response.status).chunked(body)
-              case Some(ct) => Status(response.status).chunked(body).as(ct)
+              case None => Status(r.status).chunked(body)
+              case Some(ct) => Status(r.status).chunked(body).as(ct)
             }
           }
         }
