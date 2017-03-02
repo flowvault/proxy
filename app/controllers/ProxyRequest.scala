@@ -69,17 +69,19 @@ object ProxyRequest {
   }
 }
 
+/**
+  * @param method Either the 'request' query parameter, or default http method of the request
+  * @param envelopes List of envelopes to use in the processing of the request
+  */
 class ProxyRequest(
   request: Request[RawBuffer],
   method: String,
   envelopes: Seq[Envelope]
 ) {
-  // Provides the query string, minus the reserverd fields for proxy
+  // Provides the query string, minus the reserved fields for proxy
   val queryString: Map[String, Seq[String]] = queryString - "method" - "callback" - "envelope"
   val headers: Headers = request.headers
 
-  // Returns either the 'request' query parameter, or default http method of the request
-  val method: String = request.queryString.getOrElse("method", Nil).headOption.map(_.toUpperCase).getOrElse(request.method)
 
   val path: String = request.path
   val uri: String = request.uri
