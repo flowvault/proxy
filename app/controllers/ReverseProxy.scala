@@ -123,13 +123,7 @@ class ReverseProxy @Inject () (
     request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Future[Result] = {
-    // If we have a callback param indicated JSONP, respect the method parameter as well
-    val method = request.queryString.get("callback") match {
-      case None => request.method
-      case Some(_) => request.queryString.getOrElse("method", Nil).headOption.map(_.toUpperCase).getOrElse(request.method)
-    }
-
-    resolve(requestId, method, request, token).flatMap {
+    resolve(requestId, request, token).flatMap {
       case Left(result) => {
         Future(result)
       }
@@ -257,7 +251,6 @@ class ReverseProxy @Inject () (
     */
   private[this] def resolve(
     requestId: String,
-    method: String,
     request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Future[Either[Result, Operation]] = {
@@ -267,15 +260,15 @@ class ReverseProxy @Inject () (
 
     (serverNameOverride.isEmpty && hostOverride.isEmpty) match {
       case true => Future {
-        index.resolve(method, path) match {
+        index.resolve(request.method, path) match {
           case None => {
-            multiService.validate(method, path) match {
+            multiService.validate(request.method, path) match {
               case Left(errors) => {
-                Logger.info(s"Unrecognized method $method for $path - returning 422 w/ available methods: $errors")
+                Logger.info(s"Unrecognized method ${request.method} for $path - returning 422 w/ available methods: $errors")
                 Left(UnprocessableEntity(genericErrors(errors)))
               }
               case Right(_) => {
-                Logger.info(s"Unrecognized URL $method $path - returning 404")
+                Logger.info(s"Unrecognized URL ${request.method} $path - returning 404")
                 Left(NotFound)
               }
             }
@@ -310,7 +303,7 @@ class ReverseProxy @Inject () (
                       case true => Right(
                         Operation(
                           route = Route(
-                            method = method,
+                            method = request.method,
                             path = path
                           ),
                           server = Server(name = "override", host = host)
@@ -337,7 +330,7 @@ class ReverseProxy @Inject () (
                         Right(
                           Operation(
                             Route(
-                              method = method,
+                              method = request.method,
                               path = path
                             ),
                             server = server

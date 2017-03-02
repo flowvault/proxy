@@ -2,6 +2,7 @@ package controllers
 
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
+import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.flow.lib.apidoc.json.validation.FormData
 import java.net.URI
@@ -212,7 +213,7 @@ class ServerProxyImpl @Inject () (
 
     val formData: JsValue = callback match {
       case Some(_) => {
-        FormData.toJson(request.queryString - "method" - "callback")
+        FormData.toJson(request.queryString)
       }
       case None => {
         finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
