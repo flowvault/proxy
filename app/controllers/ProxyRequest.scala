@@ -1,10 +1,8 @@
 package controllers
 
-import java.nio.charset.Charset
-
 import akka.util.ByteString
+import java.nio.charset.Charset
 import play.api.mvc.{Headers, RawBuffer, Request}
-
 
 sealed trait Envelope
 object Envelope {
@@ -55,9 +53,9 @@ object ProxyRequest {
       case values => {
         val (invalid, valid) = values.map(Envelope.fromString).partition(_.isEmpty)
         if (invalid.isEmpty) {
-          (valid.distinct, Nil)
+          (valid.flatten.distinct, Nil)
         } else {
-          (valid, Seq(s"Invalid value for parameter 'envelope' - must be one of ${Envelope.all.map(_.toString).mkString(", ")}"))
+          (valid.flatten, Seq(s"Invalid value for parameter 'envelope' - must be one of ${Envelope.all.map(_.toString).mkString(", ")}"))
         }
       }
     }
@@ -74,20 +72,19 @@ object ProxyRequest {
   * @param envelopes List of envelopes to use in the processing of the request
   */
 class ProxyRequest(
-  request: Request[RawBuffer],
-  method: String,
+  val request: Request[RawBuffer],
+  val method: String,
   envelopes: Seq[Envelope]
 ) {
   // Provides the query string, minus the reserved fields for proxy
   val queryString: Map[String, Seq[String]] = queryString - "method" - "callback" - "envelope"
   val headers: Headers = request.headers
 
-
   val path: String = request.path
   val uri: String = request.uri
 
   val jsonpCallback: Option[String] = request.queryString.getOrElse("callback", Nil).headOption
-  val responseEnvelope: Boolean = jsonpCallback.isDefined || request.queryString.getOrElse("envelope", Nil).contains("response")
+  val responseEnvelope: Boolean = jsonpCallback.isDefined || envelopes.contains(Envelope.Response)
 
   val body: ProxyRequestBody= request.body.asBytes() match {
     case None => ProxyRequestBody.File(request.body.asFile)
