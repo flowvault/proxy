@@ -13,11 +13,13 @@ import play.api.Logger
 import play.api.libs.ws.{StreamedResponse, WSClient}
 import play.api.mvc._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
 import lib._
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
+
+import scala.annotation.tailrec
 
 case class ServerProxyDefinition(
   server: Server,
@@ -133,8 +135,14 @@ class ServerProxyImpl @Inject () (
   @Assisted override val definition: ServerProxyDefinition
 ) extends ServerProxy with Controller with lib.Errors {
 
-  private[this] implicit val (ec, name) = {
-    val name = definition.contextName
+  private[this] implicit val (ec, name) = resolveContextName(definition.contextName)
+
+  /**
+    * Returns the execution context to use, if found. Works by recursively
+    * shortening service name by splitting on "-"
+    */
+  @tailrec
+  private[this] def resolveContextName(name: String): (ExecutionContext, String) = {
     Try {
       system.dispatchers.lookup(name)
     } match {
@@ -144,13 +152,16 @@ class ServerProxyImpl @Inject () (
       }
 
       case Failure(_) => {
-        Logger.warn(s"ServerProxy[${definition.server.name}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
-        (system.dispatchers.lookup(ServerProxy.DefaultContextName), ServerProxy.DefaultContextName)
+        val i = name.lastIndexOf("-")
+        if (i > 0) {
+          resolveContextName(name.substring(0, i))
+        } else {
+          Logger.warn(s"ServerProxy[${definition.server.name}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
+          (system.dispatchers.lookup(ServerProxy.DefaultContextName), ServerProxy.DefaultContextName)
+        }
       }
     }
   }
-
-  val executionContextName: String = name
 
   private[this] val ApplicationJsonContentType = "application/json"
   private[this] val UrlFormEncodedContentType = "application/x-www-form-urlencoded"
