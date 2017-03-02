@@ -1,7 +1,8 @@
-package controllers
+package lib
+
+import java.nio.charset.Charset
 
 import akka.util.ByteString
-import java.nio.charset.Charset
 import play.api.mvc.{Headers, RawBuffer, Request}
 
 sealed trait Envelope
@@ -28,11 +29,36 @@ object ProxyRequestBody {
 
 object ProxyRequest {
 
+  val ReservedQueryParameters = Seq("method", "callback", "envelope")
+
   private[this] val ValidMethods = Seq("POST", "PUT", "PATCH", "DELETE")
 
   def validate(request: Request[RawBuffer]): Either[Seq[String], ProxyRequest] = {
-    val (method, methodErrors) = request.queryString.getOrElse("method", Nil).map(_.toUpperCase).toList match {
-      case Nil => (request.method, Nil)
+    validate(
+      requestMethod = request.method,
+      requestUri = request.uri,
+      requestPath = request.path,
+      body = request.body.asBytes() match {
+        case None => ProxyRequestBody.File(request.body.asFile)
+        case Some(bytes) => ProxyRequestBody.Bytes(bytes)
+      },
+      queryParameters = request.queryString,
+      headers = request.headers,
+      jsonpCallback = request.queryString.getOrElse("callback", Nil).headOption
+    )
+  }
+
+  def validate(
+    requestMethod: String,
+    requestPath: String,
+    requestUri: String,
+    body: ProxyRequestBody,
+    queryParameters: Map[String, Seq[String]],
+    headers: Headers,
+    jsonpCallback: Option[String]
+  ): Either[Seq[String], ProxyRequest] = {
+    val (method, methodErrors) = queryParameters.getOrElse("method", Nil).map(_.toUpperCase).toList match {
+      case Nil => (requestMethod, Nil)
 
       case m :: Nil => {
         if (ValidMethods.contains(m)) {
@@ -47,7 +73,7 @@ object ProxyRequest {
       }
     }
 
-    val (envelopes, envelopeErrors) = request.queryString.getOrElse("envelope", Nil).map(_.toUpperCase).toList match {
+    val (envelopes, envelopeErrors) = queryParameters.getOrElse("envelope", Nil).toList match {
       case Nil => (Nil, Nil)
 
       case values => {
@@ -61,7 +87,17 @@ object ProxyRequest {
     }
 
     methodErrors ++ envelopeErrors match {
-      case Nil => Right(new ProxyRequest(request, method = method, envelopes = envelopes))
+      case Nil => Right(
+        ProxyRequest(
+          headers = headers,
+          method = method,
+          path = requestPath,
+          uri = requestUri,
+          body = body,
+          queryParameters = queryParameters.filter { case (k, _) => !ReservedQueryParameters.contains(k) },
+          envelopes = envelopes
+        )
+      )
       case errors => Left(errors)
     }
   }
@@ -71,25 +107,27 @@ object ProxyRequest {
   * @param method Either the 'request' query parameter, or default http method of the request
   * @param envelopes List of envelopes to use in the processing of the request
   */
-class ProxyRequest(
-  val request: Request[RawBuffer],
-  val method: String,
-  envelopes: Seq[Envelope]
+case class ProxyRequest(
+  headers: Headers,
+  method: String,
+  path: String,
+  uri: String,
+  body: ProxyRequestBody,
+  jsonpCallback: Option[String] = None,
+  envelopes: Seq[Envelope] = Nil,
+  queryParameters: Map[String, Seq[String]] = Map()
 ) {
-  // Provides the query string, minus the reserved fields for proxy
-  val queryString: Map[String, Seq[String]] = queryString - "method" - "callback" - "envelope"
-  val headers: Headers = request.headers
+  assert(
+    ProxyRequest.ReservedQueryParameters.filterNot { queryParameters.isDefinedAt } == Nil,
+    "Cannot provide query reserved parameters"
+  )
 
-  val path: String = request.path
-  val uri: String = request.uri
+  assert(
+    method.toUpperCase.trim == method,
+    "Method[$method] must be in uppercase, trimmed"
+  )
 
-  val jsonpCallback: Option[String] = request.queryString.getOrElse("callback", Nil).headOption
   val responseEnvelope: Boolean = jsonpCallback.isDefined || envelopes.contains(Envelope.Response)
-
-  val body: ProxyRequestBody= request.body.asBytes() match {
-    case None => ProxyRequestBody.File(request.body.asFile)
-    case Some(bytes) => ProxyRequestBody.Bytes(bytes)
-  }
 
   /**
     * Assumes the body is a byte array, returning the string value as a UTF-8
@@ -102,5 +140,3 @@ class ProxyRequest(
     }
   }
 }
-
-

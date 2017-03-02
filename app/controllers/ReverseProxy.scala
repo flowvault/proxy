@@ -8,12 +8,13 @@ import io.flow.organization.v0.models.{Membership, OrganizationAuthorizationForm
 import io.flow.token.v0.models.{OrganizationTokenReference, TokenAuthenticationForm, TokenReference}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth}
-import lib.{Operation, ResolvedToken, Route, Server, ProxyConfigFetcher}
+
+import lib._
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
 import org.apache.commons.codec.binary.Base64
+
 import scala.concurrent.Future
 
 @Singleton
