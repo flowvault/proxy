@@ -5,6 +5,22 @@ import java.nio.charset.Charset
 import akka.util.ByteString
 import play.api.mvc.{Headers, RawBuffer, Request}
 
+sealed trait ContentType
+object ContentType {
+
+  case object ApplicationJson extends ContentType { override def toString = "application/json" }
+  case object UrlFormEncoded extends ContentType { override def toString = "application/x-www-form-urlencoded" }
+  case class Other(name: String) extends ContentType { override def toString = name }
+
+  val all = Seq(ApplicationJson, UrlFormEncoded)
+
+  private[this]
+  val byName = all.map(x => x.toString.toLowerCase -> x).toMap
+
+  def apply(value: String): ContentType = fromString(value).getOrElse(Other(value))
+  def fromString(value: String): Option[ContentType] = byName.get(value.toLowerCase)
+}
+
 sealed trait Envelope
 object Envelope {
   case object Request extends Envelope { override def toString = "request" }
@@ -36,8 +52,7 @@ object ProxyRequest {
   def validate(request: Request[RawBuffer]): Either[Seq[String], ProxyRequest] = {
     validate(
       requestMethod = request.method,
-      requestUri = request.uri,
-      requestPath = request.path,
+      requestPath = request.uri,
       body = request.body.asBytes() match {
         case None => ProxyRequestBody.File(request.body.asFile)
         case Some(bytes) => ProxyRequestBody.Bytes(bytes)
@@ -51,7 +66,6 @@ object ProxyRequest {
   def validate(
     requestMethod: String,
     requestPath: String,
-    requestUri: String,
     body: ProxyRequestBody,
     queryParameters: Map[String, Seq[String]],
     headers: Headers,
@@ -90,9 +104,9 @@ object ProxyRequest {
       case Nil => Right(
         ProxyRequest(
           headers = headers,
+          originalMethod = requestMethod,
           method = method,
           path = requestPath,
-          uri = requestUri,
           body = body,
           queryParameters = queryParameters.filter { case (k, _) => !ReservedQueryParameters.contains(k) },
           envelopes = envelopes
@@ -109,9 +123,9 @@ object ProxyRequest {
   */
 case class ProxyRequest(
   headers: Headers,
+  originalMethod: String,
   method: String,
   path: String,
-  uri: String,
   body: ProxyRequestBody,
   jsonpCallback: Option[String] = None,
   envelopes: Seq[Envelope] = Nil,
@@ -130,6 +144,14 @@ case class ProxyRequest(
   val responseEnvelope: Boolean = jsonpCallback.isDefined || envelopes.contains(Envelope.Response)
 
   /**
+    * Returns the content type of the request. WS Client defaults to
+    * application/octet-stream. Given this proxy is for APIs only,
+    * assume application / JSON if no content type header is
+    * provided.
+    */
+  val contentType: ContentType = headers.get("Content-Type").map(ContentType.apply).getOrElse(ContentType.ApplicationJson)
+
+  /**
     * Assumes the body is a byte array, returning the string value as a UTF-8
     * encoded string.
     */
@@ -139,4 +161,35 @@ case class ProxyRequest(
       case ProxyRequestBody.File(_) => None
     }
   }
+
+  def queryParametersAsSeq(): Seq[(String, String)] = {
+    queryParameters.flatMap { case (name, values) =>
+      values.map { v => (name, v) }
+    }.toSeq
+  }
+
+
+  /**
+    * See https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-CloudFlare-handle-HTTP-Request-headers-
+    */
+  def clientIp(): Option[String] = {
+    headers.get("cf-connecting-ip") match {
+      case Some(ip) => Some(ip)
+      case None => headers.get("true-client-ip") match {
+        case Some(ip) => Some(ip)
+        case None => {
+          // Sometimes we see an ip in forwarded-for header even if not in other
+          // ip related headers
+          headers.get("X-Forwarded-For").flatMap { ips =>
+            ips.split(",").headOption
+          }
+        }
+      }
+    }
+  }
+
+  override def toString: String = {
+    s"$method $path"
+  }
+
 }

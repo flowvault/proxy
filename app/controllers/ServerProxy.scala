@@ -2,7 +2,6 @@ package controllers
 
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
-import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.flow.lib.apidoc.json.validation.FormData
 import java.net.URI
@@ -18,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
 import lib._
-import play.api.libs.json.{JsObject, JsString, JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.annotation.tailrec
 
@@ -164,14 +163,6 @@ class ServerProxyImpl @Inject () (
     }
   }
 
-  private[this] val ApplicationJsonContentType = "application/json"
-  private[this] val UrlFormEncodedContentType = "application/x-www-form-urlencoded"
-
-  // WS Client defaults to application/octet-stream. Given this proxy
-  // is for APIs only, assume JSON if no content type header is
-  // provided.
-  private[this] val DefaultContentType = ApplicationJsonContentType
-
   override final def proxy(
     requestId: String,
     request: ProxyRequest,
@@ -183,59 +174,45 @@ class ServerProxyImpl @Inject () (
     Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId $requestId")
 
     /**
-      * Common stuff between standard and envelope implementations
-      */
-    val finalHeaders: Headers = proxyHeaders(requestId, request.headers, request.method, token)
-    val originalQuery: Map[String, Seq[String]] = request.queryString
-    val finalQuery: Seq[(String, String)] = ServerProxy.query(originalQuery)
-
-    val (originalPathWithQuery, rewrittenPathWithQuery): (String, String) = if (originalQuery.isEmpty) {
-      (request.path, request.path)
-    } else {
-      val rewritten = finalQuery.map { case (key, value) =>
-        s"$key=$value"
-      }.mkString("&")
-      (request.uri, s"${request.path}?$rewritten")
-    }
-
-    /**
       * Choose the type of request based on callback/envelope or standard implementation
       */
     if (request.responseEnvelope) {
-      envelopeResponse(finalHeaders, finalQuery, originalPathWithQuery, requestId, request, route, token, callback = request.jsonpCallback, organization = organization, partner = partner)
+      envelopeResponse(requestId, request, route, token, organization = organization, partner = partner)
     } else {
-      standard(finalHeaders, finalQuery, originalPathWithQuery, rewrittenPathWithQuery, requestId, route, request, token, organization = organization, partner = partner)
+      standard(requestId, request, route, token, organization = organization, partner = partner)
     }
   }
 
   private[this] def envelopeResponse(
-    finalHeaders: Headers,
-    finalQuery: Seq[(String, String)],
-    originalPathWithQuery: String,
     requestId: String,
     request: ProxyRequest,
     route: Route,
     token: Option[ResolvedToken],
-    callback: Option[String] = None,
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
-    val finalHeaders = proxyHeaders(requestId, request.headers, request.method, token)
-
-    val formData: JsValue = callback match {
+    val formData: JsValue = request.jsonpCallback match {
       case Some(_) => {
-        FormData.toJson(request.queryString)
+        FormData.toJson(request.queryParameters)
       }
       case None => {
-        finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
+        request.contentType match {
           // We turn url form encoded into application/json
-          case UrlFormEncodedContentType => {
-            val b: String = request.bodyUtf8.get
+          case ContentType.UrlFormEncoded => {
+            val b = request.bodyUtf8.getOrElse {
+              sys.error(s"Failed to serialize body as string for ContentType.UrlFormEncoded")
+            }
             FormData.toJson(FormData.parseEncoded(b))
           }
-          case ApplicationJsonContentType => {
+
+          case ContentType.ApplicationJson => {
             val b: String = request.bodyUtf8.get
             Json.parse(b)
+          }
+
+          case ContentType.Other(name) => {
+            Logger.warn(s"[proxy] $request: Unsupported Content-Type[$name] - will proxy with empty json body")
+            Json.obj()
           }
         }
       }
@@ -246,7 +223,7 @@ class ServerProxyImpl @Inject () (
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
         val envBody = envelopeBody(422, Map(), genericErrors(errors).toString)
-        val finalBody = callback match {
+        val finalBody = request.jsonpCallback match {
           case Some(cb) => jsonpEnvelopeBody(cb, envBody)
           case None => envBody
         }
@@ -256,13 +233,15 @@ class ServerProxyImpl @Inject () (
       }
 
       case Right(body) => {
-        val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, token), ApplicationJsonContentType)
+        val finalHeaders = setApplicationJsonContentType(
+          proxyHeaders(requestId, request, token)
+        )
 
         val req = ws.url(definition.server.host + request.path)
           .withFollowRedirects(false)
           .withMethod(route.method)
           .withHeaders(finalHeaders.headers: _*)
-          .withQueryString(definition.definedQueryParameters(route.method, route.path, finalQuery): _*)
+          .withQueryString(definition.definedQueryParameters(route.method, route.path, request.queryParametersAsSeq()): _*)
           .withBody(body)
 
         val startMs = System.currentTimeMillis
@@ -270,7 +249,7 @@ class ServerProxyImpl @Inject () (
           val timeToFirstByteMs = System.currentTimeMillis - startMs
 
           val envBody = envelopeBody(response.status, response.allHeaders, response.body)
-          val finalBody = callback match {
+          val finalBody = request.jsonpCallback match {
             case Some(cb) => jsonpEnvelopeBody(cb, envBody)
             case None => envBody
           }
@@ -311,13 +290,9 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def standard(
-    finalHeaders: Headers,
-    finalQuery: Seq[(String, String)],
-    originalPathWithQuery: String,
-    rewrittenPathWithQuery: String,
     requestId: String,
-    route: Route,
     request: ProxyRequest,
+    route: Route,
     token: Option[ResolvedToken],
     organization: Option[String] = None,
     partner: Option[String] = None
@@ -325,20 +300,23 @@ class ServerProxyImpl @Inject () (
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
-      .withQueryString(finalQuery: _*)
+      .withQueryString(request.queryParametersAsSeq(): _*)
 
-    val response = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
+    val finalHeaders = proxyHeaders(requestId, request, token)
+    val response = request.contentType match {
 
       // We turn url form encoded into application/json
-      case UrlFormEncodedContentType => {
-        val b: String = request.bodyUtf8.get
+      case ContentType.UrlFormEncoded => {
+        val b = request.bodyUtf8.getOrElse {
+          sys.error(s"Failed to serialize body as string for ContentType.UrlFormEncoded")
+        }
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
         logFormData(requestId, request.path, route, newBody)
 
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
-            Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
+            Logger.info(s"[proxy] $request 422 based on apidoc schema")
             Future(
               UnprocessableEntity(
                 genericErrors(errors)
@@ -348,7 +326,7 @@ class ServerProxyImpl @Inject () (
 
           case Right(validatedBody) => {
             req
-              .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
+              .withHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
               .withBody(validatedBody)
               .stream
               .recover { case ex: Throwable => throw new Exception(ex) }
@@ -356,8 +334,11 @@ class ServerProxyImpl @Inject () (
         }
       }
 
-      case ApplicationJsonContentType => {
-        val body = request.bodyUtf8.get
+      case ContentType.ApplicationJson => {
+        val body = request.bodyUtf8.getOrElse {
+          sys.error("Failed to serialize body as string for ContentType.ApplicationJson")
+        }
+
         Try {
           if (body.trim.isEmpty) {
             // e.g. PUT/DELETE with empty body
@@ -367,7 +348,7 @@ class ServerProxyImpl @Inject () (
           }
         } match {
           case Failure(e) => {
-            Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 invalid json")
+            Logger.info(s"[proxy] $request 422 invalid json")
             Future(
               UnprocessableEntity(
                 genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
@@ -380,7 +361,7 @@ class ServerProxyImpl @Inject () (
 
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
-                Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
+                Logger.info(s"[proxy] $request 422 based on apidoc schema")
                 Future(
                   UnprocessableEntity(
                     genericErrors(errors)
@@ -390,7 +371,7 @@ class ServerProxyImpl @Inject () (
 
               case Right(validatedBody) => {
                 req
-                  .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
+                  .withHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
                   .withBody(validatedBody)
                   .stream
                   .recover { case ex: Throwable => throw new Exception(ex) }
@@ -433,7 +414,7 @@ class ServerProxyImpl @Inject () (
         val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
 
         actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, r.status, organization, partner)
-        Logger.info(s"[proxy] ${request.method} $originalPathWithQuery ${definition.server.name}:${route.method} ${definition.server.host}$rewrittenPathWithQuery ${r.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
@@ -467,8 +448,7 @@ class ServerProxyImpl @Inject () (
     */
   private[this] def proxyHeaders(
     requestId: String,
-    headers: Headers,
-    method: String,
+    request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Headers = {
 
@@ -476,55 +456,35 @@ class ServerProxyImpl @Inject () (
       Constants.Headers.FlowServer -> name,
       Constants.Headers.FlowRequestId -> requestId,
       Constants.Headers.Host -> definition.hostHeaderValue,
-      Constants.Headers.ForwardedHost -> headers.get(Constants.Headers.Host).getOrElse(""),
-      Constants.Headers.ForwardedOrigin -> headers.get(Constants.Headers.Origin).getOrElse(""),
-      Constants.Headers.ForwardedMethod -> method
+      Constants.Headers.ForwardedHost -> request.headers.get(Constants.Headers.Host).getOrElse(""),
+      Constants.Headers.ForwardedOrigin -> request.headers.get(Constants.Headers.Origin).getOrElse(""),
+      Constants.Headers.ForwardedMethod -> request.originalMethod
     ) ++ Seq(
       token.map { t =>
         Constants.Headers.FlowAuth -> flowAuth.jwt(t)
       },
 
-      clientIp(headers).map { ip =>
+      request.clientIp.map { ip =>
         Constants.Headers.FlowIp -> ip
       },
 
-      headers.get("Content-Type") match {
-        case None => Some("Content-Type" -> DefaultContentType)
+      request.headers.get("Content-Type") match {
+        case None => Some("Content-Type" -> request.contentType.toString)
         case Some(_) => None
       }
     ).flatten
 
-    val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(headers) { case (h, n) => h.remove(n) }
+    val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(request.headers) { case (h, n) => h.remove(n) }
 
     headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
   }
 
-  /**
-    * See https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-CloudFlare-handle-HTTP-Request-headers-
-    */
-  private[this] def clientIp(headers: Headers): Option[String] = {
-    headers.get("cf-connecting-ip") match {
-      case Some(ip) => Some(ip)
-      case None => headers.get("true-client-ip") match {
-        case Some(ip) => Some(ip)
-        case None => {
-          // Sometimes we see an ip in forwarded-for header even if not in other
-          // ip related headers
-          headers.get("X-Forwarded-For").flatMap { ips =>
-            ips.split(",").headOption
-          }
-        }
-      }
-    }
-  }
-
-  private[this] def setContentType(
-    headers: Headers,
-    contentType: String
+  private[this] def setApplicationJsonContentType(
+    headers: Headers
   ): Headers = {
     headers.
       remove("Content-Type").
-      add("Content-Type" -> contentType)
+      add("Content-Type" -> ContentType.ApplicationJson.toString)
   }
   
   private[this] def toLongSafe(value: String): Option[Long] = {
