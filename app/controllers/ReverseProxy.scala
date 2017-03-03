@@ -32,17 +32,13 @@ class ReverseProxy @Inject () (
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
   private[this] val organizationClient = {
-    val server = findServerByName("organization").getOrElse {
-      sys.error("There is no server named 'organization' in the current config: " + index.config.sources.map(_.uri))
-    }
+    val server = mustFindServerByName("organization")
     Logger.info(s"Creating OrganizationClient w/ baseUrl[${server.host}]")
     new OrganizationClient(ws, baseUrl = server.host)
   }
 
   private[this] val tokenClient = {
-    val server = findServerByName("token").getOrElse {
-      sys.error("There is no server named 'token' in the current config: " + index.config.sources.map(_.uri))
-    }
+    val server = mustFindServerByName("token")
     Logger.info(s"Creating TokenClient w/ baseUrl[${server.host}]")
     new TokenClient(ws, baseUrl = server.host)
   }
@@ -356,6 +352,12 @@ class ReverseProxy @Inject () (
 
   private[this] def findServerByName(name: String): Option[Server] = {
     index.config.servers.find(_.name == name)
+  }
+
+  private[this] def mustFindServerByName(name: String): Server = {
+    findServerByName(name).getOrElse {
+      sys.error(s"There is no server named '$name' in the current config: " + index.config.sources.map(_.uri))
+    }
   }
 
   /**
