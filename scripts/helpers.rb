@@ -1,0 +1,222 @@
+require 'time'
+
+module ProxyGlobal
+
+  LOG_FILE = "/tmp/proxy.test.log"
+  
+  @@proxy_request_tmp_index = 1
+
+  def ProxyGlobal.info(message)
+    ProxyGlobal.log("info", message)
+  end
+    
+  def ProxyGlobal.log(level, message)
+    File.open(LOG_FILE, "a") do |out|
+      out << "%s [%s] %s\n" % [level, Time.new.to_s, message]
+    end
+  end
+
+  def ProxyGlobal.tmp_file_path
+    path = "/tmp/proxy.test.%s.%s.tmp" % [Process.pid, @@proxy_request_tmp_index]
+    @@proxy_request_tmp_index += 1
+    path
+  end
+
+  def ProxyGlobal.format_json(hash, opts = {})
+    indent = opts.delete(:indent).to_i
+    indent_string = " " * indent
+    JSON.pretty_generate(hash).gsub(/\[\s+\]/, '[]').gsub(/\{\s+\}/, '{}').split("\n").map { |l| "%s%s" % [indent_string, l] }.join("\n")
+  end
+
+end
+
+class Response
+
+  attr_reader :status, :body
+
+  def initialize(status, body)
+    @status = status
+    @body = body
+  end
+
+  def json
+    begin
+      JSON.parse(@body)
+    rescue JSON::JSONError => e
+      msg = "ERROR: Invalid JSON from server. See #{tmp} for full output:\n"
+      msg << json_stack_trace
+      msg << "\n"
+      raise msg
+    end
+  end
+
+  def json_stack_trace
+    msg = ""
+    Helpers.with_tmp_file(@body) do |tmp|
+      lines = IO.read(tmp).split("\n")
+
+      printed = false
+      if lines.size < 15
+        # Print whole body if json
+        begin
+          msg += ProxyGlobal.format_json(JSON.parse(@body), :indent => 2)
+          printed = true
+        rescue JSON::JSONError => e
+        end
+      end
+
+      if !printed
+        [0, 10].each do |l|
+          msg += "  %s" % l
+        end
+      end
+    end
+    msg
+  end
+  
+end
+
+class Helpers
+
+  def initialize(base_url)
+    @base_url = base_url
+  end
+
+  def json_put(url, hash = nil)
+    json_request("POST", url, hash)
+  end
+
+  def json_post(url, hash = nil)
+    json_request("POST", url, hash)
+  end
+
+  def json_request(method, url, hash)
+    r = Request.new(method, "%s%s" % [@base_url, url]).with_content_type("application/json")
+    if hash
+      body = ProxyGlobal.format_json(hash)
+      Helpers.with_tmp_file(body) do |tmp|
+        r.with_file(tmp)
+      end
+    else
+      r
+    end
+  end
+
+end
+
+class Request
+
+  def initialize(method, url)
+    @method = method
+    @url = url
+    @token = nil
+    @content_type = nil
+    @path = nil
+    @api_key_path = nil
+  end
+
+  def with_api_key_file(path)
+    if !File.exists?(path)
+      raise "ERROR: File[#{path}] does not exist"
+    end
+
+    @api_key_path = path
+    self
+  end
+
+  def with_content_type(ct)
+    @content_type = ct
+    self
+  end
+
+  def with_file(path)
+    if !File.exists?(path)
+      raise "ERROR: File[#{path}] does not exist"
+    end
+
+    @path = path
+    self
+  end
+  
+  #curl("-X #{method} -d@#{path} -H 'Content-type: application/json' #{@base_url}#{url}")
+  def execute
+    params = ["curl --silent -w 'status[%{http_code}]'"]
+
+    if @method.upcase != "GET"
+      params << "-X %s" % @method
+    end
+    
+    if @api_key_path
+      params << "-u `cat %s`:" % @api_key_path
+    end
+
+    if @content_type
+      params << "-H 'Content-type: %s'" % @content_type
+    end
+
+    if @path
+      params << "-d@%s" % @path
+    end
+
+    params << @url
+    
+    cmd = params.join(" ")
+    ProxyGlobal.info(cmd)
+    #puts cmd
+
+    tmpfile = ProxyGlobal.tmp_file_path
+    if system(cmd + " > #{tmpfile}")
+      results = IO.read(tmpfile).strip
+      if md = results.match(/status\[(\d+)\]/)
+        status = md[1].to_i
+        body = results.sub(/\s*status\[(\d+)\]\s*/, '')
+
+        r = Response.new(status, body)
+        if r.status >= 500 || r.status < 200
+          puts ""
+          puts "ERROR: HTTP %s" % r.status
+          puts ""
+
+          begin
+            js = JSON.parse(body)
+            if js["code"] && js["messages"]
+              puts " - Code: %s" % js['code']
+              puts "   %s" % js['messages'].join("\n   ")
+            else
+              puts r.json_stack_trace
+            end
+          rescue
+            puts r.json_stack_trace
+          end
+
+          puts ""
+          exit(1)
+        end
+        r
+      else
+        puts "ERROR: Could not parse HTTP Status code from command"
+        exit(1)
+      end        
+    else
+      puts "ERROR: Invalid exit code (command failed)"
+      exit(1)
+    end
+  end  
+
+  def Helpers.with_tmp_file(contents, opts={})
+    delete = opts.delete(:delete)
+    path = ProxyGlobal.tmp_file_path
+    
+    File.open(path, "w") do |out|
+      out << contents
+    end
+
+    result = yield path
+
+    if delete
+      File.delete(path)
+    end
+
+    result
+  end
+end
