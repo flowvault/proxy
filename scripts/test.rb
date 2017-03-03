@@ -15,7 +15,18 @@ end
 puts "logging to %s" % ProxyGlobal::LOG_FILE
 puts ""
 
-helpers = Helpers.new("http://localhost:7000")
+## Deletes organizations with a given name prefix.
+## Does not currently paginate
+def delete_test_orgs(helpers, name_prefix)
+  helpers.get("/organizations").execute
+end
+
+def cleanup(helpers)
+  delete_test_orgs(helpers, "Proxy Test")
+end
+
+helpers = Helpers.new("http://localhost:7000", api_key_file)
+cleanup(helpers)
 
 response = helpers.json_post("/foo").execute
 assert_generic_error(response, "Unknown HTTP path /foo")
@@ -36,6 +47,9 @@ assert_equals(response.json["status"], "Hooray! The provided API Token is valid.
 response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent => 'demo' }).execute
 assert_unauthorized(response)
 
-response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent_id => 'flow', :name => "Proxy Test" }).with_api_key_file(api_key_file).execute
+name = "Proxy Test #{ProxyGlobal.random_string(8)}"
+response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent_id => 'flow', :name => name }).with_api_key.execute
 assert_unauthorized(response)
+
+cleanup(helpers)
 

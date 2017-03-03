@@ -28,6 +28,10 @@ module ProxyGlobal
     JSON.pretty_generate(hash).gsub(/\[\s+\]/, '[]').gsub(/\{\s+\}/, '{}').split("\n").map { |l| "%s%s" % [indent_string, l] }.join("\n")
   end
 
+  def ProxyGlobal.random_string(length=36)
+    rand(36**length).to_s(36)
+  end
+
 end
 
 class Response
@@ -78,8 +82,9 @@ end
 
 class Helpers
 
-  def initialize(base_url)
+  def initialize(base_url, api_key_file)
     @base_url = base_url
+    @api_key_file = api_key_file
   end
 
   def json_put(url, hash = nil)
@@ -91,7 +96,7 @@ class Helpers
   end
 
   def json_request(method, url, hash)
-    r = Request.new(method, "%s%s" % [@base_url, url]).with_content_type("application/json")
+    r = Request.new(method, "%s%s" % [@base_url, url], @api_key_file).with_content_type("application/json")
     if hash
       body = ProxyGlobal.format_json(hash)
       Helpers.with_tmp_file(body) do |tmp|
@@ -106,21 +111,22 @@ end
 
 class Request
 
-  def initialize(method, url)
+  def initialize(method, url, api_key_path)
     @method = method
     @url = url
     @token = nil
     @content_type = nil
     @path = nil
-    @api_key_path = nil
+    @api_key = false
+
+    if !File.exists?(api_key_path)
+      raise "ERROR: File[#{api_key_path}] does not exist"
+    end
+    @api_key_path = api_key_path
   end
 
-  def with_api_key_file(path)
-    if !File.exists?(path)
-      raise "ERROR: File[#{path}] does not exist"
-    end
-
-    @api_key_path = path
+  def with_api_key
+    @api_key = true
     self
   end
 
