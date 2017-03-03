@@ -266,7 +266,7 @@ class ReverseProxy @Inject () (
             multiService.validate(request.method, path) match {
               case Left(errors) => {
                 Logger.info(s"Unrecognized method ${request.method} for $path - returning 422 w/ available methods: $errors")
-                Left(UnprocessableEntity(genericErrors(errors)))
+                Left(request.response(422, genericErrors(errors).toString))
               }
               case Right(_) => {
                 Logger.info(s"Unrecognized URL ${request.method} $path - returning 404")

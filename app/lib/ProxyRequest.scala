@@ -3,7 +3,8 @@ package lib
 import java.nio.charset.Charset
 
 import akka.util.ByteString
-import play.api.mvc.{Headers, RawBuffer, Request}
+import play.api.libs.json.{JsValue, Json}
+import play.api.mvc._
 
 sealed trait ContentType
 object ContentType {
@@ -154,7 +155,7 @@ case class ProxyRequest(
   jsonpCallback: Option[String] = None,
   envelopes: Seq[Envelope] = Nil,
   queryParameters: Map[String, Seq[String]] = Map()
-) {
+) extends Results {
   assert(
     ProxyRequest.ReservedQueryParameters.filter { queryParameters.isDefinedAt } == Nil,
     "Cannot provide query reserved parameters"
@@ -232,4 +233,46 @@ case class ProxyRequest(
     s"$method $pathWithQuery"
   }
 
+  /**
+    * Returns a valid play result, taking into account any requests for response envelopes
+    */
+  def response(status: Int, body: String, headers: Map[String,Seq[String]] = Map()): Result = {
+    if (responseEnvelope) {
+      Ok(wrappedResponseBody(status, body, headers)).as("application/javascript; charset=utf-8")
+    } else {
+      // TODO: Add headers
+      Status(status)(body)
+    }
+  }
+
+  /**
+  * Wraps the specified response body based on the requested wrappers
+  */
+  private[this] def wrappedResponseBody(status: Int, body: String, headers: Map[String,Seq[String]] = Map()): String = {
+    val env = envelopeBody(status, body, headers)
+    jsonpCallback.fold(env)(jsonpEnvelopeBody(_, env))
+  }
+
+  /**
+    * Create the envelope to passthrough response status, response headers
+    */
+  private[this] def envelopeBody(
+    status: Int,
+    body: String,
+    headers: Map[String,Seq[String]] = Map()
+  ): String = {
+    val jsonHeaders = Json.toJson(headers)
+    s"""{\n  "status": $status,\n  "headers": ${jsonHeaders},\n  "body": $body\n}"""
+  }
+
+  /**
+    * Create the jsonp envelope to passthrough response status, response headers
+    */
+  private[this] def jsonpEnvelopeBody(
+    callback: String,
+    body: String
+  ): String = {
+    // Prefix /**/ is to avoid a JSONP/Flash vulnerability
+    "/**/" + s"""$callback($body)"""
+  }
 }

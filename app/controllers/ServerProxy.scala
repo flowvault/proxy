@@ -219,22 +219,11 @@ class ServerProxyImpl @Inject () (
     }
 
     logFormData(requestId, request, formData)
-    println(s"route: $route")
-    println(s"formData: $formData")
-    println(s"request: $request")
-    println(s"route.method: ${route.method}")
-    println(s"route.path: ${route.path}")
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
-        val envBody = envelopeBody(422, Map(), genericErrors(errors).toString)
-        val finalBody = request.jsonpCallback match {
-          case Some(cb) => jsonpEnvelopeBody(cb, envBody)
-          case None => envBody
-        }
-
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name} 422 based on apidoc schema")
-        Future(Ok(finalBody).as("application/javascript; charset=utf-8"))
+        Logger.info(s"[proxy] $request ${definition.server.name} 422 based on apidoc schema")
+        Future(request.response(422, genericErrors(errors).toString))
       }
 
       case Right(body) => {
@@ -253,15 +242,9 @@ class ServerProxyImpl @Inject () (
         req.execute.map { response =>
           val timeToFirstByteMs = System.currentTimeMillis - startMs
 
-          val envBody = envelopeBody(response.status, response.allHeaders, response.body)
-          val finalBody = request.jsonpCallback match {
-            case Some(cb) => jsonpEnvelopeBody(cb, envBody)
-            case None => envBody
-          }
-
           actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
-          Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
-          Ok(finalBody).as("application/javascript; charset=utf-8")
+          Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+          request.response(response.status, response.body, response.allHeaders)
         }.recover {
           case ex: Throwable => {
             throw new Exception(ex)
@@ -269,29 +252,6 @@ class ServerProxyImpl @Inject () (
         }
       }
     }
-  }
-
-  /**
-    * Create the envelope to passthrough response status, response headers
-    */
-  private[this] def envelopeBody(
-    status: Int,
-    headers: Map[String,Seq[String]],
-    body: String
-  ): String = {
-    val jsonHeaders = Json.toJson(headers)
-    s"""{\n  "status": $status,\n  "headers": ${jsonHeaders},\n  "body": $body\n}"""
-  }
-
-  /**
-    * Create the jsonp envelope to passthrough response status, response headers
-    */
-  private[this] def jsonpEnvelopeBody(
-    callback: String,
-    body: String
-  ): String = {
-    // Prefix /**/ is to avoid a JSONP/Flash vulnerability
-    "/**/" + s"""$callback($body)"""
   }
 
   private[this] def standard(
