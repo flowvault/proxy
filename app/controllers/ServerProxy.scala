@@ -297,9 +297,7 @@ class ServerProxyImpl @Inject () (
       }
 
       case ContentType.ApplicationJson => {
-        val body = request.bodyUtf8.getOrElse {
-          sys.error("Failed to serialize body as string for ContentType.ApplicationJson")
-        }
+        val body = request.bodyUtf8.getOrElse("")
 
         Try {
           if (body.trim.isEmpty) {
