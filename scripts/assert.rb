@@ -16,7 +16,7 @@ def assert_generic_error(response, message)
   assert_equals(response.json['messages'], [message])
 end
 
-def assert_status(response, expected)
+def assert_status(expected, response)
   if expected != response.status
     msg = "\n\nInvalid HTTP Status Code: expected[%s] actual[%s]\n" % [expected, response.status]
     msg << response.json_stack_trace
@@ -25,6 +25,16 @@ def assert_status(response, expected)
   end
 end
 
-def assert_unauthorized(response)
-  assert_status(response, 401)
+def assert_statuses(expected, response)
+  if !expected.include?(response.status)
+    msg = "\n\nInvalid HTTP Status Code: expected one of[%s] actual[%s]\n" % [expected.join(" "), response.status]
+    msg << response.json_stack_trace
+    msg << "\n\n"
+    raise msg
+  end
 end
+
+def assert_unauthorized(response)
+  assert_status(401, response)
+end
+

@@ -15,14 +15,20 @@ end
 puts "logging to %s" % ProxyGlobal::LOG_FILE
 puts ""
 
+TEST_ORG_PREFIX = "prefix-test"
+
 ## Deletes organizations with a given name prefix.
 ## Does not currently paginate
-def delete_test_orgs(helpers, name_prefix)
-  helpers.get("/organizations").execute
+def delete_test_orgs(helpers, prefix)
+  helpers.get("/organizations?limit=100").with_api_key.execute.json.each do |r|
+    if r['id'].start_with?(prefix) && r['environment'] == "sandbox"
+      assert_statuses([204, 404], helpers.delete("/organizations/#{r['id']}").with_api_key.execute)
+    end
+  end
 end
 
 def cleanup(helpers)
-  delete_test_orgs(helpers, "Proxy Test")
+  delete_test_orgs(helpers, TEST_ORG_PREFIX)
 end
 
 helpers = Helpers.new("http://localhost:7000", api_key_file)
@@ -41,14 +47,15 @@ response = helpers.json_post("/token-validations", { :token => "foo" }).execute
 assert_generic_error(response, "The specified API token is not valid")
 
 response = helpers.json_post("/token-validations", { :token => IO.read(api_key_file).strip }).execute
-assert_status(response, 200)
+assert_status(200, response)
 assert_equals(response.json["status"], "Hooray! The provided API Token is valid.")
 
-response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent => 'demo' }).execute
+response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent => 'demo', :id => "proxy-test" }).execute
 assert_unauthorized(response)
 
-name = "Proxy Test #{ProxyGlobal.random_string(8)}"
-response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent_id => 'flow', :name => name }).with_api_key.execute
+id = "%s-%s" % [TEST_ORG_PREFIX, ProxyGlobal.random_string(8)]
+puts id
+response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent_id => 'flow', "id" => id }).with_api_key.execute
 assert_unauthorized(response)
 
 cleanup(helpers)

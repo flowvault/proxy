@@ -38,7 +38,9 @@ class Response
 
   attr_reader :status, :body
 
-  def initialize(status, body)
+  def initialize(request_method, request_uri, status, body)
+    @request_method = request_method
+    @request_uri = request_uri
     @status = status
     @body = body
   end
@@ -47,10 +49,15 @@ class Response
     begin
       JSON.parse(@body)
     rescue JSON::JSONError => e
-      msg = "ERROR: Invalid JSON from server. See #{tmp} for full output:\n"
-      msg << json_stack_trace
-      msg << "\n"
-      raise msg
+      base = "ERROR for %s %s" % [@request_method, @request_uri]
+      if @body.strip.empty?
+        raise "%s: body was empty\n" % base
+      else
+        msg = "%s: Invalid JSON\n" % base
+        msg << json_stack_trace
+        msg << "\n"
+        raise msg
+      end
     end
   end
 
@@ -70,7 +77,7 @@ class Response
       end
 
       if !printed
-        [0, 10].each do |l|
+        lines[0, 10].each do |l|
           msg += "  %s" % l
         end
       end
@@ -88,7 +95,11 @@ class Helpers
   end
 
   def get(url)
-    new_request(method, url)
+    new_request("GET", url)
+  end
+
+  def delete(url)
+    new_request("DELETE", url)
   end
 
   def json_put(url, hash = nil)
@@ -111,7 +122,7 @@ class Helpers
     end
   end
 
-  def new_request(url)
+  def new_request(method, url)
     Request.new(method, "%s%s" % [@base_url, url], @api_key_file).with_content_type("application/json")
   end
 
@@ -160,7 +171,7 @@ class Request
       params << "-X %s" % @method
     end
     
-    if @api_key_path
+    if @api_key
       params << "-u `cat %s`:" % @api_key_path
     end
 
@@ -172,7 +183,7 @@ class Request
       params << "-d@%s" % @path
     end
 
-    params << @url
+    params << "'%s'" % @url
     
     cmd = params.join(" ")
     ProxyGlobal.info(cmd)
@@ -185,35 +196,32 @@ class Request
         status = md[1].to_i
         body = results.sub(/\s*status\[(\d+)\]\s*/, '')
 
-        r = Response.new(status, body)
-        if r.status >= 500 || r.status < 200
-          puts ""
-          puts "ERROR: HTTP %s" % r.status
-          puts ""
+        r = Response.new(@method, @url, status, body)
+        if r.status >= 500 || r.status < 200 || (r.status >= 300 && @method.upcase == "GET")
+          msg =[]
+          msg << "ERROR: HTTP %s for %s %s" % [r.status, @method, @url]
+          msg << ""
 
           begin
             js = JSON.parse(body)
             if js["code"] && js["messages"]
-              puts " - Code: %s" % js['code']
-              puts "   %s" % js['messages'].join("\n   ")
+              msg << " - Code: %s" % js['code']
+              msg << "   %s" % js['messages'].join("\n   ")
             else
-              puts r.json_stack_trace
+              msg << r.json_stack_trace
             end
           rescue
-            puts r.json_stack_trace
+            msg << r.json_stack_trace
           end
 
-          puts ""
-          exit(1)
+          raise msg.join("\n")
         end
         r
       else
-        puts "ERROR: Could not parse HTTP Status code from command"
-        exit(1)
+        raise "ERROR: Could not parse HTTP Status code for %s %s" % [@method, @url]
       end        
     else
-      puts "ERROR: Invalid exit code (command failed)"
-      exit(1)
+      raise "ERROR: curl failed for %s" % cmd
     end
   end  
 
