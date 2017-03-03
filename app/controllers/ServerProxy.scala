@@ -65,7 +65,6 @@ trait ServerProxy {
   def definition: ServerProxyDefinition
 
   def proxy(
-    requestId: String,
     request: ProxyRequest,
     route: Route,
     token: Option[ResolvedToken],
@@ -110,14 +109,14 @@ object ServerProxy {
     incoming: Map[String, Seq[String]]
   ): Seq[(String, String)] = {
     val rewritten = FormData.parseEncoded(FormData.toEncoded(FormData.toJson(incoming)))
-    rewritten.map { case (k, vs) =>
+    rewritten.flatMap { case (k, vs) =>
       vs.map(k -> _)
-    }.flatten.toSeq
+    }.toSeq
   }
 }
 
 class ServerProxyModule extends AbstractModule {
-  def configure {
+  def configure: Unit = {
     install(new FactoryModuleBuilder()
       .implement(classOf[ServerProxy], classOf[ServerProxyImpl])
       .build(classOf[ServerProxy.Factory])
@@ -163,27 +162,25 @@ class ServerProxyImpl @Inject () (
   }
 
   override final def proxy(
-    requestId: String,
     request: ProxyRequest,
     route: Route,
     token: Option[ResolvedToken],
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
-    Logger.info(s"[proxy] $request to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId $requestId")
+    Logger.info(s"[proxy] $request to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId ${request.requestId}")
 
     /**
       * Choose the type of request based on callback/envelope or standard implementation
       */
     if (request.responseEnvelope) {
-      envelopeResponse(requestId, request, route, token, organization = organization, partner = partner)
+      envelopeResponse(request, route, token, organization = organization, partner = partner)
     } else {
-      standard(requestId, request, route, token, organization = organization, partner = partner)
+      standard(request, route, token, organization = organization, partner = partner)
     }
   }
 
   private[this] def envelopeResponse(
-    requestId: String,
     request: ProxyRequest,
     route: Route,
     token: Option[ResolvedToken],
@@ -219,7 +216,7 @@ class ServerProxyImpl @Inject () (
       }
     }
 
-    logFormData(requestId, request, formData)
+    logFormData(request, formData)
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
@@ -229,7 +226,7 @@ class ServerProxyImpl @Inject () (
 
       case Right(body) => {
         val finalHeaders = setApplicationJsonContentType(
-          proxyHeaders(requestId, request, token)
+          proxyHeaders(request, token)
         )
 
         val req = ws.url(definition.server.host + request.path)
@@ -244,7 +241,7 @@ class ServerProxyImpl @Inject () (
           val timeToFirstByteMs = System.currentTimeMillis - startMs
 
           actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
-          Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+          Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId ${request.requestId}")
           request.response(response.status, response.body, response.allHeaders)
         }.recover {
           case ex: Throwable => {
@@ -256,7 +253,6 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def standard(
-    requestId: String,
     request: ProxyRequest,
     route: Route,
     token: Option[ResolvedToken],
@@ -268,7 +264,7 @@ class ServerProxyImpl @Inject () (
       .withMethod(route.method)
       .withQueryString(request.queryParametersAsSeq(): _*)
 
-    val finalHeaders = proxyHeaders(requestId, request, token)
+    val finalHeaders = proxyHeaders(request, token)
     val response = request.contentType match {
 
       // We turn url form encoded into application/json
@@ -278,7 +274,7 @@ class ServerProxyImpl @Inject () (
         }
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
-        logFormData(requestId, request, newBody)
+        logFormData(request, newBody)
 
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
@@ -323,7 +319,7 @@ class ServerProxyImpl @Inject () (
           }
 
           case Success(js) => {
-            logFormData(requestId, request, js)
+            logFormData(request, js)
 
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
@@ -395,7 +391,7 @@ class ServerProxyImpl @Inject () (
         val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
 
         actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, r.status, organization, partner)
-        Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId ${request.requestId}")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
@@ -428,14 +424,13 @@ class ServerProxyImpl @Inject () (
     *   - adding a default content-type
     */
   private[this] def proxyHeaders(
-    requestId: String,
     request: ProxyRequest,
     token: Option[ResolvedToken]
   ): Headers = {
 
     val headersToAdd = Seq(
       Constants.Headers.FlowServer -> name,
-      Constants.Headers.FlowRequestId -> requestId,
+      Constants.Headers.FlowRequestId -> request.requestId,
       Constants.Headers.Host -> definition.hostHeaderValue,
       Constants.Headers.ForwardedHost -> request.headers.get(Constants.Headers.Host).getOrElse(""),
       Constants.Headers.ForwardedOrigin -> request.headers.get(Constants.Headers.Origin).getOrElse(""),
@@ -477,13 +472,13 @@ class ServerProxyImpl @Inject () (
     }
   }
 
-  private[this] def logFormData(requestId: String, request: ProxyRequest, body: JsValue): Unit = {
+  private[this] def logFormData(request: ProxyRequest, body: JsValue): Unit = {
     body match {
       case j: JsObject => {
         if (j.fields.nonEmpty) {
           val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
           val safeBody = LoggingUtil.safeJson(body, typ = typ)
-          Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[$requestId]: $safeBody")
+          Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
         }
       }
       case _ => // no-op
