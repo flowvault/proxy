@@ -197,6 +197,7 @@ case class ProxyRequest(
     * encoded string.
     */
   def bodyUtf8: Option[String] = {
+    println(s"body[$body]")
     body match {
       case ProxyRequestBody.Bytes(bytes) => Some(bytes.decodeString(ProxyRequestBody.Utf8))
       case ProxyRequestBody.File(_) => None

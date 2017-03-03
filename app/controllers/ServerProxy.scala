@@ -206,7 +206,9 @@ class ServerProxyImpl @Inject () (
           }
 
           case ContentType.ApplicationJson => {
-            val b: String = request.bodyUtf8.get
+            val b: String = request.bodyUtf8.getOrElse {
+              sys.error("Failed to serialize body as string for ContentType.ApplicationJson")
+            }
             Json.parse(b)
           }
 

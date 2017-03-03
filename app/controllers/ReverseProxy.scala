@@ -68,9 +68,9 @@ class ReverseProxy @Inject () (
   }
 
   def handle: Action[RawBuffer] = Action.async(parse.raw) { request =>
-      ProxyRequest.validate(request) match {
+    ProxyRequest.validate(request) match {
       case Left(errors) => Future.successful {
-        unprocessableEntity(errors.mkString(", "))
+        topLevelUnprocessableEntity(errors.mkString(", "))
       }
       case Right(pr) => internalHandle(pr)
     }
@@ -87,25 +87,25 @@ class ReverseProxy @Inject () (
       }
 
       case Authorization.Unrecognized => Future(
-        unauthorized(s"Authorization header value must start with one of: " + Authorization.Unrecognized.valid.mkString(", "))
+        request.response(401, s"Authorization header value must start with one of: " + Authorization.Unrecognized.valid.mkString(", "))
       )
 
       case Authorization.InvalidApiToken => Future(
-        unauthorized(s"API Token is not valid")
+        request.response(401, s"API Token is not valid")
       )
 
       case Authorization.InvalidJwt(missing) => Future(
-        unauthorized(s"JWT Token is not valid. Missing ${missing.mkString(", ")} from the JWT Claimset")
+        request.response(401, s"JWT Token is not valid. Missing ${missing.mkString(", ")} from the JWT Claimset")
       )
 
       case Authorization.InvalidBearer => Future(
-        unauthorized("Value for Bearer header was not formatted correctly. We expect a JWT Token.")
+        request.response(401, "Value for Bearer header was not formatted correctly. We expect a JWT Token.")
       )
 
       case Authorization.Token(token) => {
         resolveToken(requestId, token).flatMap {
           case None => Future(
-            unauthorized(s"API Token is not valid")
+            request.response(401, "API Token is not valid")
           )
           case Some(token) => {
             proxyPostAuth(requestId, request, token = ResolvedToken.fromToken(requestId, token))
@@ -181,7 +181,7 @@ class ReverseProxy @Inject () (
       case Some(t) => {
         resolveOrganizationAuthorization(t, organization).flatMap {
           case None => Future(
-            unauthorized(s"Not authorized to access $organization or the organization does not exist")
+            request.response(422, s"Not authorized to access $organization or the organization does not exist")
           )
 
           case Some(orgToken) => {
@@ -214,14 +214,14 @@ class ReverseProxy @Inject () (
         // Currently all partner requests require authorization. Deny
         // access as there is no auth token present.
         Future(
-          unauthorized("Missing authorization headers")
+          request.response(401, "Missing authorization headers")
         )
       }
 
       case Some(t) => {
         t.partnerId == Some(partner) match {
           case false => Future(
-            unauthorized(s"Not authorized to access $partner or the partner does not exist")
+            request.response(401, s"Not authorized to access $partner or the partner does not exist")
           )
 
           case true => {
@@ -285,7 +285,7 @@ class ReverseProxy @Inject () (
         token match {
           case None => Future(
             Left(
-              unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
+              request.response(401, s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
             )
           )
 
@@ -293,15 +293,15 @@ class ReverseProxy @Inject () (
             resolveOrganizationAuthorization(t, Constants.FlowOrganizationId).map {
               case None => {
                 Left(
-                  unauthorized(s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
+                  request.response(401, s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
                 )
               }
 
               case Some(_) => {
                 hostOverride match {
                   case Some(host) => {
-                    (host.startsWith("http://") || host.startsWith("https://")) match {
-                      case true => Right(
+                    if (host.startsWith("http://") || host.startsWith("https://")) {
+                      Right(
                         Operation(
                           route = Route(
                             method = request.method,
@@ -310,8 +310,9 @@ class ReverseProxy @Inject () (
                           server = Server(name = "override", host = host)
                         )
                       )
-                      case false => Left(
-                        unprocessableEntity(s"Value for ${Constants.Headers.FlowHost} header must start with http:// or https://")
+                    } else {
+                      Left(
+                        request.response(422, s"Value for ${Constants.Headers.FlowHost} header must start with http:// or https://")
                       )
                     }
                   }
@@ -323,7 +324,7 @@ class ReverseProxy @Inject () (
                     findServerByName(name) match {
                       case None => {
                         Left(
-                          unprocessableEntity(s"Invalid server name from Request Header[${Constants.Headers.FlowServer}]")
+                          request.response(422, s"Invalid server name from Request Header[${Constants.Headers.FlowServer}]")
                         )
                       }
 
@@ -355,11 +356,7 @@ class ReverseProxy @Inject () (
     }
   }
 
-  private[this] def unauthorized(message: String) = {
-    NotFound(genericError(message))
-  }
-
-  private[this] def unprocessableEntity(message: String) = {
+  private[this] def topLevelUnprocessableEntity(message: String) = {
     UnprocessableEntity(genericError(message))
   }
 
