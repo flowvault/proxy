@@ -44,6 +44,8 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
     request.envelopes must be(Nil)
     request.queryParameters must be(query - "callback")
     request.toString must be("GET /users/")
+    request.envelopes.contains(Envelope.Request) must be(false)
+    request.envelopes.contains(Envelope.Response) must be(false)
   }
 
   "validate method" must {
@@ -88,7 +90,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
   "validate callback" must {
 
     "accept valid" in {
-      rightOrErrors(
+      val request = rightOrErrors(
         ProxyRequest.validate(
           requestMethod = "GET",
           requestPath = "/users/",
@@ -96,7 +98,10 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
           queryParameters = Map("callback" -> Seq("my_json.Callback")),
           headers = Headers()
         )
-      ).jsonpCallback must be(Some("my_json.Callback"))
+      )
+
+      request.jsonpCallback must be(Some("my_json.Callback"))
+      request.responseEnvelope must be(true)
     }
 
     "reject invalid" in {
@@ -121,6 +126,50 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
       ) must be(Left(
         Seq("Query parameter 'callback', if specified, cannot be specified more than once")
       ))
+    }
+  }
+
+  "validate envelope" must {
+
+    "accept valid" in {
+      val request = rightOrErrors(
+        ProxyRequest.validate(
+          requestMethod = "GET",
+          requestPath = "/users/",
+          body = testBody,
+          queryParameters = Map("envelope" -> Seq("request", "response")),
+          headers = Headers()
+        )
+      )
+
+      request.envelopes.contains(Envelope.Request) must be(true)
+      request.envelopes.contains(Envelope.Response) must be(true)
+      request.responseEnvelope must be(true)
+    }
+
+    "reject invalid" in {
+      ProxyRequest.validate(
+        requestMethod = "GET",
+        requestPath = "/users/",
+        body = testBody,
+        queryParameters = Map("envelope" -> Seq("foo")),
+        headers = Headers()
+      ) must be(Left(
+        Seq("Invalid value for query parameter 'envelope' - must be one of request, response")
+      ))
+    }
+
+    "merges duplicates" in {
+      val request = rightOrErrors(
+        ProxyRequest.validate(
+          requestMethod = "GET",
+          requestPath = "/users/",
+          body = testBody,
+          queryParameters = Map("envelope" -> Seq("response", "response")),
+          headers = Headers()
+        )
+      )
+      request.envelopes must be(Seq(Envelope.Response))
     }
   }
 
