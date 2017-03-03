@@ -67,4 +67,11 @@ response = helpers.json_post("/organizations", { :environment => 'sandbox', :par
 assert_status(201, response)
 assert_equals(response.json['id'], id)
 
+# Test response envelopes for valid requests
+response = helpers.get("/organizations/#{id}?envelope=response").with_api_key.execute
+assert_envelope(response)
+puts response.unwrap_envelope.inspect
+assert_status(200, response.unwrap_envelope)
+
+
 cleanup(helpers)
