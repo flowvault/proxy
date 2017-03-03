@@ -1,19 +1,17 @@
 package controllers
 
 import akka.actor.ActorSystem
-import io.flow.common.v0.models.{Environment, Organization, Role, UserReference}
+import io.flow.common.v0.models.Environment
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
-import io.flow.organization.v0.models.{Membership, OrganizationAuthorizationForm}
+import io.flow.organization.v0.models.{OrganizationAuthorizationForm}
 import io.flow.token.v0.models.{OrganizationTokenReference, TokenAuthenticationForm, TokenReference}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
 import lib._
 import play.api.Logger
-import play.api.libs.json.Json
 import play.api.mvc._
-import org.apache.commons.codec.binary.Base64
 
 import scala.concurrent.Future
 
@@ -70,7 +68,7 @@ class ReverseProxy @Inject () (
   def handle: Action[RawBuffer] = Action.async(parse.raw) { request =>
     ProxyRequest.validate(request) match {
       case Left(errors) => Future.successful {
-        topLevelUnprocessableEntity(errors.mkString(", "))
+        UnprocessableEntity(errors.mkString(", "))
       }
       case Right(pr) => internalHandle(pr)
     }
@@ -354,10 +352,6 @@ class ReverseProxy @Inject () (
     proxies.get(name).getOrElse {
       sys.error(s"No proxy defined for the server with name[$name]")
     }
-  }
-
-  private[this] def topLevelUnprocessableEntity(message: String) = {
-    UnprocessableEntity(genericError(message))
   }
 
   private[this] def findServerByName(name: String): Option[Server] = {
