@@ -54,9 +54,9 @@ response = helpers.json_post("/organizations", { :environment => 'sandbox', :par
 assert_unauthorized(response)
 
 id = "%s-%s" % [TEST_ORG_PREFIX, ProxyGlobal.random_string(8)]
-puts id
 response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent_id => 'flow', "id" => id }).with_api_key.execute
-assert_unauthorized(response)
+assert_status(201, response)
+assert_equals(response.json['id'], id)
 
 cleanup(helpers)
 
