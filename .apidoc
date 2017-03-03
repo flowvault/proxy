@@ -16,6 +16,10 @@ code:
       version: latest
       generators:
         play_2_5_client: app/generated
+    session-internal:
+      version: latest
+      generators:
+        play_2_5_client: app/generated
     token:
       version: latest
       generators:
