@@ -107,10 +107,13 @@ object ProxyRequest {
       case Nil => (None, Nil)
 
       case cb :: Nil => {
-        if (isValidCallback(cb)) {
+        if (cb.trim.isEmpty) {
+          (None, Seq("Callback query parameter, if specified, must be non empty"))
+
+        } else if (isValidCallback(cb)) {
           (Some(cb), Nil)
         } else {
-          (None, Seq("Callback parameter, if specified, must contain only alphanumerics, '_' and '.' characters"))
+          (None, Seq("Callback query parameter, if specified, must contain only alphanumerics, '_' and '.' characters"))
         }
       }
 

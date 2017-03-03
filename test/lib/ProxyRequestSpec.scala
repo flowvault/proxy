@@ -103,7 +103,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
           requestMethod = "GET",
           requestPath = "/users/",
           body = testBody,
-          queryParameters = Map("callback" -> Seq("my_json.Callback")),
+          queryParameters = Map("callback" -> Seq("my_json.Callback1")),
           headers = Headers()
         )
       )
@@ -120,7 +120,19 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
         queryParameters = Map("callback" -> Seq("!!!")),
         headers = Headers()
       ) must be(Left(
-        Seq("Callback parameter, if specified, must contain only alphanumerics, '_' and '.' characters")
+        Seq("Callback query parameter, if specified, must contain only alphanumerics, '_' and '.' characters")
+      ))
+    }
+
+    "reject empty" in {
+      ProxyRequest.validate(
+        requestMethod = "GET",
+        requestPath = "/users/",
+        body = testBody,
+        queryParameters = Map("callback" -> Seq("   ")),
+        headers = Headers()
+      ) must be(Left(
+        Seq("Callback query parameter, if specified, must be non empty")
       ))
     }
 

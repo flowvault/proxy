@@ -70,8 +70,12 @@ assert_equals(response.json['id'], id)
 # Test response envelopes for valid requests
 response = helpers.get("/organizations/#{id}?envelope=response").with_api_key.execute
 assert_envelope(response)
-puts response.unwrap_envelope.inspect
-assert_status(200, response.unwrap_envelope)
+r = response.unwrap_envelope
+assert_status(200, r)
+assert_equals(r.json['id'], id)
 
+response = helpers.get("/organizations/#{id}?envelope=response&callback").with_api_key.execute
+assert_jsonp(response)
+assert_status(200, response.unwrap_jsonp)
 
 cleanup(helpers)
