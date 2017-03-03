@@ -117,18 +117,6 @@ operations:
           op.route.method must be(method)
           op.route.path must be(path)
         }
-
-        // make sure all servers have a defined execution context
-        config.servers.filter { server =>
-          serverProxyFactory(
-            ServerProxyDefinition(server, MultiService(Nil))
-          ).asInstanceOf[ServerProxyImpl].executionContextName == ServerProxy.DefaultContextName
-        }.map(_.name).toList match {
-          case Nil => {}
-          case names => {
-            sys.error("All servers must have their own execution context. Please update conf/base.conf to add contexts named: " + names.map { n => s"$n-context" }.sorted.mkString(", "))
-          }
-        }
       }
     }
   }

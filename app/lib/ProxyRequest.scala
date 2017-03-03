@@ -58,8 +58,7 @@ object ProxyRequest {
         case Some(bytes) => ProxyRequestBody.Bytes(bytes)
       },
       queryParameters = request.queryString,
-      headers = request.headers,
-      jsonpCallback = request.queryString.getOrElse("callback", Nil).headOption
+      headers = request.headers
     )
   }
 
@@ -68,8 +67,7 @@ object ProxyRequest {
     requestPath: String,
     body: ProxyRequestBody,
     queryParameters: Map[String, Seq[String]],
-    headers: Headers,
-    jsonpCallback: Option[String]
+    headers: Headers
   ): Either[Seq[String], ProxyRequest] = {
     val (method, methodErrors) = queryParameters.getOrElse("method", Nil).map(_.toUpperCase).toList match {
       case Nil => (requestMethod, Nil)
@@ -78,12 +76,12 @@ object ProxyRequest {
         if (ValidMethods.contains(m)) {
           (m, Nil)
         } else {
-          (m, Seq(s"Invalid value for parameter 'method' - must be one of ${ValidMethods.mkString(", ")}"))
+          (m, Seq(s"Invalid value for query parameter 'method' - must be one of ${ValidMethods.mkString(", ")}"))
         }
       }
 
       case m :: _ => {
-        (m, Seq(s"Only a single value for parameter 'method' can be specified"))
+        (m, Seq("Query parameter 'method', if specified, cannot be specified more than once"))
       }
     }
 
@@ -95,24 +93,50 @@ object ProxyRequest {
         if (invalid.isEmpty) {
           (valid.flatten.distinct, Nil)
         } else {
-          (valid.flatten, Seq(s"Invalid value for parameter 'envelope' - must be one of ${Envelope.all.map(_.toString).mkString(", ")}"))
+          (valid.flatten, Seq(s"Invalid value for query parameter 'envelope' - must be one of ${Envelope.all.map(_.toString).mkString(", ")}"))
         }
       }
     }
 
-    methodErrors ++ envelopeErrors match {
+    val (jsonpCallback, jsonpCallbackErrors) = queryParameters.getOrElse("callback", Nil).toList match {
+      case Nil => (None, Nil)
+
+      case cb :: Nil => {
+        if (isValidCallback(cb)) {
+          (Some(cb), Nil)
+        } else {
+          (None, Seq("Callback parameter, if specified, must contain only alphanumerics, '_' and '.' characters"))
+        }
+      }
+
+      case _ => {
+        (None, Seq("Query parameter 'callback', if specified, cannot be specified more than once"))
+      }
+    }
+
+    methodErrors ++ envelopeErrors ++ jsonpCallbackErrors match {
       case Nil => Right(
         ProxyRequest(
           headers = headers,
           originalMethod = requestMethod,
-          method = method,
+          method = method.toUpperCase.trim,
           path = requestPath,
           body = body,
           queryParameters = queryParameters.filter { case (k, _) => !ReservedQueryParameters.contains(k) },
-          envelopes = envelopes
+          envelopes = envelopes,
+          jsonpCallback = jsonpCallback
         )
       )
       case errors => Left(errors)
+    }
+  }
+
+  private[this] val CallbackPattern = """^[a-zA-Z0-9_\.].+$""".r
+
+  def isValidCallback(name: String): Boolean = {
+    name match {
+      case CallbackPattern() => true
+      case _ => false
     }
   }
 }
@@ -132,13 +156,13 @@ case class ProxyRequest(
   queryParameters: Map[String, Seq[String]] = Map()
 ) {
   assert(
-    ProxyRequest.ReservedQueryParameters.filterNot { queryParameters.isDefinedAt } == Nil,
+    ProxyRequest.ReservedQueryParameters.filter { queryParameters.isDefinedAt } == Nil,
     "Cannot provide query reserved parameters"
   )
 
   assert(
     method.toUpperCase.trim == method,
-    "Method[$method] must be in uppercase, trimmed"
+    s"Method[$method] must be in uppercase, trimmed"
   )
 
   val responseEnvelope: Boolean = jsonpCallback.isDefined || envelopes.contains(Envelope.Response)
