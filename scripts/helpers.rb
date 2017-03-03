@@ -32,6 +32,24 @@ module ProxyGlobal
     rand(36**length).to_s(36)
   end
 
+  def ProxyGlobal.parse_json(body)
+    begin
+      JSON.parse(body)
+    rescue TypeError => e
+      raise "body is not a string: #{e}"
+    rescue JSON::JSONError => e
+      base = "ERROR parsing json"
+      if body.strip.empty?
+        raise "%s: body was empty\n" % base
+      else
+        msg = "%s: Invalid JSON\n" % base
+        msg << body
+        msg << "\n"
+        raise msg
+      end
+    end
+  end
+  
 end
 
 class Response
@@ -45,20 +63,13 @@ class Response
     @body = body
   end
 
+  def unwrap_envelope
+    js = json
+    Response.new(@request_method, @request_uri, js['status'], ProxyGlobal.format_json(js['body']))
+  end
+  
   def json
-    begin
-      JSON.parse(@body)
-    rescue JSON::JSONError => e
-      base = "ERROR for %s %s" % [@request_method, @request_uri]
-      if @body.strip.empty?
-        raise "%s: body was empty\n" % base
-      else
-        msg = "%s: Invalid JSON\n" % base
-        msg << json_stack_trace
-        msg << "\n"
-        raise msg
-      end
-    end
+    ProxyGlobal.parse_json(@body)
   end
 
   def json_stack_trace

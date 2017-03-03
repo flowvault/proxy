@@ -13,7 +13,7 @@ end
 def assert_envelope(response)
   tests = [
     200 == response.status,
-    response.json.has_key?("code"),
+    response.json.has_key?("status"),
     response.json.has_key?("headers"),
     response.json.has_key?("body")
   ]

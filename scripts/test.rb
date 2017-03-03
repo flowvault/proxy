@@ -42,7 +42,7 @@ assert_generic_error(response, "Invalid value for query parameter 'envelope' - m
 
 response = helpers.json_post("/foo?envelope=response").execute
 assert_envelope(response)
-assert_generic_error(response.body, "Unknown HTTP path /foo")
+assert_generic_error(response.unwrap_envelope, "Unknown HTTP path /foo")
 
 response = helpers.json_post("/token-validations").execute
 assert_generic_error(response, "Missing required field for type 'token_validation_form': 'token'")
