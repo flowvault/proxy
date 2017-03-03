@@ -190,7 +190,6 @@ class ServerProxyImpl @Inject () (
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
-    println(s"request.jsonpCallback: ${request.jsonpCallback} request.contentType[${request.contentType}]")
     val formData: JsValue = request.jsonpCallback match {
       case Some(_) => {
         FormData.toJson(request.queryParameters)

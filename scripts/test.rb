@@ -76,6 +76,8 @@ assert_equals(r.json['id'], id)
 
 response = helpers.get("/organizations/#{id}?envelope=response&callback").with_api_key.execute
 assert_jsonp(response)
-assert_status(200, response.unwrap_jsonp)
+r = response.unwrap_envelope
+assert_status(200, r)
+assert_equals(r.json['id'], id)
 
 cleanup(helpers)
