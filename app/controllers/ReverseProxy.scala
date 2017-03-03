@@ -3,6 +3,7 @@ package controllers
 import akka.actor.ActorSystem
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
+import io.flow.session.internal.v0.{Client => SessionClient}
 import javax.inject.{Inject, Singleton}
 
 import lib._
@@ -39,7 +40,7 @@ class ReverseProxy @Inject () (
   private[this] val sessionClient = {
     val server = findServerByName("session").getOrElse(mustFindServerByName("session-internal"))
     Logger.info(s"Creating SessionClient w/ baseUrl[${server.host}]")
-    new OrganizationClient(ws, baseUrl = server.host) // TODO
+    new SessionClient(ws, baseUrl = server.host)
   }
 
   override val tokenClient = {
