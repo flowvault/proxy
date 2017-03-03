@@ -31,7 +31,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
     val request = rightOrErrors(
       ProxyRequest.validate(
         requestMethod = "get",
-        requestPath = "/users/",
+        requestPath = "/users/?foo=1&foo=2",
         body = testBody,
         queryParameters = query,
         headers = Headers(Seq(
@@ -44,13 +44,14 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
     request.headers.getAll("foo2") must be(Nil)
     request.originalMethod must be("get")
     request.method must be("GET")
+    request.pathWithQuery must be("/users/?foo=1&foo=2")
     request.path must be("/users/")
     request.bodyUtf8 must be(Some("test"))
     request.jsonpCallback must be(Some("jj"))
     request.responseEnvelope must be(true)
     request.envelopes must be(Nil)
     request.queryParameters must be(query - "callback")
-    request.toString must be("GET /users/")
+    request.toString must be("GET /users/?foo=1&foo=2")
     request.envelopes.contains(Envelope.Request) must be(false)
     request.envelopes.contains(Envelope.Response) must be(false)
   }

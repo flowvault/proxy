@@ -10,7 +10,7 @@ object ContentType {
 
   case object ApplicationJson extends ContentType { override def toString = "application/json" }
   case object UrlFormEncoded extends ContentType { override def toString = "application/x-www-form-urlencoded" }
-  case class Other(name: String) extends ContentType { override def toString = name }
+  case class Other(name: String) extends ContentType { override def toString: String = name }
 
   val all = Seq(ApplicationJson, UrlFormEncoded)
 
@@ -120,7 +120,7 @@ object ProxyRequest {
           headers = headers,
           originalMethod = requestMethod,
           method = method.toUpperCase.trim,
-          path = requestPath,
+          pathWithQuery = requestPath,
           body = body,
           queryParameters = queryParameters.filter { case (k, _) => !ReservedQueryParameters.contains(k) },
           envelopes = envelopes,
@@ -149,7 +149,7 @@ case class ProxyRequest(
   headers: Headers,
   originalMethod: String,
   method: String,
-  path: String,
+  pathWithQuery: String,
   body: ProxyRequestBody,
   jsonpCallback: Option[String] = None,
   envelopes: Seq[Envelope] = Nil,
@@ -165,6 +165,22 @@ case class ProxyRequest(
     s"Method[$method] must be in uppercase, trimmed"
   )
 
+  /**
+    * path is everything up to the ? - e.g. /users/
+    */
+  val path: String = {
+    val i = pathWithQuery.indexOf('?')
+    if (i < 0) {
+      pathWithQuery
+    } else {
+      pathWithQuery.substring(0, i)
+    }
+  }
+
+  /**
+    * responseEnvelope is true for all requests with a jsonp callback as well
+    * as requests that explicitly request an envelope
+    */
   val responseEnvelope: Boolean = jsonpCallback.isDefined || envelopes.contains(Envelope.Response)
 
   /**
@@ -213,7 +229,7 @@ case class ProxyRequest(
   }
 
   override def toString: String = {
-    s"$method $path"
+    s"$method $pathWithQuery"
   }
 
 }
