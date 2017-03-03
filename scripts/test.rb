@@ -74,9 +74,9 @@ r = response.unwrap_envelope
 assert_status(200, r)
 assert_equals(r.json['id'], id)
 
-response = helpers.get("/organizations/#{id}?envelope=response&callback").with_api_key.execute
-assert_jsonp(response)
-r = response.unwrap_envelope
+response = helpers.get("/organizations/#{id}?envelope=response&callback=foo").with_api_key.execute
+assert_jsonp(response, "foo")
+r = response.unwrap_jsonp
 assert_status(200, r)
 assert_equals(r.json['id'], id)
 
