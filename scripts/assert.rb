@@ -24,6 +24,33 @@ def assert_envelope(response)
   end
 end
 
+def assert_jsonp(response, expected_callback_name)
+  prefix = '/**/'
+  if response.body.start_with?(prefix)
+    stripped = response.body[prefix.length, response.body.length].strip
+    if md = stripped.match(/^(.+)\((.*)\)$/m)
+      callback = md[1]
+      body = ProxyGlobal.parse_json(md[2])
+
+      tests = [
+        200 == response.status,
+        callback == expected_callback_name,
+        body.has_key?("status"),
+        body.has_key?("headers"),
+        body.has_key?("body")
+      ]
+
+      if tests.all? { |r| r }
+        return
+      end
+
+    end
+  end
+
+  raise "expected response envelope with jsonp callback[%s] for %s %s but got\n  HTTP %s\n%s" %
+        [expected_callback_name, response.request_method, response.request_uri, response.status, response.json_stack_trace]
+end
+
 def assert_generic_error(response, message)
   assert_equals(response.status, 422)
   assert_equals(response.json['code'], "generic_error")

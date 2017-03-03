@@ -67,6 +67,19 @@ class Response
     js = json
     Response.new(@request_method, @request_uri, js['status'], ProxyGlobal.format_json(js['body']))
   end
+
+  def unwrap_jsonp
+    prefix = '/**/'
+    if @body.start_with?(prefix)
+      stripped = @body[prefix.length, @body.length].strip
+      if md = stripped.match(/^(.+)\((.*)\)$/m)
+        callback = md[1]
+        js = ProxyGlobal.parse_json(md[2])
+        return Response.new(@request_method, @request_uri, js['status'], ProxyGlobal.format_json(js['body']))
+      end
+    end
+    raise "Cannot unwrap json from: " + @body
+  end
   
   def json
     ProxyGlobal.parse_json(@body)

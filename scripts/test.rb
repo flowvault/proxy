@@ -34,6 +34,7 @@ end
 
 helpers = Helpers.new("http://localhost:7000", api_key_file)
 
+# Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
 assert_generic_error(response, "Unknown HTTP path /foo")
 
@@ -43,6 +44,10 @@ assert_generic_error(response, "Invalid value for query parameter 'envelope' - m
 response = helpers.json_post("/foo?envelope=response").execute
 assert_envelope(response)
 assert_generic_error(response.unwrap_envelope, "Unknown HTTP path /foo")
+
+response = helpers.json_post("/foo?envelope=response&callback=cb").execute
+assert_jsonp(response, "cb")
+assert_generic_error(response.unwrap_jsonp, "Unknown HTTP path /foo")
 
 response = helpers.json_post("/token-validations").execute
 assert_generic_error(response, "Missing required field for type 'token_validation_form': 'token'")
