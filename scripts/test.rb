@@ -40,6 +40,10 @@ assert_generic_error(response, "Unknown HTTP path /foo")
 response = helpers.json_post("/foo?envelope=res").execute
 assert_generic_error(response, "Invalid value for query parameter 'envelope' - must be one of request, response")
 
+response = helpers.json_post("/foo?envelope=response").execute
+assert_envelope(response)
+assert_generic_error(response.body, "Unknown HTTP path /foo")
+
 response = helpers.json_post("/token-validations").execute
 assert_generic_error(response, "Missing required field for type 'token_validation_form': 'token'")
 
@@ -59,4 +63,3 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 
 cleanup(helpers)
-

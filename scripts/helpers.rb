@@ -36,7 +36,7 @@ end
 
 class Response
 
-  attr_reader :status, :body
+  attr_reader :request_method, :request_uri, :status, :body
 
   def initialize(request_method, request_uri, status, body)
     @request_method = request_method
