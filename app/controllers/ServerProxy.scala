@@ -363,6 +363,14 @@ class ServerProxyImpl @Inject () (
               .stream
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
+
+          case ProxyRequestBody.Json(json) => {
+            req
+              .withHeaders(finalHeaders.headers: _*)
+              .withBody(json)
+              .stream
+              .recover { case ex: Throwable => throw new Exception(ex) }
+          }
         }
       }
     }

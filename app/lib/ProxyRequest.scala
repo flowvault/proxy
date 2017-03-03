@@ -3,8 +3,10 @@ package lib
 import java.nio.charset.Charset
 
 import akka.util.ByteString
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json._
 import play.api.mvc._
+
+import scala.util.{Failure, Success, Try}
 
 sealed trait ContentType
 object ContentType {
@@ -41,6 +43,7 @@ object ProxyRequestBody {
   val Utf8: Charset = Charset.forName("UTF-8")
 
   case class Bytes(bytes: ByteString) extends ProxyRequestBody
+  case class Json(js: JsValue) extends ProxyRequestBody
   case class File(file: java.io.File) extends ProxyRequestBody
 }
 
@@ -48,7 +51,7 @@ object ProxyRequest {
 
   val ReservedQueryParameters = Seq("method", "callback", "envelope")
 
-  private[this] val ValidMethods = Seq("GET", "POST", "PUT", "PATCH", "DELETE")
+  val ValidMethods = Seq("GET", "POST", "PUT", "PATCH", "DELETE")
 
   def validate(request: Request[RawBuffer]): Either[Seq[String], ProxyRequest] = {
     validate(
@@ -191,6 +194,8 @@ case class ProxyRequest(
     */
   val responseEnvelope: Boolean = jsonpCallback.isDefined || envelopes.contains(Envelope.Response)
 
+  val requestEnvelope: Boolean =envelopes.contains(Envelope.Request)
+
   /**
     * Returns the content type of the request. WS Client defaults to
     * application/octet-stream. Given this proxy is for APIs only,
@@ -206,16 +211,12 @@ case class ProxyRequest(
   def bodyUtf8: Option[String] = {
     body match {
       case ProxyRequestBody.Bytes(bytes) => Some(bytes.decodeString(ProxyRequestBody.Utf8))
+      case ProxyRequestBody.Json(json) => Some(json.toString)
       case ProxyRequestBody.File(_) => None
     }
   }
 
-  def queryParametersAsSeq(): Seq[(String, String)] = {
-    queryParameters.flatMap { case (name, values) =>
-      values.map { v => (name, v) }
-    }.toSeq
-  }
-
+  def queryParametersAsSeq(): Seq[(String, String)] = mapToSeq(queryParameters)
 
   /**
     * See https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-CloudFlare-handle-HTTP-Request-headers-
@@ -240,6 +241,49 @@ case class ProxyRequest(
     s"$method $pathWithQuery"
   }
 
+  def parseRequestEnvelope(): Either[Seq[String], ProxyRequest] = {
+    assert(requestEnvelope, "method only valid if request envelope")
+
+    Try {
+      Json.parse(
+        bodyUtf8.getOrElse {
+          sys.error("Must have a body for request envelopes")
+        }
+      )
+    } match {
+      case Success(js) => {
+        val (method, methodErrors) = parseMethod(js, "method") match {
+          case Left(errors) => ("", errors)
+          case Right(method) => (method, Nil)
+        }
+
+        val (bodyAsJson, bodyErrors) = (js \ "body").asOpt[JsValue] match {
+          case None => (Json.obj(), Seq("Field 'body' is required"))
+          case Some(b) => (b, Nil)
+        }
+
+        val headers: Map[String, Seq[String]] = (js \ "headers").getOrElse(Json.obj()).as[Map[String, Seq[String]]]
+
+        methodErrors ++ bodyErrors match {
+          case Nil => ProxyRequest.validate(
+            requestMethod = originalMethod,
+            requestPath = path,
+            body = ProxyRequestBody.Json(bodyAsJson),
+            queryParameters = queryParameters ++ Map(
+              "method" -> Seq(method)
+            ),
+            headers = Headers(mapToSeq(headers): _*)
+          )
+          case errors => Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
+        }
+      }
+
+      case Failure(_) => {
+        Left(Seq("Envelope requests require a valid JSON body"))
+      }
+    }
+  }
+
   /**
     * Returns a valid play result, taking into account any requests for response envelopes
     */
@@ -247,11 +291,14 @@ case class ProxyRequest(
     if (responseEnvelope) {
       Ok(wrappedResponseBody(status, body, headers)).as("application/javascript; charset=utf-8")
     } else {
-      val h: Seq[(String, String)] = headers.flatMap { case (k, values) =>
-          values.map { v => (k, v) }
-      }.toSeq
-      Status(status)(body).withHeaders(h: _*)
+      Status(status)(body).withHeaders(mapToSeq(headers): _*)
     }
+  }
+
+  private[this] def mapToSeq(map: Map[String, Seq[String]]): Seq[(String, String)] = {
+    map.flatMap { case (k, values) =>
+      values.map { v => (k, v) }
+    }.toSeq
   }
 
   /**
@@ -283,5 +330,15 @@ case class ProxyRequest(
   ): String = {
     // Prefix /**/ is to avoid a JSONP/Flash vulnerability
     "/**/" + s"""$callback($body)"""
+  }
+
+  private[this] def parseMethod(json: JsValue, field: String): Either[Seq[String], String] = {
+    (json \ field).validateOpt[String] match {
+      case JsError(_) => Left(Seq(s"Field '$field' must be one of ${ProxyRequest.ValidMethods.mkString(", ")}"))
+      case JsSuccess(value, _) => value match {
+        case None => Left(Seq(s"Field '$field' is required"))
+        case Some(v) => Right(v)
+      }
+    }
   }
 }

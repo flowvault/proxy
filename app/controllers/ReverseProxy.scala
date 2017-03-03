@@ -5,7 +5,7 @@ import io.flow.common.v0.models.Environment
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.{OrganizationAuthorizationForm}
-import io.flow.token.v0.models.{OrganizationTokenReference, TokenAuthenticationForm, TokenReference}
+import io.flow.token.v0.models.{TokenAuthenticationForm, TokenReference}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
@@ -49,13 +49,10 @@ class ReverseProxy @Inject () (
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
     val all = scala.collection.mutable.Map[String, ServerProxy]()
     index.config.servers.map { s =>
-      all.isDefinedAt(s.name) match {
-        case true => {
-          sys.error(s"Duplicate server with name[${s.name}]")
-        }
-        case false => {
-          all += (s.name -> serverProxyFactory(ServerProxyDefinition(s, multiService)))
-        }
+      if (all.isDefinedAt(s.name)) {
+        sys.error(s"Duplicate server with name[${s.name}]")
+      } else {
+        all += (s.name -> serverProxyFactory(ServerProxyDefinition(s, multiService)))
       }
     }
     all.toMap
@@ -66,7 +63,20 @@ class ReverseProxy @Inject () (
       case Left(errors) => Future.successful {
         UnprocessableEntity(genericErrors(errors))
       }
-      case Right(pr) => internalHandle(pr)
+      case Right(pr) => {
+        if (pr.requestEnvelope) {
+          pr.parseRequestEnvelope()  match {
+            case Left(errors) => Future.successful {
+              UnprocessableEntity(genericErrors(errors))
+            }
+            case Right(pr) => {
+              internalHandle(pr)
+            }
+          }
+        } else {
+          internalHandle(pr)
+        }
+      }
     }
   }
 
