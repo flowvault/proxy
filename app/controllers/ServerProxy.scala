@@ -26,8 +26,6 @@ case class ServerProxyDefinition(
   multiService: io.flow.lib.apidoc.json.validation.MultiService // TODO Move higher level
 ) {
 
-  val contextName: String = s"${server.name}-context"
-
   val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
     sys.error(s"Could not parse host from server[$server]")
   }
@@ -135,7 +133,7 @@ class ServerProxyImpl @Inject () (
   @Assisted override val definition: ServerProxyDefinition
 ) extends ServerProxy with Controller with lib.Errors {
 
-  private[this] implicit val (ec, name) = resolveContextName(definition.contextName)
+  private[this] implicit val (ec, name) = resolveContextName(definition.server.name)
 
   /**
     * Returns the execution context to use, if found. Works by recursively
@@ -143,11 +141,12 @@ class ServerProxyImpl @Inject () (
     */
   @tailrec
   private[this] def resolveContextName(name: String): (ExecutionContext, String) = {
+    val contextName = s"$name-context"
     Try {
-      system.dispatchers.lookup(name)
+      system.dispatchers.lookup(contextName)
     } match {
       case Success(ec) => {
-        Logger.info(s"ServerProxy[${definition.server.name}] using configured execution context[$name]")
+        Logger.info(s"ServerProxy[${definition.server.name}] using configured execution context[$contextName]")
         (ec, name)
       }
 
