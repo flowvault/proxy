@@ -240,8 +240,10 @@ case class ProxyRequest(
     if (responseEnvelope) {
       Ok(wrappedResponseBody(status, body, headers)).as("application/javascript; charset=utf-8")
     } else {
-      // TODO: Add headers
-      Status(status)(body)
+      val h: Seq[(String, String)] = headers.flatMap { case (k, values) =>
+          values.map { v => (k, v) }
+      }.toSeq
+      Status(status)(body).withHeaders(h: _*)
     }
   }
 
