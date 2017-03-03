@@ -78,7 +78,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
         queryParameters = Map("method" -> Seq("foo")),
         headers = Headers()
       ) must be(Left(
-        Seq("Invalid value 'foo' for query parameter 'method' - must be one of POST, PUT, PATCH, DELETE")
+        Seq("Invalid value 'foo' for query parameter 'method' - must be one of GET, POST, PUT, PATCH, DELETE")
       ))
     }
 
