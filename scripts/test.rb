@@ -40,6 +40,10 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 org = response.json
 
+response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
+puts response.inspect
+exit(1)
+
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
 assert_generic_error(response, "Unknown HTTP path /foo")
@@ -82,6 +86,7 @@ assert_status(200, r)
 assert_equals(r.json['id'], id)
 
 # Test request envelope
+
 response = helpers.json_post("/organizations/0?envelope=request", { }).with_api_key.execute
 assert_generic_error(response, "Error in envelope request body: Field 'method' is required, Field 'body' is required")
 

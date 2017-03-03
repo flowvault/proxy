@@ -349,14 +349,21 @@ class ServerProxyImpl @Inject () (
 
       case _ => {
         request.body match {
-          case ProxyRequestBody.File(file) => {
+          case None => {
+            req
+              .withHeaders(finalHeaders.headers: _*)
+              .stream()
+              .recover { case ex: Throwable => throw new Exception(ex) }
+          }
+
+          case Some(ProxyRequestBody.File(file)) => {
             req
               .withHeaders(finalHeaders.headers: _*)
               .post(file)
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
 
-          case ProxyRequestBody.Bytes(bytes) => {
+          case Some(ProxyRequestBody.Bytes(bytes)) => {
             req
               .withHeaders(finalHeaders.headers: _*)
               .withBody(bytes)
@@ -364,7 +371,7 @@ class ServerProxyImpl @Inject () (
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
 
-          case ProxyRequestBody.Json(json) => {
+          case Some(ProxyRequestBody.Json(json)) => {
             req
               .withHeaders(finalHeaders.headers: _*)
               .withBody(json)

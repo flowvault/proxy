@@ -13,7 +13,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
     }
   }
 
-  private[this] val testBody = ProxyRequestBody.Bytes(ByteString("test".getBytes()))
+  private[this] val testBody = Some(ProxyRequestBody.Bytes(ByteString("test".getBytes())))
 
   "isValidCallback" in {
     ProxyRequest.isValidCallback("f") must be(true)

@@ -57,10 +57,12 @@ object ProxyRequest {
     validate(
       requestMethod = request.method,
       requestPath = request.uri,
-      body = request.body.asBytes() match {
-        case None => ProxyRequestBody.File(request.body.asFile)
-        case Some(bytes) => ProxyRequestBody.Bytes(bytes)
-      },
+      body = Some(
+          request.body.asBytes() match {
+          case None => ProxyRequestBody.File(request.body.asFile)
+          case Some(bytes) => ProxyRequestBody.Bytes(bytes)
+        }
+      ),
       queryParameters = request.queryString,
       headers = request.headers
     )
@@ -69,7 +71,7 @@ object ProxyRequest {
   def validate(
     requestMethod: String,
     requestPath: String,
-    body: ProxyRequestBody,
+    body: Option[ProxyRequestBody],
     queryParameters: Map[String, Seq[String]],
     headers: Headers
   ): Either[Seq[String], ProxyRequest] = {
@@ -161,7 +163,7 @@ case class ProxyRequest(
   originalMethod: String,
   method: String,
   pathWithQuery: String,
-  body: ProxyRequestBody,
+  body: Option[ProxyRequestBody] = None,
   jsonpCallback: Option[String] = None,
   envelopes: Seq[Envelope] = Nil,
   queryParameters: Map[String, Seq[String]] = Map()
@@ -209,7 +211,7 @@ case class ProxyRequest(
     * encoded string.
     */
   def bodyUtf8: Option[String] = {
-    body match {
+    body.flatMap {
       case ProxyRequestBody.Bytes(bytes) => Some(bytes.decodeString(ProxyRequestBody.Utf8))
       case ProxyRequestBody.Json(json) => Some(json.toString)
       case ProxyRequestBody.File(_) => None
@@ -257,18 +259,15 @@ case class ProxyRequest(
           case Right(method) => (method, Nil)
         }
 
-        val (bodyAsJson, bodyErrors) = (js \ "body").asOpt[JsValue] match {
-          case None => (Json.obj(), Seq("Field 'body' is required"))
-          case Some(b) => (b, Nil)
-        }
+        val body = (js \ "body").asOpt[JsValue].map(ProxyRequestBody.Json)
 
         val headers: Map[String, Seq[String]] = (js \ "headers").getOrElse(Json.obj()).as[Map[String, Seq[String]]]
 
-        methodErrors ++ bodyErrors match {
+        methodErrors match {
           case Nil => ProxyRequest.validate(
             requestMethod = originalMethod,
             requestPath = path,
-            body = ProxyRequestBody.Json(bodyAsJson),
+            body = body,
             queryParameters = queryParameters ++ Map(
               "method" -> Seq(method)
             ),
