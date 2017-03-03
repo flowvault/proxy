@@ -131,7 +131,7 @@ object ProxyRequest {
     }
   }
 
-  private[this] val CallbackPattern = """^[a-zA-Z0-9_\.].+$""".r
+  private[this] val CallbackPattern = """^[a-zA-Z0-9_\.]+$""".r
 
   def isValidCallback(name: String): Boolean = {
     name match {

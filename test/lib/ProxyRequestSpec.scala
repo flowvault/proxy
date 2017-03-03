@@ -15,6 +15,13 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
 
   private[this] val testBody = ProxyRequestBody.Bytes(ByteString("test".getBytes()))
 
+  "isValidCallback" in {
+    ProxyRequest.isValidCallback("f") must be(true)
+    ProxyRequest.isValidCallback("f2") must be(true)
+    ProxyRequest.isValidCallback("My.function_name") must be(true)
+    ProxyRequest.isValidCallback("!") must be(false)
+  }
+
   "validate w/ default values succeeds" in {
     val query = Map(
       "q" -> Seq("baz"),
