@@ -39,7 +39,7 @@ response = helpers.json_post("/foo").execute
 assert_generic_error(response, "Unknown HTTP path /foo")
 
 response = helpers.json_post("/foo?envelope=res").execute
-assert_generic_error(response, "Invalid value for query parameter 'envelope' - must be one of request, response")
+assert_generic_error(response, "Invalid value 'res' for query parameter 'envelope' - must be one of request, response")
 
 response = helpers.json_post("/foo?envelope=response").execute
 assert_envelope(response)

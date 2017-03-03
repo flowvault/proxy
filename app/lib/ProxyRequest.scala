@@ -70,14 +70,14 @@ object ProxyRequest {
     queryParameters: Map[String, Seq[String]],
     headers: Headers
   ): Either[Seq[String], ProxyRequest] = {
-    val (method, methodErrors) = queryParameters.getOrElse("method", Nil).map(_.toUpperCase).toList match {
+    val (method, methodErrors) = queryParameters.getOrElse("method", Nil).toList match {
       case Nil => (requestMethod, Nil)
 
       case m :: Nil => {
-        if (ValidMethods.contains(m)) {
+        if (ValidMethods.contains(m.toUpperCase)) {
           (m, Nil)
         } else {
-          (m, Seq(s"Invalid value for query parameter 'method' - must be one of ${ValidMethods.mkString(", ")}"))
+          (m, Seq(s"Invalid value '$m' for query parameter 'method' - must be one of ${ValidMethods.mkString(", ")}"))
         }
       }
 
@@ -90,11 +90,15 @@ object ProxyRequest {
       case Nil => (Nil, Nil)
 
       case values => {
-        val (invalid, valid) = values.map(Envelope.fromString).partition(_.isEmpty)
-        if (invalid.isEmpty) {
-          (valid.flatten.distinct, Nil)
-        } else {
-          (valid.flatten, Seq(s"Invalid value for query parameter 'envelope' - must be one of ${Envelope.all.map(_.toString).mkString(", ")}"))
+        values.filter(Envelope.fromString(_).isEmpty) match {
+          case Nil => (values.flatMap(Envelope.fromString).distinct, Nil)
+          case invalid => {
+            val label = invalid match {
+              case one :: Nil => s"Invalid value '$one'"
+              case multiple => s"Invalid values ${multiple.mkString("'", "', '", "'")}"
+            }
+            (Nil, Seq(s"$label for query parameter 'envelope' - must be one of ${Envelope.all.map(_.toString).mkString(", ")}"))
+          }
         }
       }
     }

@@ -78,7 +78,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
         queryParameters = Map("method" -> Seq("foo")),
         headers = Headers()
       ) must be(Left(
-        Seq("Invalid value for query parameter 'method' - must be one of POST, PUT, PATCH, DELETE")
+        Seq("Invalid value 'foo' for query parameter 'method' - must be one of POST, PUT, PATCH, DELETE")
       ))
     }
 
@@ -163,7 +163,17 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
         queryParameters = Map("envelope" -> Seq("foo")),
         headers = Headers()
       ) must be(Left(
-        Seq("Invalid value for query parameter 'envelope' - must be one of request, response")
+        Seq("Invalid value 'foo' for query parameter 'envelope' - must be one of request, response")
+      ))
+
+      ProxyRequest.validate(
+        requestMethod = "GET",
+        requestPath = "/users/",
+        body = testBody,
+        queryParameters = Map("envelope" -> Seq("foo", "bar", "request", "response")),
+        headers = Headers()
+      ) must be(Left(
+        Seq("Invalid values 'foo', 'bar' for query parameter 'envelope' - must be one of request, response")
       ))
     }
 
