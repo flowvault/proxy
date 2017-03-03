@@ -21,7 +21,9 @@ API Proxy server that is hosted at https://api.flow.io
     parameter named 'method' that is used to specify the HTTP method to use when proxying request
     to the backend.
   - Implements all responses in an 'envelope' with HTTP 200 response
-    codes based on presence of url parameter named 'envelope'
+    codes based on presence of url parameter named 'envelope' with value 'response'
+  - Support envelope=request query parameter that allows you to POST a JSON object that we will
+    use to create the request
   - Converts www form urlencoded strings (body and query for JSONP) into form data, validating
     and converting types according to one or more apidoc schemas (via environment variable
     named APIDOC_SERVICE_URIS)
