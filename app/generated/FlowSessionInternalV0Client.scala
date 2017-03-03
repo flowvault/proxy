@@ -11,6 +11,10 @@ package io.flow.session.internal.v0.models {
 
   sealed trait SessionPutForm
 
+  case class CartReference(
+    id: String
+  )
+
   /**
    * If we found an experience for the given session, the localized information will
    * be presented here
@@ -50,7 +54,7 @@ package io.flow.session.internal.v0.models {
     attributes: Map[String, String],
     local: _root_.scala.Option[io.flow.session.internal.v0.models.LocalSession] = None,
     shop: String,
-    cart: io.flow.shopify.internal.v0.models.CartReference
+    cart: io.flow.session.internal.v0.models.CartReference
   ) extends Session
 
   case class ShopifySessionForm(
@@ -110,7 +114,6 @@ package io.flow.session.internal.v0.models {
     import io.flow.error.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.internal.v0.models.json._
-    import io.flow.shopify.internal.v0.models.json._
 
     private[v0] implicit val jsonReadsUUID = __.read[String].map(java.util.UUID.fromString)
 
@@ -128,6 +131,24 @@ package io.flow.session.internal.v0.models {
         import org.joda.time.format.ISODateTimeFormat.dateTime
         val str = dateTime.print(x)
         JsString(str)
+      }
+    }
+
+    implicit def jsonReadsSessionInternalCartReference: play.api.libs.json.Reads[CartReference] = {
+      (__ \ "id").read[String].map { x => new CartReference(id = x) }
+    }
+
+    def jsObjectCartReference(obj: io.flow.session.internal.v0.models.CartReference) = {
+      play.api.libs.json.Json.obj(
+        "id" -> play.api.libs.json.JsString(obj.id)
+      )
+    }
+
+    implicit def jsonWritesSessionInternalCartReference: play.api.libs.json.Writes[CartReference] = {
+      new play.api.libs.json.Writes[io.flow.session.internal.v0.models.CartReference] {
+        def writes(obj: io.flow.session.internal.v0.models.CartReference) = {
+          jsObjectCartReference(obj)
+        }
       }
     }
 
@@ -248,7 +269,7 @@ package io.flow.session.internal.v0.models {
         (__ \ "attributes").read[Map[String, String]] and
         (__ \ "local").readNullable[io.flow.session.internal.v0.models.LocalSession] and
         (__ \ "shop").read[String] and
-        (__ \ "cart").read[io.flow.shopify.internal.v0.models.CartReference]
+        (__ \ "cart").read[io.flow.session.internal.v0.models.CartReference]
       )(ShopifySession.apply _)
     }
 
@@ -257,7 +278,7 @@ package io.flow.session.internal.v0.models {
         "id" -> play.api.libs.json.JsString(obj.id),
         "attributes" -> play.api.libs.json.Json.toJson(obj.attributes),
         "shop" -> play.api.libs.json.JsString(obj.shop),
-        "cart" -> io.flow.shopify.internal.v0.models.json.jsObjectCartReference(obj.cart)
+        "cart" -> jsObjectCartReference(obj.cart)
       ) ++ (obj.local match {
         case None => play.api.libs.json.Json.obj()
         case Some(x) => play.api.libs.json.Json.obj("local" -> jsObjectLocalSession(x))
@@ -487,7 +508,6 @@ package io.flow.session.internal.v0 {
     import io.flow.error.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.internal.v0.models.json._
-    import io.flow.shopify.internal.v0.models.json._
 
     private[this] val logger = play.api.Logger("io.flow.session.internal.v0.Client")
 
@@ -688,7 +708,6 @@ package io.flow.session.internal.v0 {
     import io.flow.error.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.internal.v0.models.json._
-    import io.flow.shopify.internal.v0.models.json._
 
     case class GenericErrorResponse(
       response: play.api.libs.ws.WSResponse,
