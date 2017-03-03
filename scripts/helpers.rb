@@ -87,6 +87,10 @@ class Helpers
     @api_key_file = api_key_file
   end
 
+  def get(url)
+    new_request(method, url)
+  end
+
   def json_put(url, hash = nil)
     json_request("POST", url, hash)
   end
@@ -96,7 +100,7 @@ class Helpers
   end
 
   def json_request(method, url, hash)
-    r = Request.new(method, "%s%s" % [@base_url, url], @api_key_file).with_content_type("application/json")
+    r = new_request(method, url)
     if hash
       body = ProxyGlobal.format_json(hash)
       Helpers.with_tmp_file(body) do |tmp|
@@ -105,6 +109,10 @@ class Helpers
     else
       r
     end
+  end
+
+  def new_request(url)
+    Request.new(method, "%s%s" % [@base_url, url], @api_key_file).with_content_type("application/json")
   end
 
 end
