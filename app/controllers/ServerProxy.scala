@@ -190,6 +190,7 @@ class ServerProxyImpl @Inject () (
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
+    println(s"request.jsonpCallback: ${request.jsonpCallback} request.contentType[${request.contentType}]")
     val formData: JsValue = request.jsonpCallback match {
       case Some(_) => {
         FormData.toJson(request.queryParameters)
@@ -217,7 +218,8 @@ class ServerProxyImpl @Inject () (
       }
     }
 
-    logFormData(requestId, request.path, route, formData)
+    logFormData(requestId, request, formData)
+    println(s"route: $route")
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
@@ -311,7 +313,7 @@ class ServerProxyImpl @Inject () (
         }
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
-        logFormData(requestId, request.path, route, newBody)
+        logFormData(requestId, request, newBody)
 
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
@@ -356,7 +358,7 @@ class ServerProxyImpl @Inject () (
           }
 
           case Success(js) => {
-            logFormData(requestId, request.path, route, js)
+            logFormData(requestId, request, js)
 
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
@@ -495,13 +497,13 @@ class ServerProxyImpl @Inject () (
     }
   }
 
-  private[this] def logFormData(requestId: String, requestPath: String, route: Route, body: JsValue): Unit = {
+  private[this] def logFormData(requestId: String, request: ProxyRequest, body: JsValue): Unit = {
     body match {
       case j: JsObject => {
         if (j.fields.nonEmpty) {
-          val typ = definition.multiService.bodyTypeFromPath(route.method, route.path)
+          val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
           val safeBody = LoggingUtil.safeJson(body, typ = typ)
-          Logger.info(s"${route.method} $requestPath form body of type[${typ.getOrElse("unknown")}] requestId[$requestId]: $safeBody")
+          Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[$requestId]: $safeBody")
         }
       }
       case _ => // no-op
