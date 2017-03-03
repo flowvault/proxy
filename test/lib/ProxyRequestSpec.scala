@@ -108,7 +108,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
         )
       )
 
-      request.jsonpCallback must be(Some("my_json.Callback"))
+      request.jsonpCallback must be(Some("my_json.Callback1"))
       request.responseEnvelope must be(true)
     }
 
