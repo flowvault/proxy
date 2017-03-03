@@ -300,10 +300,10 @@ case class ProxyRequest(
     }
   }
 
-  private[this] def mapToSeq(map: Map[String, Seq[String]]): Seq[(String, String)] = {
-    map.flatMap { case (k, values) =>
+  private[this] def mapToSeq(data: Map[String, Seq[String]]): Seq[(String, String)] = {
+    data.map { case (k, values) =>
       values.map { v => (k, v) }
-    }.toSeq
+    }.flatten.toSeq
   }
 
   /**

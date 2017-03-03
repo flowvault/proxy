@@ -1,8 +1,5 @@
 package controllers
 
-import play.api.test._
-import play.api.test.Helpers._
-import org.scalatest._
 import org.scalatestplus.play._
 
 class ServerProxySpec extends PlaySpec with OneServerPerSuite {
@@ -28,10 +25,10 @@ class ServerProxySpec extends PlaySpec with OneServerPerSuite {
         "foo2" -> Seq("c")
       )
     )
-    parts.size must be(3)
     parts.contains(("foo", "a")) must be(true)
     parts.contains(("foo", "b")) must be(true)
     parts.contains(("foo2", "c")) must be(true)
+    parts.size must be(3)
   }
 
   "encoding" in {

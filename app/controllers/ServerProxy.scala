@@ -84,7 +84,9 @@ object ServerProxy {
 
   /**
     *  Maps a query string that may contain multiple values per parameter
-    *  to a sequence of query parameters.
+    *  to a sequence of query parameters. Uses the underlying form data to
+    *  also upcast the parameters (mapping the incoming parameters to a json
+    *  document, upcasting, then back to query parameters)
     *
     *  @todo Add example query string
     *  @example
@@ -109,9 +111,9 @@ object ServerProxy {
     incoming: Map[String, Seq[String]]
   ): Seq[(String, String)] = {
     val rewritten = FormData.parseEncoded(FormData.toEncoded(FormData.toJson(incoming)))
-    rewritten.flatMap { case (k, vs) =>
+    rewritten.map { case (k, vs) =>
       vs.map(k -> _)
-    }.toSeq
+    }.flatten.toSeq
   }
 }
 
