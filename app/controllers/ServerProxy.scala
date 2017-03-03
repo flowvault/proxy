@@ -170,7 +170,7 @@ class ServerProxyImpl @Inject () (
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
-    Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId $requestId")
+    Logger.info(s"[proxy] $request to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId $requestId")
 
     /**
       * Choose the type of request based on callback/envelope or standard implementation
@@ -220,6 +220,10 @@ class ServerProxyImpl @Inject () (
 
     logFormData(requestId, request, formData)
     println(s"route: $route")
+    println(s"formData: $formData")
+    println(s"request: $request")
+    println(s"route.method: ${route.method}")
+    println(s"route.path: ${route.path}")
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
@@ -229,7 +233,7 @@ class ServerProxyImpl @Inject () (
           case None => envBody
         }
 
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name} 422 based on apidoc schema")
         Future(Ok(finalBody).as("application/javascript; charset=utf-8"))
       }
 
