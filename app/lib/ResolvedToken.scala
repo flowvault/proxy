@@ -11,12 +11,13 @@ case class ResolvedToken(
   environment: Option[String] = None,
   organizationId: Option[String] = None,
   partnerId: Option[String] = None,
-  role: Option[String] = None
+  role: Option[String] = None,
+  sessionId: Option[String]
 ) {
 
   private[lib] val createdAt = new DateTime()
 
-  def toMap(): Map[String, String] = {
+  def toMap: Map[String, String] = {
     Map(
       "request_id" -> Some(requestId),
       "user_id" -> Some(userId),
@@ -25,7 +26,7 @@ case class ResolvedToken(
       "partner" -> partnerId,
       "role" -> role,
       "environment" -> environment
-    ).flatMap { case (key, value) => value.map { v => (key -> v)} }
+    ).flatMap { case (key, value) => value.map { v => key -> v } }
   }
   
 }

@@ -31,7 +31,7 @@ class ReverseProxy @Inject () (
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
-  override val organizationClient = {
+  override val organizationClient: OrganizationClient = {
     val server = mustFindServerByName("organization")
     Logger.info(s"Creating OrganizationClient w/ baseUrl[${server.host}]")
     new OrganizationClient(ws, baseUrl = server.host)
@@ -43,7 +43,7 @@ class ReverseProxy @Inject () (
     new SessionClient(ws, baseUrl = server.host)
   }
 
-  override val tokenClient = {
+  override val tokenClient: TokenClient = {
     val server = mustFindServerByName("token")
     Logger.info(s"Creating TokenClient w/ baseUrl[${server.host}]")
     new TokenClient(ws, baseUrl = server.host)
