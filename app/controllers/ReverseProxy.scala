@@ -139,7 +139,12 @@ class ReverseProxy @Inject () (
       }
 
       case Authorization.User(userId) => {
-        proxyPostAuth(request, token = Some(ResolvedToken.fromUser(request.requestId, userId)))
+        proxyPostAuth(request, token = Some(
+          ResolvedToken(
+            requestId = request.requestId,
+            userId = Some(userId)
+          )
+        ))
       }
     }
   }

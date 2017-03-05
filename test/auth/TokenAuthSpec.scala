@@ -29,7 +29,7 @@ class TokenAuthSpec extends PlaySpec with OneServerPerSuite {
       Some(
         ResolvedToken(
           requestId = requestId,
-          userId = "5",
+          userId = Some("5"),
           organizationId = Some("tst"),
           partnerId = None,
           role = None,
@@ -51,7 +51,7 @@ class TokenAuthSpec extends PlaySpec with OneServerPerSuite {
       Some(
         ResolvedToken(
           requestId = requestId,
-          userId = "5",
+          userId = Some("5"),
           organizationId = None,
           partnerId = Some("foo"),
           role = None,

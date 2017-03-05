@@ -1,5 +1,6 @@
 package auth
 
+import io.flow.organization.v0.interfaces.{Client => OrganizationClient}
 import io.flow.session.internal.v0.{Client => SessionClient}
 import io.flow.session.internal.v0.models._
 import lib.{FlowAuth, ResolvedToken}
@@ -11,8 +12,9 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries organization server to authorize this user for this
   * organization and also pulls the organization's environment.
   */
-trait SessionAuth extends OrganizationAuth {
+trait SessionAuth {
 
+  def organizationClient: OrganizationClient
   def sessionClient: SessionClient
 
   def resolveSession(
@@ -26,9 +28,17 @@ trait SessionAuth extends OrganizationAuth {
       requestHeaders = FlowAuth.headersFromRequestId(requestId)
     ).map {
       case auth: OrganizationSessionAuthorization => {
-        println(s"SESSION AUTH: $auth")
-        // TODO
-        None
+        Some(
+          ResolvedToken(
+            requestId = requestId,
+            userId = None,
+            environment = Some(auth.environment.toString),
+            organizationId = Some(auth.organization),
+            partnerId = None,
+            role = None,
+            sessionId = Some(sessionId)
+          )
+        )
       }
 
       case SessionAuthorizationUndefinedType(other) => {

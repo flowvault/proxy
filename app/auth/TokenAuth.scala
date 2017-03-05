@@ -43,7 +43,7 @@ trait TokenAuth {
       case t: OrganizationTokenReference => Some(
         ResolvedToken(
           requestId = requestId,
-          userId = t.user.id,
+          userId = Some(t.user.id),
           environment = Some(t.environment.toString),
           organizationId = Some(t.organization.id)
         )
@@ -52,7 +52,7 @@ trait TokenAuth {
       case t: PartnerTokenReference => Some(
         ResolvedToken(
           requestId = requestId,
-          userId = t.user.id,
+          userId = Some(t.user.id),
           environment = Some(t.environment.toString),
           partnerId = Some(t.partner.id)
         )
