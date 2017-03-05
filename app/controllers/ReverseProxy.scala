@@ -25,7 +25,9 @@ class ReverseProxy @Inject () (
 ) extends Controller
   with lib.Errors
   with auth.OrganizationAuth
-  with auth.TokenAuth {
+  with auth.TokenAuth
+  with auth.SessionAuth
+{
 
   val index: Index = proxyConfigFetcher.current()
 
@@ -37,7 +39,7 @@ class ReverseProxy @Inject () (
     new OrganizationClient(ws, baseUrl = server.host)
   }
 
-  private[this] val sessionClient = {
+  override val sessionClient: SessionClient = {
     val server = findServerByName("session").getOrElse(mustFindServerByName("session-internal"))
     Logger.info(s"Creating SessionClient w/ baseUrl[${server.host}]")
     new SessionClient(ws, baseUrl = server.host)
@@ -93,11 +95,11 @@ class ReverseProxy @Inject () (
       }
 
       case Authorization.Unrecognized => Future(
-        request.response(401, s"Authorization header value must start with one of: " + Authorization.Unrecognized.valid.mkString(", "))
+        request.response(401, "Authorization header value must start with one of: " + Authorization.Prefixes.all.mkString(", "))
       )
 
       case Authorization.InvalidApiToken => Future(
-        request.response(401, s"API Token is not valid")
+        request.response(401, "API Token is not valid")
       )
 
       case Authorization.InvalidJwt(missing) => Future(
@@ -110,11 +112,22 @@ class ReverseProxy @Inject () (
 
       case Authorization.Token(token) => {
         resolveToken(request.requestId, token).flatMap {
-          case None => Future(
+          case None => Future.successful(
             request.response(401, "API Token is not valid")
           )
           case Some(token) => {
             proxyPostAuth(request, token = ResolvedToken.fromToken(request.requestId, token))
+          }
+        }
+      }
+
+      case Authorization.Session(sessionId) => {
+        resolveSession(sessionId, flowAuth.headersFromRequestId(request.requestId)).flatMap {
+          case None => Future.successful(
+            request.response(401, "Session is not valid")
+          )
+          case Some(token) => {
+            proxyPostAuth(request, Some(token))
           }
         }
       }

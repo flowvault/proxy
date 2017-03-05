@@ -9,6 +9,14 @@ sealed trait Authorization
 
 object Authorization {
 
+  object Prefixes {
+    val Basic: String = "Basic"
+    val Bearer: String = "Bearer"
+    val Session: String = "Session"
+
+    val all: Seq[String] = Seq(Basic, Bearer, Session)
+  }
+
   /**
     * Indicates no auth credentials were present
     */
@@ -16,11 +24,9 @@ object Authorization {
 
   /**
     * Indicates authorization header was present but was not a
-    * recognized type (e.g. Basic, Bearer)
+    * recognized type (e.g. Basic, Bearer, Session)
     */
-  case object Unrecognized extends Authorization {
-    def valid = Seq("Basic", "Bearer")
-  }
+  case object Unrecognized extends Authorization
 
   /**
     * Indicates API token was presented as basic auth; but API token
@@ -49,6 +55,11 @@ object Authorization {
     * Indicates valid user ID was parsed from JWT token
     */
   case class User(id: String) extends Authorization
+
+  /**
+    * Indicates session id for a given request
+    */
+  case class Session(id: String) extends Authorization
 
 }
 
@@ -80,7 +91,7 @@ class AuthorizationParser @Inject() (
    */
   def parse(headerValue: String): Authorization = {
     headerValue.split(" ").toList match {
-      case "Basic" :: value :: Nil => {
+      case Authorization.Prefixes.Basic :: value :: Nil => {
 
         new String(Base64.decodeBase64(StringUtils.getBytesUsAscii(value))).split(":").toList match {
           case Nil => Authorization.InvalidApiToken
@@ -88,11 +99,15 @@ class AuthorizationParser @Inject() (
         }
       }
 
-      case "Bearer" :: value :: Nil => {
+      case Authorization.Prefixes.Bearer :: value :: Nil => {
         value match {
           case JsonWebToken(header, claimsSet, signature) if jwtIsValid(value) => parseJwtToken(claimsSet)
           case _ => Authorization.InvalidBearer
         }
+      }
+
+      case Authorization.Prefixes.Session :: value :: Nil => {
+        Authorization.Session(value)
       }
 
       case _ => Authorization.Unrecognized

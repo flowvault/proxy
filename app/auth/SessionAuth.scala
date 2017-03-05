@@ -18,45 +18,34 @@ trait SessionAuth {
   def flowAuth: FlowAuth
 
   def resolveSession(
-    token: ResolvedToken
+    sessionId: String,
+    requestHeaders: Seq[(String, String)]
   ) (
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
-    token.sessionId match {
-      case None => {
-        Future.successful(None)
+    sessionClient.sessionAuthorizations.post(
+      SessionAuthorizationForm(session = sessionId),
+      requestHeaders = requestHeaders
+    ).map {
+      case auth: OrganizationSessionAuthorization => {
+        println(s"SESSION AUTH: $auth")
+        // TODO
+        None
       }
 
-      case Some(session) => {
-        sessionClient.sessionAuthorizations.post(
-          SessionAuthorizationForm(session = session),
-          requestHeaders = flowAuth.headers(token)
-        ).map {
-          case a: OrganizationSessionAuthorization => {
-           Some(
-             token.copy(
-               organizationId = Some(a.organization),
-               environment = Some(a.environment.toString),
-               role = Some(Role.Member.toString)  // TODO - Fix
-             )
-           )
-          }
+      case SessionAuthorizationUndefinedType(other) => {
+        Logger.warn(s"[proxy] SessionAuthorizationUndefinedType($other)")
+        None
+      }
+    }.recover {
+      case io.flow.organization.v0.errors.UnitResponse(code) => {
+        Logger.warn(s"HTTP $code during session authorization")
+        None
+      }
 
-          case SessionAuthorizationUndefinedType(other) => {
-            Logger.warn(s"[proxy] SessionAuthorizationUndefinedType($other)")
-            None
-          }
-        }.recover {
-          case io.flow.organization.v0.errors.UnitResponse(code) => {
-            Logger.warn(s"HTTP $code during session authorization")
-            None
-          }
-
-          case e: io.flow.session.internal.v0.errors.GenericErrorResponse => {
-            Logger.warn(s"[proxy] 422 authorizing session: ${e.genericError.messages.mkString(", ")}")
-            None
-          }
-        }
+      case e: io.flow.session.internal.v0.errors.GenericErrorResponse => {
+        Logger.warn(s"[proxy] 422 authorizing session: ${e.genericError.messages.mkString(", ")}")
+        None
       }
     }
   }
