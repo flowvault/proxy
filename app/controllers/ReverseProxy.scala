@@ -77,8 +77,8 @@ class ReverseProxy @Inject () (
             case Left(errors) => Future.successful {
               UnprocessableEntity(genericErrors(errors))
             }
-            case Right(pr) => {
-              internalHandle(pr)
+            case Right(enveloperProxyRequest) => {
+              internalHandle(enveloperProxyRequest)
             }
           }
         } else {
@@ -118,8 +118,8 @@ class ReverseProxy @Inject () (
           case None => Future.successful(
             request.response(401, "API Token is not valid")
           )
-          case Some(token) => {
-            proxyPostAuth(request, token = Some(token))
+          case Some(t) => {
+            proxyPostAuth(request, token = Some(t))
           }
         }
       }
@@ -204,7 +204,7 @@ class ReverseProxy @Inject () (
       }
 
       case Some(t) => {
-        resolveOrganization(t, organization).flatMap {
+        authorizeOrganization(t, organization).flatMap {
           case None => Future(
             request.response(422, s"Not authorized to access $organization or the organization does not exist")
           )
@@ -242,20 +242,17 @@ class ReverseProxy @Inject () (
       }
 
       case Some(t) => {
-        t.partnerId == Some(partner) match {
-          case false => Future(
+        if (t.partnerId.contains(partner)) {
+          lookup(operation.server.name).proxy(
+            request,
+            operation.route,
+            token,
+            partner = Some(partner)
+          )
+        } else {
+          Future(
             request.response(401, s"Not authorized to access $partner or the partner does not exist")
           )
-
-          case true => {
-            lookup(operation.server.name).proxy(
-              request,
-              operation.route,
-              token,
-              None,
-              Some(partner)
-            )
-          }
         }
       }
     }
@@ -280,8 +277,8 @@ class ReverseProxy @Inject () (
     val serverNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowServer)
     val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)
 
-    (serverNameOverride.isEmpty && hostOverride.isEmpty) match {
-      case true => Future {
+    if (serverNameOverride.isEmpty && hostOverride.isEmpty) {
+      Future {
         index.resolve(request.method, path) match {
           case None => {
             multiService.validate(request.method, path) match {
@@ -301,65 +298,63 @@ class ReverseProxy @Inject () (
           }
         }
       }
-
-      case false => {
-        token match {
-          case None => Future(
-            Left(
-              request.response(401, s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
-            )
+    } else {
+      token match {
+        case None => Future(
+          Left(
+            request.response(401, s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
           )
+        )
 
-          case Some(t) => {
-            resolveOrganization(t, Constants.FlowOrganizationId).map {
-              case None => {
-                Left(
-                  request.response(401, s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
-                )
-              }
+        case Some(t) => {
+          authorizeOrganization(t, Constants.FlowOrganizationId).map {
+            case None => {
+              Left(
+                request.response(401, s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
+              )
+            }
 
-              case Some(_) => {
-                hostOverride match {
-                  case Some(host) => {
-                    if (host.startsWith("http://") || host.startsWith("https://")) {
+            case Some(_) => {
+              hostOverride match {
+                case Some(host) => {
+                  if (host.startsWith("http://") || host.startsWith("https://")) {
+                    Right(
+                      Operation(
+                        route = Route(
+                          method = request.method,
+                          path = path
+                        ),
+                        server = Server(name = "override", host = host)
+                      )
+                    )
+                  } else {
+                    Left(
+                      request.response(422, s"Value for ${Constants.Headers.FlowHost} header must start with http:// or https://")
+                    )
+                  }
+                }
+
+                case None => {
+                  val name = serverNameOverride.getOrElse {
+                    sys.error("Expected server name to be set")
+                  }
+                  findServerByName(name) match {
+                    case None => {
+                      Left(
+                        request.response(422, s"Invalid server name from Request Header[${Constants.Headers.FlowServer}]")
+                      )
+                    }
+
+                    case Some(server) => {
                       Right(
                         Operation(
-                          route = Route(
+                          Route(
                             method = request.method,
                             path = path
                           ),
-                          server = Server(name = "override", host = host)
+                          server = server
                         )
                       )
-                    } else {
-                      Left(
-                        request.response(422, s"Value for ${Constants.Headers.FlowHost} header must start with http:// or https://")
-                      )
-                    }
-                  }
-
-                  case None => {
-                    val name = serverNameOverride.getOrElse {
-                      sys.error("Expected server name to be set")
-                    }
-                    findServerByName(name) match {
-                      case None => {
-                        Left(
-                          request.response(422, s"Invalid server name from Request Header[${Constants.Headers.FlowServer}]")
-                        )
-                      }
-
-                      case Some(server) => {
-                        Right(
-                          Operation(
-                            Route(
-                              method = request.method,
-                              path = path
-                            ),
-                            server = server
-                          )
-                        )
-                      }
                     }
                   }
                 }

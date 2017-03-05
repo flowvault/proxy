@@ -17,10 +17,10 @@ trait OrganizationAuth {
   def organizationClient: Client
   def flowAuth: FlowAuth
 
-  def resolveOrganization(
+  def authorizeOrganization(
     token: ResolvedToken,
     organization: String
-  ) (
+  )(
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
     val authFuture = (token.environment, token.organizationId) match {
