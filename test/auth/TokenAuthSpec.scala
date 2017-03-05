@@ -17,7 +17,7 @@ class TokenAuthSpec extends PlaySpec with OneServerPerSuite {
 
   private[this] val requestId = UUID.randomUUID.toString
 
-  "fromTokenReference as org" in {
+  "from org" in {
     val token = OrganizationTokenReference(
       id = "0",
       organization = OrganizationReference(id = "tst"),
@@ -32,6 +32,28 @@ class TokenAuthSpec extends PlaySpec with OneServerPerSuite {
           userId = "5",
           organizationId = Some("tst"),
           partnerId = None,
+          role = None,
+          environment = Some("production")
+        )
+      )
+    )
+  }
+
+  "from partner" in {
+    val token = PartnerTokenReference(
+      id = "0",
+      partner = TokenPartnerReference(id = "foo"),
+      environment = Environment.Production,
+      user = UserReference("5")
+    )
+
+    TokenTestAuth.fromTokenReference(requestId, token) must equal(
+      Some(
+        ResolvedToken(
+          requestId = requestId,
+          userId = "5",
+          organizationId = None,
+          partnerId = Some("foo"),
           role = None,
           environment = Some("production")
         )
