@@ -1,7 +1,8 @@
 package auth
 
+import io.flow.common.v0.models.Role
 import io.flow.session.internal.v0.interfaces.Client
-import io.flow.session.internal.v0.models.{OrganizationSession, SessionAuthorizationForm, SessionUndefinedType, ShopifySession}
+import io.flow.session.internal.v0.models._
 import lib.{FlowAuth, ResolvedToken}
 import play.api.Logger
 
@@ -27,53 +28,35 @@ trait SessionAuth {
       }
 
       case Some(session) => {
-        sessionClient.sessions.getBySession(
-          session = session,
+        sessionClient.sessionAuthorizations.post(
+          SessionAuthorizationForm(session = session),
           requestHeaders = flowAuth.headers(token)
-        ).flatMap {
-          case s: ShopifySession => {
-            token.copy(
-              organizationId = Some(s),
-              environment = Some(orgAuth.environment.toString),
-              role = Some(orgAuth.role.toString)
-            )
+        ).map {
+          case a: OrganizationSessionAuthorization => {
+           Some(
+             token.copy(
+               organizationId = Some(a.organization),
+               environment = Some(a.environment.toString),
+               role = Some(Role.Member.toString)  // TODO - Fix
+             )
+           )
           }
-          case s: OrganizationSession => {
 
-          }
-          case SessionUndefinedType(other) => {
-            Logger.warn(s"[proxy] SessionUndefinedType($other)")
+          case SessionAuthorizationUndefinedType(other) => {
+            Logger.warn(s"[proxy] SessionAuthorizationUndefinedType($other)")
             None
           }
         }.recover {
-          case io.flow.session.internal.v0.errors.UnitResponse(404) => None
+          case io.flow.organization.v0.errors.UnitResponse(code) => {
+            Logger.warn(s"HTTP $code during session authorization")
+            None
+          }
+
+          case e: io.flow.session.internal.v0.errors.GenericErrorResponse => {
+            Logger.warn(s"[proxy] 422 authorizing session: ${e.genericError.messages.mkString(", ")}")
+            None
+          }
         }
-      }
-    }
-
-    sessionFuture.map {
-
-      }
-      Some(
-        token.copy(
-          organizationId = Some(organization),
-          environment = Some(orgAuth.environment.toString),
-          role = Some(orgAuth.role.toString)
-        )
-      )
-    }.recover {
-      case io.flow.organization.v0.errors.UnitResponse(401) => {
-        Logger.warn(s"Token[$token] was not authorized for organization[$organization]")
-        None
-      }
-
-      case io.flow.organization.v0.errors.UnitResponse(404) => {
-        Logger.warn(s"Token[$token] organization[$organization] not found")
-        None
-      }
-
-      case ex: Throwable => {
-        sys.error(s"Error communicating with organization server at[${sessionClient.baseUrl}]: ${ex.getMessage}")
       }
     }
   }

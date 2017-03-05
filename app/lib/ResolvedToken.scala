@@ -12,16 +12,17 @@ case class ResolvedToken(
   organizationId: Option[String] = None,
   partnerId: Option[String] = None,
   role: Option[String] = None,
-  sessionId: Option[String]
+  sessionId: Option[String] = None
 ) {
 
-  private[lib] val createdAt = new DateTime()
+  private[lib] val createdAt = DateTime.now
 
   def toMap: Map[String, String] = {
     Map(
       "request_id" -> Some(requestId),
       "user_id" -> Some(userId),
       "created_at" -> Some(dateTime.print(createdAt)),
+      "session_id" -> sessionId,
       "organization" -> organizationId,
       "partner" -> partnerId,
       "role" -> role,

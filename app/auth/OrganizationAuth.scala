@@ -52,13 +52,8 @@ trait OrganizationAuth {
         )
       )
     }.recover {
-      case io.flow.organization.v0.errors.UnitResponse(401) => {
-        Logger.warn(s"Token[$token] was not authorized for organization[$organization]")
-        None
-      }
-
-      case io.flow.organization.v0.errors.UnitResponse(404) => {
-        Logger.warn(s"Token[$token] organization[$organization] not found")
+      case io.flow.organization.v0.errors.UnitResponse(code) => {
+        Logger.warn(s"HTTP $code during token authorization for organization[$organization]")
         None
       }
 
