@@ -38,31 +38,4 @@ object ResolvedToken {
     ResolvedToken(requestId, userId = userId)
   }
 
-  def fromToken(requestId: String, token: TokenReference): Option[ResolvedToken] = {
-    token match {
-      case t: OrganizationTokenReference => Some(
-        ResolvedToken(
-          requestId = requestId,
-          userId = t.user.id,
-          environment = Some(t.environment.toString),
-          organizationId = Some(t.organization.id)
-        )
-      )
-
-      case t: PartnerTokenReference => Some(
-        ResolvedToken(
-          requestId = requestId,
-          userId = t.user.id,
-          environment = Some(t.environment.toString),
-          partnerId = Some(t.partner.id)
-        )
-      )
-
-      case TokenReferenceUndefinedType(other) => {
-        Logger.warn(s"[proxy] TokenReferenceUndefinedType($other) - proceeding as unauthenticated")
-        None
-      }
-    }
-  }
-
 }

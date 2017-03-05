@@ -30,28 +30,6 @@ class ResolvedTokenSpec extends PlaySpec with OneServerPerSuite {
     )
   }
 
-  "ResolvedToken.org" in {
-    val token = OrganizationTokenReference(
-      id = "0",
-      organization = OrganizationReference(id = "tst"),
-      environment = Environment.Production,
-      user = UserReference("5")
-    )
-
-    ResolvedToken.fromToken(requestId, token) must equal(
-      Some(
-        ResolvedToken(
-          requestId = requestId,
-          userId = "5",
-          organizationId = Some("tst"),
-          partnerId = None,
-          role = None,
-          environment = Some("production")
-        )
-      )
-    )
-  }
-
   "map contains only values" in {
     val d = ResolvedToken(
       requestId = requestId,

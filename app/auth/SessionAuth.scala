@@ -1,7 +1,6 @@
 package auth
 
-import io.flow.common.v0.models.Role
-import io.flow.session.internal.v0.interfaces.Client
+import io.flow.session.internal.v0.{Client => SessionClient}
 import io.flow.session.internal.v0.models._
 import lib.{FlowAuth, ResolvedToken}
 import play.api.Logger
@@ -12,20 +11,19 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries organization server to authorize this user for this
   * organization and also pulls the organization's environment.
   */
-trait SessionAuth {
+trait SessionAuth extends OrganizationAuth {
 
-  def sessionClient: Client
-  def flowAuth: FlowAuth
+  def sessionClient: SessionClient
 
   def resolveSession(
-    sessionId: String,
-    requestHeaders: Seq[(String, String)]
+    requestId: String,
+    sessionId: String
   ) (
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
     sessionClient.sessionAuthorizations.post(
       SessionAuthorizationForm(session = sessionId),
-      requestHeaders = requestHeaders
+      requestHeaders = FlowAuth.headersFromRequestId(requestId)
     ).map {
       case auth: OrganizationSessionAuthorization => {
         println(s"SESSION AUTH: $auth")

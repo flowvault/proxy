@@ -111,18 +111,24 @@ class ReverseProxy @Inject () (
       )
 
       case Authorization.Token(token) => {
-        resolveToken(request.requestId, token).flatMap {
+        resolveToken(
+          requestId = request.requestId,
+          token = token
+        ).flatMap {
           case None => Future.successful(
             request.response(401, "API Token is not valid")
           )
           case Some(token) => {
-            proxyPostAuth(request, token = ResolvedToken.fromToken(request.requestId, token))
+            proxyPostAuth(request, token = Some(token))
           }
         }
       }
 
       case Authorization.Session(sessionId) => {
-        resolveSession(sessionId, flowAuth.headersFromRequestId(request.requestId)).flatMap {
+        resolveSession(
+          requestId = request.requestId,
+          sessionId = sessionId
+        ).flatMap {
           case None => Future.successful(
             request.response(401, "Session is not valid")
           )

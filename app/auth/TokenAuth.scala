@@ -1,8 +1,9 @@
 package auth
 
 import io.flow.token.v0.interfaces.Client
-import io.flow.token.v0.models.{TokenAuthenticationForm, TokenReference}
-import lib.Constants
+import io.flow.token.v0.models._
+import lib.{Constants, FlowAuth, ResolvedToken}
+import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -15,17 +16,16 @@ trait TokenAuth {
   def tokenClient: Client
 
   def resolveToken(
-    requestId: String, token: String
+    requestId: String,
+    token: String
   )(
     implicit ec: ExecutionContext
-  ): Future[Option[TokenReference]] = {
+  ): Future[Option[ResolvedToken]] = {
     tokenClient.tokens.postAuthentications(
       TokenAuthenticationForm(token = token),
-      requestHeaders = Seq(
-        Constants.Headers.FlowRequestId -> requestId
-      )
+      requestHeaders = FlowAuth.headersFromRequestId(requestId)
     ).map { tokenReference =>
-      Some(tokenReference)
+      fromTokenReference(requestId, tokenReference)
 
     }.recover {
       case io.flow.token.v0.errors.UnitResponse(404) => {
@@ -38,4 +38,30 @@ trait TokenAuth {
     }
   }
 
+  def fromTokenReference(requestId: String, token: TokenReference): Option[ResolvedToken] = {
+    token match {
+      case t: OrganizationTokenReference => Some(
+        ResolvedToken(
+          requestId = requestId,
+          userId = t.user.id,
+          environment = Some(t.environment.toString),
+          organizationId = Some(t.organization.id)
+        )
+      )
+
+      case t: PartnerTokenReference => Some(
+        ResolvedToken(
+          requestId = requestId,
+          userId = t.user.id,
+          environment = Some(t.environment.toString),
+          partnerId = Some(t.partner.id)
+        )
+      )
+
+      case TokenReferenceUndefinedType(other) => {
+        Logger.warn(s"[proxy] TokenReferenceUndefinedType($other) - proceeding as unauthenticated")
+        None
+      }
+    }
+  }
 }
