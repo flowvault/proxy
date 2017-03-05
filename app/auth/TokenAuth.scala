@@ -2,7 +2,7 @@ package auth
 
 import io.flow.token.v0.interfaces.Client
 import io.flow.token.v0.models._
-import lib.{Constants, FlowAuth, ResolvedToken}
+import lib.{FlowAuth, ResolvedToken}
 import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}

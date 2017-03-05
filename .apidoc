@@ -4,6 +4,7 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+        play_2_5_mock_client: test/generated
     error:
       version: latest
       generators:
@@ -24,3 +25,4 @@ code:
       version: latest
       generators:
         play_2_5_client: app/generated
+        play_2_5_mock_client: test/generated

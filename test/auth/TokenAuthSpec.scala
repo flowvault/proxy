@@ -1,11 +1,17 @@
 package auth
 
 import java.util.UUID
-
+import io.flow.token.v0.mock
 import io.flow.common.v0.models.{Environment, OrganizationReference, UserReference}
 import io.flow.token.v0.models._
 import lib.ResolvedToken
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
+
+object TokenMockClient extends mock.Client
+
+object TokenTestAuth extends TokenAuth with mock.Client {
+  override def tokenClient = TokenMockClient
+}
 
 class TokenAuthSpec extends PlaySpec with OneServerPerSuite {
 
