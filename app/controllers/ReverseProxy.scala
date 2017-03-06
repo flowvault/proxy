@@ -91,7 +91,7 @@ class ReverseProxy @Inject () (
   private[this] def internalHandle(request: ProxyRequest): Future[Result] = {
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
-        proxyPostAuth(request, token = None)
+        proxyPostAuth(request, token = ResolvedToken(requestId = request.requestId))
       }
 
       case Authorization.Unrecognized => Future(
@@ -119,7 +119,7 @@ class ReverseProxy @Inject () (
             request.response(401, "API Token is not valid")
           )
           case Some(t) => {
-            proxyPostAuth(request, token = Some(t))
+            proxyPostAuth(request, token = t)
           }
         }
       }
@@ -133,25 +133,26 @@ class ReverseProxy @Inject () (
             request.response(401, "Session is not valid")
           )
           case Some(token) => {
-            proxyPostAuth(request, Some(token))
+            proxyPostAuth(request, token)
           }
         }
       }
 
       case Authorization.User(userId) => {
-        proxyPostAuth(request, token = Some(
+        proxyPostAuth(
+          request,
           ResolvedToken(
             requestId = request.requestId,
             userId = Some(userId)
           )
-        ))
+        )
       }
     }
   }
   
   private[this] def proxyPostAuth(
     request: ProxyRequest,
-    token: Option[ResolvedToken]
+    token: ResolvedToken
   ): Future[Result] = {
     resolve(request, token).flatMap {
       case Left(result) => {
@@ -178,7 +179,7 @@ class ReverseProxy @Inject () (
   private[this] def proxyDefault(
     operation: Operation,
     request: ProxyRequest,
-    token: Option[ResolvedToken]
+    token: ResolvedToken
   ): Future[Result] = {
     lookup(operation.server.name).proxy(
       request,
@@ -193,18 +194,19 @@ class ReverseProxy @Inject () (
     operation: Operation,
     organization: String,
     request: ProxyRequest,
-    token: Option[ResolvedToken]
+    token: ResolvedToken
   ): Future[Result] = {
-    token match {
+    token.userId match {
       case None => {
         // Pass to backend w/ no auth headers and let backend enforce
         // if path requires auth or not. Needed to support use case
-        // like adding a credit card over JSONP
-        proxyDefault(operation, request, None)
+        // like adding a credit card over JSONP or anonymous org
+        // access from sessions
+        proxyDefault(operation, request, token)
       }
 
-      case Some(t) => {
-        authorizeOrganization(t, organization).flatMap {
+      case Some(_) => {
+        authorizeOrganization(token, organization).flatMap {
           case None => Future(
             request.response(422, s"Not authorized to access $organization or the organization does not exist")
           )
@@ -216,7 +218,7 @@ class ReverseProxy @Inject () (
             lookup(operation.server.name).proxy(
               request,
               operation.route,
-              Some(orgToken),
+              orgToken,
               Some(organization),
               None
             )
@@ -230,9 +232,9 @@ class ReverseProxy @Inject () (
     operation: Operation,
     partner: String,
     request: ProxyRequest,
-    token: Option[ResolvedToken]
+    token: ResolvedToken
   ): Future[Result] = {
-    token match {
+    token.userId match {
       case None => {
         // Currently all partner requests require authorization. Deny
         // access as there is no auth token present.
@@ -241,8 +243,8 @@ class ReverseProxy @Inject () (
         )
       }
 
-      case Some(t) => {
-        if (t.partnerId.contains(partner)) {
+      case Some(_) => {
+        if (token.partnerId.contains(partner)) {
           lookup(operation.server.name).proxy(
             request,
             operation.route,
@@ -271,7 +273,7 @@ class ReverseProxy @Inject () (
     */
   private[this] def resolve(
     request: ProxyRequest,
-    token: Option[ResolvedToken]
+    token: ResolvedToken
   ): Future[Either[Result, Operation]] = {
     val path = request.path
     val serverNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowServer)
@@ -299,15 +301,15 @@ class ReverseProxy @Inject () (
         }
       }
     } else {
-      token match {
+      token.userId match {
         case None => Future(
           Left(
             request.response(401, s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
           )
         )
 
-        case Some(t) => {
-          authorizeOrganization(t, Constants.FlowOrganizationId).map {
+        case Some(_) => {
+          authorizeOrganization(token, Constants.FlowOrganizationId).map {
             case None => {
               Left(
                 request.response(401, s"Not authorized to access organization[${Constants.FlowOrganizationId}]")

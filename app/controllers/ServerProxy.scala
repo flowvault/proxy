@@ -67,7 +67,7 @@ trait ServerProxy {
   def proxy(
     request: ProxyRequest,
     route: Route,
-    token: Option[ResolvedToken],
+    token: ResolvedToken,
     organization: Option[String] = None,
     partner: Option[String] = None
   ): Future[play.api.mvc.Result]
@@ -165,7 +165,7 @@ class ServerProxyImpl @Inject () (
   override final def proxy(
     request: ProxyRequest,
     route: Route,
-    token: Option[ResolvedToken],
+    token: ResolvedToken,
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
@@ -184,7 +184,7 @@ class ServerProxyImpl @Inject () (
   private[this] def envelopeResponse(
     request: ProxyRequest,
     route: Route,
-    token: Option[ResolvedToken],
+    token: ResolvedToken,
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
@@ -256,7 +256,7 @@ class ServerProxyImpl @Inject () (
   private[this] def standard(
     request: ProxyRequest,
     route: Route,
-    token: Option[ResolvedToken],
+    token: ResolvedToken,
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
@@ -424,7 +424,7 @@ class ServerProxyImpl @Inject () (
     */
   private[this] def proxyHeaders(
     request: ProxyRequest,
-    token: Option[ResolvedToken]
+    token: ResolvedToken
   ): Headers = {
 
     val headersToAdd = Seq(
@@ -435,9 +435,9 @@ class ServerProxyImpl @Inject () (
       Constants.Headers.ForwardedOrigin -> request.headers.get(Constants.Headers.Origin).getOrElse(""),
       Constants.Headers.ForwardedMethod -> request.originalMethod
     ) ++ Seq(
-      token.map { t =>
-        Constants.Headers.FlowAuth -> flowAuth.jwt(t)
-      },
+      Some(
+        Constants.Headers.FlowAuth -> flowAuth.jwt(token)
+      ),
 
       request.clientIp.map { ip =>
         Constants.Headers.FlowIp -> ip
