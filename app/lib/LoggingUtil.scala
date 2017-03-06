@@ -45,7 +45,7 @@ object LoggingUtil {
             val redactedValue = v match {
               case JsNull => JsNull
               case _: JsBoolean => JsBoolean(false)
-              case _: JsString => JsString("x" * stringLength(v))
+              case _: JsString => JsString("xxx")
               case _: JsNumber => JsNumber(123)
               case _: JsArray => JsArray(Nil)
               case _: JsObject => Json.obj()
@@ -69,12 +69,4 @@ object LoggingUtil {
     }
   }
 
-  private[this] def stringLength(js: JsValue): Int = {
-    js match {
-      case JsNull => 0
-      case v: JsString => v.value.length
-      case v: JsNumber => v.value.toString().length
-      case _ => js.toString().length
-    }
-  }
 }
