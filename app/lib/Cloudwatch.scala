@@ -5,8 +5,8 @@ import javax.inject.{Inject, Singleton}
 import play.api.inject.Module
 
 import collection.JavaConverters._
-import com.amazonaws.auth.BasicAWSCredentials
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchClient
+import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
+import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder
 import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, StandardUnit}
 import play.api.{Configuration, Environment, Logger, Mode}
 
@@ -44,10 +44,11 @@ trait Cloudwatch {
 
 @Singleton
 case class DefaultCloudwatch @Inject()(config: Config, env: Environment) extends Cloudwatch {
-  private[this] lazy val accessKey = config.requiredString("aws.access.key")
-  private[this] lazy val secretKey = config.requiredString("aws.secret.key")
-  private[this] lazy val credentials = new BasicAWSCredentials(accessKey, secretKey)
-  private[this] lazy val client = new AmazonCloudWatchClient(credentials)
+
+  private[this] lazy val client = AmazonCloudWatchClientBuilder.standard().
+    withCredentials(new AWSStaticCredentialsProvider(
+      new BasicAWSCredentials(config.requiredString("aws.access.key"), config.requiredString("aws.secret.key"))
+    )).build()
 
   def recordResponseTime(
     server: String,
