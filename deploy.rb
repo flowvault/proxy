@@ -74,8 +74,9 @@ end
 def wait(timeout_seconds = 50, &check_function)
   sleep_between_interval_seconds = 1
   started_at = Time.now
+  i = 0
 
-  0.upto(timeout_seconds-1) do |i|
+  while true
     if check_function.call
       return
     end
@@ -94,10 +95,11 @@ def wait(timeout_seconds = 50, &check_function)
       print "    "
     end
     print "."
+    i += 1
     sleep(1)
   end
 
-  puts "ERROR: Timeout exceeded[%s seconds]" % timeout_seconds
+  puts "\nERROR: Timeout exceeded[%s seconds]" % timeout_seconds
   exit(1)
 end
 
