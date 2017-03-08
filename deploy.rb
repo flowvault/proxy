@@ -87,8 +87,7 @@ def wait(timeout_seconds = 50, &check_function)
     end
 
     if duration > timeout_seconds
-      puts "ERROR: Timeout exceeded[%s seconds] waiting for healthcheck: %s" % [timeout_seconds, uri]
-      exit(1)
+      break
     end
 
     if i == 0
@@ -97,6 +96,9 @@ def wait(timeout_seconds = 50, &check_function)
     print "."
     sleep(1)
   end
+
+  puts "ERROR: Timeout exceeded[%s seconds]" % timeout_seconds
+  exit(1)
 end
 
 timeout = 50
