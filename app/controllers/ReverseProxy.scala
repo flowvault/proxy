@@ -213,7 +213,7 @@ class ReverseProxy @Inject () (
               proxyDefault(operation, request, token)
             } else {
               Future.successful {
-                request.response(422, invalidOrgMessage(organization))
+                request.responseError(422, invalidOrgMessage(organization))
               }
             }
           }
@@ -223,7 +223,7 @@ class ReverseProxy @Inject () (
       case Some(_) => {
         authorizeOrganization(token, organization).flatMap {
           case None => Future.successful {
-            request.response(422, invalidOrgMessage(organization))
+            request.responseError(422, invalidOrgMessage(organization))
           }
 
           case Some(orgToken) => {
