@@ -3,7 +3,7 @@ package controllers
 import akka.actor.ActorSystem
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
-import io.flow.session.internal.v0.{Client => SessionClient}
+import io.flow.session.v0.{Client => SessionClient}
 import javax.inject.{Inject, Singleton}
 
 import lib._

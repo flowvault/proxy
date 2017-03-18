@@ -1,8 +1,8 @@
 package auth
 
 import io.flow.organization.v0.interfaces.{Client => OrganizationClient}
-import io.flow.session.internal.v0.{Client => SessionClient}
-import io.flow.session.internal.v0.models._
+import io.flow.session.v0.{Client => SessionClient}
+import io.flow.session.v0.models._
 import lib.{FlowAuth, ResolvedToken}
 import play.api.Logger
 
@@ -33,7 +33,7 @@ trait SessionAuth {
             requestId = requestId,
             userId = None,
             environment = Some(auth.environment.toString),
-            organizationId = Some(auth.organization),
+            organizationId = Some(auth.organization.id),
             partnerId = None,
             role = None,
             sessionId = Some(sessionId)
@@ -51,9 +51,15 @@ trait SessionAuth {
         None
       }
 
-      case e: io.flow.session.internal.v0.errors.GenericErrorResponse => {
+      case e: io.flow.session.v0.errors.GenericErrorResponse => {
         Logger.warn(s"[proxy] 422 authorizing session: ${e.genericError.messages.mkString(", ")}")
         None
+      }
+
+      case ex: Throwable => {
+        val msg = s"Error communication with session service: ${ex.getMessage}"
+        Logger.error(msg, ex)
+        throw new RuntimeException(msg, ex)
       }
     }
   }

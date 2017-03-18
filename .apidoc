@@ -17,7 +17,7 @@ code:
       version: latest
       generators:
         play_2_5_client: app/generated
-    session-internal:
+    session:
       version: latest
       generators:
         play_2_5_client: app/generated
