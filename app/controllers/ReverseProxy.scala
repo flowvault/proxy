@@ -164,33 +164,13 @@ class ReverseProxy @Inject () (
         operation.route.organization(request.path) match {
           case None => {
             operation.route.partner(request.path) match {
-              case None => {
-                proxyDefault(operation, request, token)
-              }
-              case Some(partner) => {
-                token.partnerId match {
-                  case None => {
-                    // token is valid, but not for a partner
-                    Future.successful(request.responseError(401, s"Not authorized to access partner $partner or the partner does not exist"))
-                  }
-                  case Some(_) => {
-                    proxyPartner(operation, partner, request, token)
-                  }
-                }
-              }
+              case None => proxyDefault(operation, request, token)
+              case Some(partner) => proxyPartner(operation, partner, request, token)
             }
           }
 
           case Some(org) => {
-            token.organizationId match {
-              case None => {
-                // token is valid, but not for an organization
-                Future.successful(request.responseError(401, s"Not authorized to access organization $org or the organization does not exist"))
-              }
-              case Some(_) => {
-                proxyOrganization(operation, org, request, token)
-              }
-            }
+            proxyOrganization(operation, org, request, token)
           }
         }
       }
