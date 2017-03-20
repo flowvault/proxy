@@ -52,7 +52,7 @@ class ReverseProxy @Inject () (
   }
 
   private[this] val multiService = apidocServicesFetcher.current()
-  
+
   private[this] val proxies: Map[String, ServerProxy] = {
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
     val all = scala.collection.mutable.Map[String, ServerProxy]()
@@ -150,7 +150,7 @@ class ReverseProxy @Inject () (
       }
     }
   }
-  
+
   private[this] def proxyPostAuth(
     request: ProxyRequest,
     token: ResolvedToken
@@ -165,12 +165,23 @@ class ReverseProxy @Inject () (
           case None => {
             operation.route.partner(request.path) match {
               case None => proxyDefault(operation, request, token)
-              case Some(partner) => proxyPartner(operation, partner, request, token)
+              case Some(partner) => {
+                // should return 401 if the path is for a partner route, but the token doesn't have an explicit partnerId
+                token.partnerId match {
+                  case None => Future.successful(request.responseError(401, s"Not authorized to access partner $partner or the partner does not exist"))
+                  case Some(_) => proxyPartner(operation, partner, request, token)
+                }
+              }
             }
           }
 
           case Some(org) => {
-            proxyOrganization(operation, org, request, token)
+            // should return 401 if route is for an org, but token is a partner token
+            // note that console uses a token without an org, just a user - so can't be too strict here
+            token.partnerId match {
+              case None => proxyOrganization(operation, org, request, token)
+              case Some(_) => Future.successful(request.responseError(401, s"Not authorized to access organization $org or the organization does not exist"))
+            }
           }
         }
       }
@@ -278,10 +289,10 @@ class ReverseProxy @Inject () (
   /**
     * Resolves the incoming method and path to a specific operation. Also implements
     * overrides from incoming request headers:
-    * 
+    *
     *   - headers['X-Flow-Server']: If specified we use this server name
     *   - headers['X-Flow-Host']: If specified we use this host
-    * 
+    *
     * If any override headers are specified, we also verify that we
     * have an auth token identifying a user that is a member of the
     * flow organization. Otherwise we return an error.
@@ -382,7 +393,7 @@ class ReverseProxy @Inject () (
       }
     }
   }
-  
+
   private[this] def lookup(name: String): ServerProxy = {
     proxies.get(name).getOrElse {
       sys.error(s"No proxy defined for the server with name[$name]")
