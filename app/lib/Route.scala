@@ -94,16 +94,15 @@ object Route {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 
+    private[this] val isOrganizationPath = path.startsWith("/:organization/")
+
     private[this] val pattern = (
       "^" +
         path.split("/").map { p =>
-          p.startsWith(":") match {
-            case true => {
-              """[^\/]+"""
-            }
-            case false => {
-              p
-            }
+          if (p.startsWith(":")) {
+            """[^\/]+"""
+          } else {
+            p
           }
         }.mkString("""\/""") +
         "$"
@@ -112,7 +111,14 @@ object Route {
     override def matches(incomingMethod: String, incomingPath: String): Boolean = {
       method == incomingMethod match {
         case true => incomingPath match {
-          case pattern() => true
+          case pattern() => {
+            if (isOrganizationPath) {
+              // Special case 'internal' so that it does not match an org
+              !incomingPath.startsWith("/internal/")
+            } else {
+              true
+            }
+          }
           case _ => false
         }
         case false => {
