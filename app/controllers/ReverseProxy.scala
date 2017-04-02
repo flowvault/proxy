@@ -168,7 +168,7 @@ class ReverseProxy @Inject () (
               case Some(partner) => {
                 // should return 401 if the path is for a partner route, but the token doesn't have an explicit partnerId
                 token.partnerId match {
-                  case None => Future.successful(request.responseError(401, s"Not authorized to access partner $partner or the partner does not exist"))
+                  case None => Future.successful(request.responseError(401, invalidPartnerMessage(partner)))
                   case Some(_) => proxyPartner(operation, partner, request, token)
                 }
               }
@@ -180,7 +180,7 @@ class ReverseProxy @Inject () (
             // note that console uses a token without an org, just a user - so can't be too strict here
             token.partnerId match {
               case None => proxyOrganization(operation, org, request, token)
-              case Some(_) => Future.successful(request.responseError(401, s"Not authorized to access organization $org or the organization does not exist"))
+              case Some(_) => Future.successful(request.responseError(401, invalidOrgMessage(org)))
             }
           }
         }
@@ -279,7 +279,7 @@ class ReverseProxy @Inject () (
           )
         } else {
           Future.successful(
-            request.responseError(401, s"Not authorized to access $partner or the partner does not exist")
+            request.responseError(401, invalidPartnerMessage(partner))
           )
         }
       }
@@ -338,7 +338,7 @@ class ReverseProxy @Inject () (
           authorizeOrganization(token, Constants.FlowOrganizationId).map {
             case None => {
               Left(
-                request.responseError(401, s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
+                request.responseError(401, invalidOrgMessage(Constants.FlowOrganizationId))
               )
             }
 
@@ -411,7 +411,11 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def invalidOrgMessage(organization: String): String = {
-    s"Not authorized to access '$organization' or the organization does not exist"
+    s"Not authorized to access organization '$organization' or the organization does not exist"
+  }
+
+  private[this] def invalidPartnerMessage(partner: String): String = {
+    s"Not authorized to access partner '$partner' or the partner does not exist"
   }
 
 }

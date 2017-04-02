@@ -61,6 +61,39 @@ class IndexSpec extends PlaySpec with OneServerPerSuite {
     s.resolve("PUT", "/users/usr-201606-128367123").map(_.server.host) must be(Some("https://user.api.flow.io"))
   }
 
+  "internal routes that match :org routes" in {
+    val public = Server(
+      "currency",
+      "https://currency.api.flow.io"
+    )
+    val internal = Server(
+      "currency-internal",
+      "https://currency.api.flow.io"
+    )
+    val servers = Seq(public, internal)
+
+    val operations = Seq(
+      Operation(Route("GET", "/:organization/currency/settings"), public),
+      Operation(Route("GET", "/:organization/currency/settings/:id"), public),
+      Operation(Route("GET", "/internal/currency/settings"), internal),
+      Operation(Route("GET", "/internal/currency/settings/:id"), internal)
+    )
+    
+    val s = Index(
+      ProxyConfig(
+        sources = Seq(source),
+        servers = servers,
+        operations = operations
+      )
+    )
+
+    s.resolve("GET", "/demo/currency/settings").map(_.server.name) must be(Some("currency"))
+    s.resolve("GET", "/demo/currency/settings/50").map(_.server.name) must be(Some("currency"))
+    
+    s.resolve("GET", "/internal/currency/settings").map(_.server.name) must be(Some("currency-internal"))
+    s.resolve("GET", "/internal/currency/settings/50").map(_.server.name) must be(Some("currency-internal"))
+  }
+
   // We leave this here as a simple way to evaluate impact
   // on peformance of changes in the path resolution libraries
   "performance measurement" in {
