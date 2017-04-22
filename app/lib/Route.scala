@@ -35,19 +35,17 @@ sealed trait Route {
     * access to that organization.
     */
   def organization(requestPath: String): Option[String] = {
-    isInternal match {
-      case true => Some(InternalOrganization)
-      case false => {
-        hasOrganization match {
-          case false => None
-          case true => {
-            requestPath.split("/").toList match {
-              case empty :: org :: rest => Some(org)
-              case _ => sys.error(s"$method $requestPath: Could not extract organization from url")
-            }
-          }
-        }
+    if (isInternal) {
+      Some(InternalOrganization)
+
+    } else if (hasOrganization) {
+      requestPath.split("/").toList match {
+        case _ :: org :: _ => Some(org)
+        case _ => sys.error(s"$method $requestPath: Could not extract organization from url")
       }
+
+    } else {
+      None
     }
   }
 
@@ -57,14 +55,13 @@ sealed trait Route {
     * access to that partner.
     */
   def partner(requestPath: String): Option[String] = {
-    hasPartner match {
-      case false => None
-      case true => {
-        requestPath.split("/").toList match {
-          case empty :: partners :: partner :: rest => Some(partner)
-          case _ => sys.error(s"$method $requestPath: Could not extract partner from url")
-        }
+    if (hasPartner) {
+      requestPath.split("/").toList match {
+        case _ :: _ :: partner :: _ => Some(partner)
+        case _ => sys.error(s"$method $requestPath: Could not extract partner from url")
       }
+    } else {
+      None
     }
   }
   
@@ -79,7 +76,7 @@ object Route {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 
-    override def matches(incomingMethod: String, incomingPath: String) = {
+    override def matches(incomingMethod: String, incomingPath: String): Boolean = {
       method == incomingMethod && path == incomingPath
     }
   }
@@ -109,8 +106,8 @@ object Route {
     ).r
 
     override def matches(incomingMethod: String, incomingPath: String): Boolean = {
-      method == incomingMethod match {
-        case true => incomingPath match {
+      if (method == incomingMethod) {
+        incomingPath match {
           case pattern() => {
             if (isOrganizationPath) {
               // Special case 'internal' so that it does not match an org
@@ -121,18 +118,18 @@ object Route {
           }
           case _ => false
         }
-        case false => {
-          false
-        }
+      } else {
+        false
       }
     }
 
   }
 
   def apply(method: String, path: String): Route = {
-    path.indexOf(":") >= 0 match {
-      case true => Dynamic(method = method, path = path)
-      case false => Static(method = method, path = path)
+    if (path.indexOf(":") >= 0) {
+      Dynamic(method = method, path = path)
+    } else {
+      Static(method = method, path = path)
     }
   }
 

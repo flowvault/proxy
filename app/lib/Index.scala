@@ -57,7 +57,7 @@ case class Index(config: ProxyConfig) {
 
     val staticRouteMap = Map(
       staticRoutes.map { op =>
-        (routeKey(op.route.method, op.route.path) -> op)
+        routeKey(op.route.method, op.route.path) -> op
       }: _*
     )
 
