@@ -88,7 +88,23 @@ class ReverseProxy @Inject () (
     }
   }
 
+  private[this] def rewrite(request: ProxyRequest): ProxyRequest = {
+    (request.method, request.path) match {
+      case ("POST", "/sessions/shopify/.*") => {
+        request.copy(
+          path
+        )
+      }
+    }
+  }
+
   private[this] def internalHandle(request: ProxyRequest): Future[Result] = {
+    internalHandle2(
+      rewrite(request)
+    )
+  }
+
+  private[this] def internalHandle2(request: ProxyRequest): Future[Result] = {
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
         proxyPostAuth(request, token = ResolvedToken(requestId = request.requestId))

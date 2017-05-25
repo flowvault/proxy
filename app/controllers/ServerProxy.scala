@@ -199,7 +199,7 @@ class ServerProxyImpl @Inject () (
             val b = request.bodyUtf8.getOrElse {
               sys.error(s"Failed to serialize body as string for ContentType.UrlFormEncoded")
             }
-            FormData.toJson(FormData.parseEncoded(b))
+            FormData.parseEncodedToJsObject(b)
           }
 
           case ContentType.ApplicationJson => {
@@ -209,8 +209,8 @@ class ServerProxyImpl @Inject () (
             }
           }
 
-          case ContentType.Other(name) => {
-            Logger.warn(s"[proxy] $request: Unsupported Content-Type[$name] - will proxy with empty json body")
+          case ContentType.Other(n) => {
+            Logger.warn(s"[proxy] $request: Unsupported Content-Type[$n] - will proxy with empty json body")
             Json.obj()
           }
         }
@@ -273,7 +273,7 @@ class ServerProxyImpl @Inject () (
         val b = request.bodyUtf8.getOrElse {
           sys.error(s"Failed to serialize body as string for ContentType.UrlFormEncoded")
         }
-        val newBody = FormData.toJson(FormData.parseEncoded(b))
+        val newBody = FormData.parseEncodedToJsObject(b)
 
         logFormData(request, newBody)
 
@@ -442,7 +442,7 @@ class ServerProxyImpl @Inject () (
         Constants.Headers.FlowAuth -> flowAuth.jwt(token)
       ),
 
-      request.clientIp.map { ip =>
+      request.clientIp().map { ip =>
         Constants.Headers.FlowIp -> ip
       },
 
@@ -475,15 +475,15 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def logFormData(request: ProxyRequest, body: JsValue): Unit = {
+    val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
     body match {
       case j: JsObject => {
-        if (j.fields.nonEmpty) {
-          val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
-          val safeBody = LoggingUtil.safeJson(body, typ = typ)
-          Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
-        }
+        val safeBody = LoggingUtil.safeJson(body, typ = typ)
+        Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
       }
-      case _ => // no-op
+      case _ => {
+        Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: Body of type[${body.getClass.getName}] which cannot be safely logged")
+      }
     }
   }
 
