@@ -103,4 +103,10 @@ class Internal @Inject() (
     )
   }
 
+  def favicon = Action.async { _ =>
+    Future.successful(
+      NoContent
+    )
+  }
+
 }
