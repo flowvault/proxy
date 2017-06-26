@@ -3,12 +3,12 @@ package controllers
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
-import io.flow.lib.apidoc.json.validation.FormData
+import io.apibuilder.validation.FormData
 import java.net.URI
 import javax.inject.Inject
 
 import actors.MetricActor
-import com.bryzek.apidoc.spec.v0.models.ParameterLocation
+import io.apibuilder.spec.v0.models.ParameterLocation
 import play.api.Logger
 import play.api.libs.ws.{StreamedResponse, WSClient}
 import play.api.mvc._
@@ -23,7 +23,7 @@ import scala.annotation.tailrec
 
 case class ServerProxyDefinition(
   server: Server,
-  multiService: io.flow.lib.apidoc.json.validation.MultiService // TODO Move higher level
+  multiService: io.apibuilder.validation.MultiService // TODO Move higher level
 ) {
 
   val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {

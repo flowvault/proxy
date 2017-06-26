@@ -1,7 +1,7 @@
 package lib
 
 import controllers.{ServerProxy, ServerProxyDefinition, ServerProxyImpl}
-import io.flow.lib.apidoc.json.validation.MultiService
+import io.apibuilder.validation.MultiService
 import org.scalatest._
 import org.scalatestplus.play._
 import play.api.test._

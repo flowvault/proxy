@@ -1,6 +1,6 @@
 package lib
 
-import io.flow.lib.apidoc.json.validation.MultiService
+import io.apibuilder.validation.MultiService
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
 
