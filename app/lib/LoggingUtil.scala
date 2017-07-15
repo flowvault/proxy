@@ -3,25 +3,50 @@ package lib
 import play.api.Logger
 import play.api.libs.json._
 
-import scala.annotation.tailrec
-
 object LoggingUtil {
 
-  // All fields in this array will have their values redacted
-  private[this] val GlobalFieldsToReplace = Set("cvv", "number", "token", "email", "password")
-
-  // Map from apidoc model type to list of fields to whitelist
-  private[this] val WhiteListByType = Map(
-    "item_form" -> Set("number"),
-    "harmonized_item_form" -> Set("number"),
-    "order_form" -> Set("number"),
-    "order_put_form" -> Set("number")
+  val logger = JsonSafeLogger(
+    JsonSafeLoggerConfig(
+      blacklistFields = Set("cvv", "number", "token", "email", "password"),
+      blacklistModels = Set("password_change_form"),
+      whitelistModelFields = Map(
+        "item_form" -> Set("number"),
+        "harmonized_item_form" -> Set("number"),
+        "order_form" -> Set("number"),
+        "order_put_form" -> Set("number")
+      )
+    )
   )
 
-  // Map from apidoc model type to list of fields to whitelist
-  private[this] val BlacklistedModels = Set(
-    "password_change_form"
+}
+
+/**
+  * @param blacklistFields Any value for a field with this name will be redacted
+  * @param whitelistFields Any value for a field with this name will be redacted
+  * @param whitelistModelFields A Map from `type name` to list of fields to white
+  *        list of fields to allow in the output
+  */
+case class JsonSafeLoggerConfig(
+  blacklistFields: Set[String] = Set(),
+  blacklistModels: Set[String] = Set(),
+  whitelistModelFields: Map[String, Set[String]] = Map()
+)
+
+object JsonSafeLogger {
+
+  val DefaultConfig = JsonSafeLoggerConfig(
+    blacklistFields = Set("cvv", "password", "email", "token", "credit_card_number"),
+    blacklistModels = Set("password_form")
   )
+
+  val default = JsonSafeLogger(DefaultConfig)
+
+}
+
+/**
+  * 
+  */
+case class JsonSafeLogger(config: JsonSafeLoggerConfig) {
 
   /**
     * Accepts a JsValue, redacting any fields that may contain sensitive data
@@ -32,10 +57,10 @@ object LoggingUtil {
     body: JsValue,
     typ: Option[String] = None
   ): JsValue = {
-    val isModelBlacklisted = typ.map(BlacklistedModels.contains).getOrElse(false)
-    val allFieldsToReplace = typ.flatMap(WhiteListByType.get) match {
-      case None => GlobalFieldsToReplace
-      case Some(whitelist) => GlobalFieldsToReplace.diff(whitelist)
+    val isModelBlacklisted = typ.map(config.blacklistModels.contains).getOrElse(false)
+    val allFieldsToReplace = typ.flatMap(config.whitelistModelFields.get) match {
+      case None => config.blacklistFields
+      case Some(whitelist) => config.blacklistFields.diff(whitelist)
     }
 
     body match {

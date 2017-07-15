@@ -479,7 +479,7 @@ class ServerProxyImpl @Inject () (
     body match {
       case j: JsObject if typ.isEmpty && j.value.isEmpty => // nothing to log
       case j: JsObject => {
-        val safeBody = LoggingUtil.safeJson(body, typ = typ)
+        val safeBody = LoggingUtil.logger.safeJson(body, typ = typ)
         Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
       }
       case _ => {
