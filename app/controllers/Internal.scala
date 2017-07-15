@@ -3,12 +3,17 @@ package controllers
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import lib.{Config, Constants}
+import lib.{Config, Constants, ProxyRequest}
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
 
 import scala.concurrent.Future
+
+case class RouteResult(
+  method: String,
+  operation: Option[lib.Operation]
+)
 
 @Singleton
 class Internal @Inject() (
@@ -109,4 +114,25 @@ class Internal @Inject() (
     )
   }
 
+  def getRoute = Action.async { request =>
+    Future.successful {
+      val path = request.getQueryString("path").map(_.trim).filter(_.nonEmpty)
+
+      val results = path match {
+        case None => Nil
+        case Some(p) => {
+          ProxyRequest.ValidMethods.map { method =>
+            RouteResult(
+              method = method,
+              operation = reverseProxy.index.resolve(method, p)
+            )
+          }
+        }
+      }
+
+      Ok(
+        views.html.route(path, results)
+      )
+    }
+  }
 }

@@ -25,8 +25,8 @@ API Proxy server that is hosted at https://api.flow.io
   - Support envelope=request query parameter that allows you to POST a JSON object that we will
     use to create the request
   - Converts www form urlencoded strings (body and query for JSONP) into form data, validating
-    and converting types according to one or more apidoc schemas (via environment variable
-    named APIDOC_SERVICE_URIS)
+    and converting types according to one or more apibuilder schemas (via environment variable
+    named APIBUILDER_SERVICE_URIS)
 
 ## Bypassing proxy
 
@@ -51,19 +51,37 @@ for a user that is a member of the 'flow' organization.
 
 ## Internal URLs
 
-View current configuration, including all services and routes:
+### Healthcheck
 
 ```
-http://localhost:9000/_internal_/config
+http://localhost:7000/_internal_/healthcheck
+```
+
+### Diagnostics
+
+```
+http://localhost:7000/_internal_/diagnostics
+```
+
+### View current configuration, including all services and routes:
+
+```
+http://localhost:7000/_internal_/config
 ```
 
 ## Example configuration files
 
-environment variable | example URL
--------------------- | ---------------
-PROXY_CONFIG_URIS    | https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config
-APIDOC_SERVICE_URIS  | https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/latest/api.service.json
+environment variable     | example URL
+------------------------ | ---------------
+PROXY_CONFIG_URIS        | https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/latest/development.config.yml
+APIBUILDER_SERVICE_URIS  | https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/latest/api.service.json
 
 Multiple URIS can be provided as a single, comma-separated string.
 
-[Learn more about apidoc](http://apidoc.me)
+[Learn more about API Builder](https://www.apibuilder.io)
+
+### Resolve a route
+
+```
+http://localhost:7000/_internal_/route
+```

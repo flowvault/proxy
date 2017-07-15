@@ -1,0 +1,41 @@
+@(
+  path: Option[String],
+  results: Seq[controllers.RouteResult]
+)
+
+@header("Routes")
+
+<form method="GET">
+  Path: <input type="text" name="path" value="@path.getOrElse("")" />
+  <input type="submit" />
+</form>
+
+@if(path.isDefined) {
+  @if(!results.exists(_.operation.isDefined)) {
+    <em>Path is not defined</em>
+  }
+  @if(results.exists(_.operation.isDefined)) {
+    <table cellpadding="5" cellspacing="5">
+      <tr>
+        <th>Method</th>
+        <th>Path</th>
+        <th>Server</th>
+      </tr>
+
+      @results.map { r =>
+        <tr>
+          <td>@r.method</td>
+          @if(r.operation.isEmpty) {
+            <td colspan="2"><i>not defined</i></td>
+          }
+          @if(r.operation.isDefined) {
+            <td>@r.operation.get.route.path</td>
+            <td>@r.operation.get.server.name @r.operation.get.server.host</td>
+          }
+        </tr>
+      }
+    </table>
+  }
+}
+
+@footer()
