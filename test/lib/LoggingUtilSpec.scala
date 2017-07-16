@@ -36,7 +36,7 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
           Json.obj("number" -> "1234567890")
         )
       )
-    )must equal(
+    ) must equal(
       JsArray(
         Seq(
           Json.obj("foo" -> "bar"),
@@ -45,6 +45,18 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
         )
       )
 
+    )
+  }
+
+  "safeJson with nested types" in {
+    logger.safeJson(
+      Json.obj(
+        "items" -> Json.obj("number" -> "1234567890")
+      )
+    ) must equal(
+      Json.obj(
+        "items" -> Json.obj("number" -> "xxx")
+      )
     )
   }
 
@@ -64,18 +76,6 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
     )
   }
 
-  "safeJson with nested types" in {
-    logger.safeJson(
-      Json.obj(
-        "items" -> Json.obj("number" -> "1234567890")
-      )
-    ) must equal(
-      Json.obj(
-        "items" -> Json.obj("number" -> "xxx")
-      )
-    )
-  }
-
   "safeJson with blacklisted model" in {
     logger.safeJson(
       Json.obj(
@@ -90,4 +90,23 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
       )
     )
   }
+
+  "safeJson with nested blacklisted model" in {
+    logger.safeJson(
+      Json.obj(
+        "password_change_form" -> Json.obj(
+          "current" -> "foo",
+          "new" -> "bar"
+        )
+      )
+    ) must equal(
+      Json.obj(
+        "password_change_form" -> Json.obj(
+          "current" -> "xxx",
+          "new" -> "xxx"
+        )
+      )
+    )
+  }
+
 }
