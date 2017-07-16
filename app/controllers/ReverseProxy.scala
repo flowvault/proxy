@@ -19,7 +19,7 @@ class ReverseProxy @Inject () (
   config: Config,
   override val flowAuth: FlowAuth,
   proxyConfigFetcher: ProxyConfigFetcher,
-  apidocServicesFetcher: ApidocServicesFetcher,
+  apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   serverProxyFactory: ServerProxy.Factory,
   ws: play.api.libs.ws.WSClient
 ) extends Controller
@@ -51,7 +51,7 @@ class ReverseProxy @Inject () (
     new TokenClient(ws, baseUrl = server.host)
   }
 
-  private[this] val multiService = apidocServicesFetcher.current()
+  private[this] val multiService = apiBuilderServicesFetcher.current()
 
   private[this] val proxies: Map[String, ServerProxy] = {
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")

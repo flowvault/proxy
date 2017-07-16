@@ -221,7 +221,7 @@ class ServerProxyImpl @Inject () (
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
-        Logger.info(s"[proxy] $request ${definition.server.name} 422 based on apidoc schema")
+        Logger.info(s"[proxy] $request ${definition.server.name} 422 based on apibuilder schema")
         Future(request.response(422, genericErrors(errors).toString))
       }
 
@@ -279,11 +279,11 @@ class ServerProxyImpl @Inject () (
 
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
-            Logger.info(s"[proxy] $request 422 based on apidoc schema")
+            Logger.info(s"[proxy] $request 422 based on apibuilder schema")
             Future(
               UnprocessableEntity(
                 genericErrors(errors)
-              ).withHeaders("X-Flow-Proxy-Validation" -> "apidoc")
+              ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
             )
           }
 
@@ -322,11 +322,11 @@ class ServerProxyImpl @Inject () (
 
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
-                Logger.info(s"[proxy] $request 422 based on apidoc schema")
+                Logger.info(s"[proxy] $request 422 based on apibuilder schema")
                 Future(
                   UnprocessableEntity(
                     genericErrors(errors)
-                  ).withHeaders("X-Flow-Proxy-Validation" -> "apidoc")
+                  ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
                 )
               }
 
