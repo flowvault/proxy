@@ -24,16 +24,10 @@ API Proxy server that is hosted at https://api.flow.io
     codes based on presence of url parameter named 'envelope' with value 'response'
   - Support envelope=request query parameter that allows you to POST a JSON object that we will
     use to create the request
-<<<<<<< HEAD
-  - Converts www form urlencoded strings (body and query for JSONP) into form data, validating
-    and converting types according to one or more apibuilder schemas (via environment variable
-    named APIBUILDER_SERVICE_URIS)
-=======
   - Converts www form urlencoded strings (body and query for JSONP)
     into form data, validating and converting types according to one
     or more [API Builder](https://www.apibuilder.io) schemas (via
     environment variable named APIBUILDER_SERVICE_URIS)
->>>>>>> Rename apidoc to apibuilder
 
 ## Bypassing proxy
 
