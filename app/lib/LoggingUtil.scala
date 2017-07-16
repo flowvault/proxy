@@ -51,7 +51,7 @@ case class JsonSafeLogger(config: JsonSafeLoggerConfig) {
   /**
     * Accepts a JsValue, redacting any fields that may contain sensitive data
     * @param body The JsValue itself
-    * @param typ The type represented by the JsValue if resolved from the apidoc specification
+    * @param typ The type represented by the JsValue if resolved from the API Builder specification
     */
   def safeJson(
     body: JsValue,

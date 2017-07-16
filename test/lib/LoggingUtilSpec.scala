@@ -5,7 +5,7 @@ import play.api.libs.json._
 
 class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
 
-  private[this] logger = JsonSafeLogger(
+  private[this] val logger = JsonSafeLogger(
     JsonSafeLoggerConfig(
       blacklistFields = Set("cvv", "number", "token", "email", "password"),
       blacklistModels = Set("password_change_form"),
