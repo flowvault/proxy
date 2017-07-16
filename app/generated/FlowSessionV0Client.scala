@@ -66,7 +66,8 @@ package io.flow.session.v0.models {
     country: io.flow.reference.v0.models.Country,
     currency: io.flow.reference.v0.models.Currency,
     language: io.flow.reference.v0.models.Language,
-    locale: io.flow.reference.v0.models.Locale
+    locale: io.flow.reference.v0.models.Locale,
+    experience: io.flow.experience.v0.models.ExperienceGeo
   )
 
   /**
@@ -252,6 +253,7 @@ package io.flow.session.v0.models {
     import play.api.libs.functional.syntax._
     import io.flow.common.v0.models.json._
     import io.flow.error.v0.models.json._
+    import io.flow.experience.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.v0.models.json._
 
@@ -297,7 +299,8 @@ package io.flow.session.v0.models {
         (__ \ "country").read[io.flow.reference.v0.models.Country] and
         (__ \ "currency").read[io.flow.reference.v0.models.Currency] and
         (__ \ "language").read[io.flow.reference.v0.models.Language] and
-        (__ \ "locale").read[io.flow.reference.v0.models.Locale]
+        (__ \ "locale").read[io.flow.reference.v0.models.Locale] and
+        (__ \ "experience").read[io.flow.experience.v0.models.ExperienceGeo]
       )(LocalSession.apply _)
     }
 
@@ -306,7 +309,8 @@ package io.flow.session.v0.models {
         "country" -> io.flow.reference.v0.models.json.jsObjectCountry(obj.country),
         "currency" -> io.flow.reference.v0.models.json.jsObjectCurrency(obj.currency),
         "language" -> io.flow.reference.v0.models.json.jsObjectLanguage(obj.language),
-        "locale" -> io.flow.reference.v0.models.json.jsObjectLocale(obj.locale)
+        "locale" -> io.flow.reference.v0.models.json.jsObjectLocale(obj.locale),
+        "experience" -> io.flow.experience.v0.models.json.jsObjectExperienceGeo(obj.experience)
       )
     }
 
@@ -698,6 +702,7 @@ package io.flow.session.v0 {
   ) extends interfaces.Client {
     import io.flow.common.v0.models.json._
     import io.flow.error.v0.models.json._
+    import io.flow.experience.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.v0.models.json._
 
@@ -946,6 +951,7 @@ package io.flow.session.v0 {
 
     import io.flow.common.v0.models.json._
     import io.flow.error.v0.models.json._
+    import io.flow.experience.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.v0.models.json._
 
