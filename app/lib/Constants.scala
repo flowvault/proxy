@@ -16,7 +16,9 @@ object Constants {
     val ForwardedOrigin = "X-Forwarded-Origin"
     val ForwardedMethod = "X-Forwarded-Method"
 
-    val namesToRemove = Seq(FlowAuth, FlowRequestId, FlowServer, FlowHost, Host, Origin, ForwardedOrigin, ForwardedMethod)
+    val CfRay = "CF-RAY"
+
+    val namesToRemove = Seq(FlowAuth, FlowRequestId, FlowServer, FlowHost, Host, Origin, ForwardedOrigin, ForwardedMethod, CfRay)
   }
 
   /**
