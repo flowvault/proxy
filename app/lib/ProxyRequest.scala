@@ -230,14 +230,14 @@ case class ProxyRequest(
     * See https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-CloudFlare-handle-HTTP-Request-headers-
     */
   def clientIp(): Option[String] = {
-    headers.get("cf-connecting-ip") match {
+    headers.get(Constants.Headers.CfConnectingIp) match {
       case Some(ip) => Some(ip)
-      case None => headers.get("true-client-ip") match {
+      case None => headers.get(Constants.Headers.CfTrueClientIp) match {
         case Some(ip) => Some(ip)
         case None => {
           // Sometimes we see an ip in forwarded-for header even if not in other
           // ip related headers
-          headers.get("X-Forwarded-For").flatMap { ips =>
+          headers.get(Constants.Headers.ForwardedFor).flatMap { ips =>
             ips.split(",").headOption
           }
         }

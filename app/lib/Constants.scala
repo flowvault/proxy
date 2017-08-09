@@ -12,13 +12,33 @@ object Constants {
 
     val Host = "Host"
     val ForwardedHost = "X-Forwarded-Host"
+    val ForwardedFor = "X-Forwarded-For"
     val Origin = "Origin"
     val ForwardedOrigin = "X-Forwarded-Origin"
     val ForwardedMethod = "X-Forwarded-Method"
 
     val CfRay = "CF-RAY"
+    val CfConnectingIp = "CF-Connecting-IP"
+    val CfTrueClientIp = "True-Client-IP"
+    val CfIpCountry = "CF-IPCountry"
+    val CfVisitor = "CF-Visitor"
 
-    val namesToRemove = Seq(FlowAuth, FlowRequestId, FlowServer, FlowHost, Host, Origin, ForwardedOrigin, ForwardedMethod, CfRay)
+    val namesToRemove = Seq(
+      FlowAuth,
+      FlowRequestId,
+      FlowServer,
+      FlowHost,
+      Host,
+      Origin,
+      ForwardedOrigin,
+      ForwardedMethod,
+      // Remove any cloudflare headers when proxying to underlying service
+      CfRay,
+      CfConnectingIp,
+      CfTrueClientIp,
+      CfIpCountry,
+      CfVisitor
+    )
   }
 
   /**
