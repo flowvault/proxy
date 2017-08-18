@@ -14,11 +14,11 @@ lazy val root = project
       filters,
       ws,
       "commons-codec" % "commons-codec" % "1.10",
-      "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.172",
+      "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.179",
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
-      "com.typesafe.play" %% "play-json" % "2.5.16",
+      "com.typesafe.play" %% "play-json" % "2.6.3",
       "io.flow" %% "apibuilder-validation" % "0.1.2",
-      "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test",
+      "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.1" % "test",
       "org.yaml" % "snakeyaml" % "1.18"
     )
   )
