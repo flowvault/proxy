@@ -17,7 +17,7 @@ lazy val root = project
       "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.184",
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
       "io.flow" %% "apibuilder-validation" % "0.1.4",
-      "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test",
+      "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.1" % "test",
       "org.yaml" % "snakeyaml" % "1.18"
     )
   )
