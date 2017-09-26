@@ -1,6 +1,8 @@
 package controllers
 
 import akka.actor.ActorSystem
+import akka.stream.scaladsl.{Sink, Source}
+import akka.util.ByteString
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
@@ -385,6 +387,7 @@ class ServerProxyImpl @Inject () (
       }
 
       case StreamedResponse(r, body) => {
+        log4xx(request, r.status, body)
         val timeToFirstByteMs = System.currentTimeMillis - startMs
         val contentType: Option[String] = r.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
@@ -411,6 +414,7 @@ class ServerProxyImpl @Inject () (
       }
 
       case r: play.api.libs.ws.ahc.AhcWSResponse => {
+        log4xx(request, r.status, r.body)
         Status(r.status)(r.body).withHeaders(toHeaders(r.allHeaders): _*)
       }
 
@@ -482,6 +486,32 @@ class ServerProxyImpl @Inject () (
       case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
     }
     Logger.info(s"$request body type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
+  }
+
+  private[this] def log4xx(request: ProxyRequest, status: Int, body: Source[ByteString, _])(
+    implicit materializer: akka.stream.Materializer
+  ): Unit = {
+    if (status >= 400 && status < 500) {
+      val sink = Sink.fold[String, ByteString]("") { case (acc, str) =>
+        acc + str.decodeString("UTF-8")
+      }
+      body.runWith(sink).map { b =>
+        log4xx(request, status, b)
+      }
+    }
+  }
+
+  private[this] def log4xx(request: ProxyRequest, status: Int, body: String): Unit = {
+    if (status >= 400 && status < 500) {
+      val finalBody = Try {
+        Json.parse(body)
+      } match {
+        case Success(js) => LoggingUtil.logger.safeJson(js, typ = None)
+        case Failure(_) => body
+      }
+
+      Logger.info(s"$request responded with $status requestId[${request.requestId}]: $finalBody")
+    }
   }
 
   private[this] def toHeaders(headers: Map[String, Seq[String]]): Seq[(String, String)] = {

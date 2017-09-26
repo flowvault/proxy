@@ -28,11 +28,11 @@ class MetricActor @javax.inject.Inject() (
   private[this] implicit val ec: ExecutionContext = system.dispatchers.lookup("metric-actor-context")
 
   def receive = akka.event.LoggingReceive {
-    case msg @ MetricActor.Messages.Send(server, method, path, ms, response, organization, partner) => {
+    case _ @ MetricActor.Messages.Send(server, method, path, ms, response, organization, partner) => {
       cloudwatch.recordResponseTime(server, method, path, ms, response, organization, partner)
     }
 
-    case msg: Any => // noop
+    case _: Any => // noop
   }
 
 }
