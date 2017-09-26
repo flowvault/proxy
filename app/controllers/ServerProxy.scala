@@ -1,15 +1,17 @@
 package controllers
 
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
 import java.net.URI
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 import actors.MetricActor
+import akka.stream.ActorMaterializer
 import io.apibuilder.spec.v0.models.ParameterLocation
 import play.api.Logger
 import play.api.libs.ws.{StreamedResponse, WSClient}
@@ -22,6 +24,8 @@ import lib._
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.annotation.tailrec
+import scala.concurrent.duration.FiniteDuration
+import akka.stream.scaladsl.StreamConverters
 
 case class ServerProxyDefinition(
   server: Server,
@@ -129,13 +133,14 @@ class ServerProxyModule extends AbstractModule {
 
 class ServerProxyImpl @Inject () (
   @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
-  system: ActorSystem,
+  implicit val system: ActorSystem,
   ws: WSClient,
   flowAuth: FlowAuth,
   @Assisted override val definition: ServerProxyDefinition
 ) extends ServerProxy with Controller with lib.Errors {
 
   private[this] implicit val (ec, name) = resolveContextName(definition.server.name)
+  private[this] implicit val materializer = ActorMaterializer()
 
   /**
     * Returns the execution context to use, if found. Works by recursively
@@ -493,7 +498,8 @@ class ServerProxyImpl @Inject () (
 
   private[this] def log4xx(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Unit = {
     if (status >= 400 && status < 500) {
-      log4xx(request, status, "Streamed Response Body Not Materialized")
+      val msg = scala.io.Source.fromInputStream(body.runWith(StreamConverters.asInputStream(FiniteDuration(2, TimeUnit.SECONDS)))).mkString
+      log4xx(request, status, msg)
     }
   }
 
