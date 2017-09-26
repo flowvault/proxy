@@ -24,7 +24,7 @@ import lib._
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.annotation.tailrec
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import akka.stream.scaladsl.StreamConverters
 
 case class ServerProxyDefinition(
@@ -498,7 +498,7 @@ class ServerProxyImpl @Inject () (
 
   private[this] def log4xxFromSource(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Unit = {
     if (status >= 400 && status < 500) {
-      val msg = scala.io.Source.fromInputStream(body.runWith(StreamConverters.asInputStream(FiniteDuration(2, TimeUnit.SECONDS)))).mkString
+      val msg = scala.io.Source.fromInputStream(body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))).mkString
       log4xx(request, status, msg)
     }
   }
