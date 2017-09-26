@@ -383,12 +383,12 @@ class ServerProxyImpl @Inject () (
 
     response.map {
       case r: Result => {
-        log4xx(request, r.header.status, r.body.dataStream)
+        log4xxFromSource(request, r.header.status, r.body.dataStream)
         r
       }
 
       case StreamedResponse(r, body) => {
-        log4xx(request, r.status, body)
+        log4xxFromSource(request, r.status, body)
         val timeToFirstByteMs = System.currentTimeMillis - startMs
         val contentType: Option[String] = r.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
@@ -491,9 +491,9 @@ class ServerProxyImpl @Inject () (
     }
   }
 
-  private[this] def log4xx(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Unit = {
+  private[this] def log4xxFromSource(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Unit = {
     if (status >= 400 && status < 500) {
-      log4xx(request, status, "Streamed Response Body Not Materialized")
+      log4xx(request, status, body)
     }
   }
 
