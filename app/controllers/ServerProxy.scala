@@ -383,6 +383,7 @@ class ServerProxyImpl @Inject () (
 
     response.map {
       case r: Result => {
+        log4xx(request, r.header.status, r.body.dataStream)
         r
       }
 
@@ -419,7 +420,7 @@ class ServerProxyImpl @Inject () (
       }
 
       case other => {
-        sys.error("Unhandled response: " + other.getClass.getName)
+        sys.error("Unhandled response of type: " + other.getClass.getName)
       }
     }
   }
@@ -488,16 +489,9 @@ class ServerProxyImpl @Inject () (
     Logger.info(s"$request body type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
   }
 
-  private[this] def log4xx(request: ProxyRequest, status: Int, body: Source[ByteString, _])(
-    implicit materializer: akka.stream.Materializer
-  ): Unit = {
+  private[this] def log4xx(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Unit = {
     if (status >= 400 && status < 500) {
-      val sink = Sink.fold[String, ByteString]("") { case (acc, str) =>
-        acc + str.decodeString("UTF-8")
-      }
-      body.runWith(sink).map { b =>
-        log4xx(request, status, b)
-      }
+      log4xx(request, status, "Streamed Response Body Not Materialized")
     }
   }
 
