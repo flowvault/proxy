@@ -508,7 +508,10 @@ class ServerProxyImpl @Inject()(
           log4xx(request, status, msg)
           Right(StreamConverters.fromInputStream(() => is))
         }
-        case Failure(ex) => Left(ex.getMessage)
+        case Failure(ex) => {
+          Logger.info(s"$request responded with $status requestId[${request.requestId}]: Failed to deserialize ${ex.getMessage}")
+          Left(ex.getMessage)
+        }
       }
     } else Right(body)
   }
