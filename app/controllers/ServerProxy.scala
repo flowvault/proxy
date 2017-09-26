@@ -498,8 +498,12 @@ class ServerProxyImpl @Inject () (
 
   private[this] def log4xxFromSource(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Unit = {
     if (status >= 400 && status < 500) {
-      val msg = scala.io.Source.fromInputStream(body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))).mkString
-      log4xx(request, status, msg)
+      Try {
+        scala.io.Source.fromInputStream(body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))).mkString
+      } match {
+        case Success(msg) => log4xx(request, status, msg)
+        case Failure(ex) => Logger.warn(s"Failed to deserialize 4xx body: ${ex.getMessage}")
+      }
     }
   }
 
