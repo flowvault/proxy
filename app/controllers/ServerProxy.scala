@@ -480,13 +480,15 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def logFormData(request: ProxyRequest, body: JsValue): Unit = {
-    val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
-    val safeBody = body match {
-      case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
-      case j: JsObject => LoggingUtil.logger.safeJson(body, typ = typ)
-      case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
+    if (request.method != "GET") {
+      val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
+      val safeBody = body match {
+        case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
+        case j: JsObject => LoggingUtil.logger.safeJson(body, typ = typ)
+        case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
+      }
+      Logger.info(s"$request body type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
     }
-    Logger.info(s"$request body type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
   }
 
   private[this] def log4xx(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Unit = {
