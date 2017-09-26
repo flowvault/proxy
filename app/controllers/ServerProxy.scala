@@ -13,7 +13,7 @@ import actors.MetricActor
 import akka.stream.ActorMaterializer
 import io.apibuilder.spec.v0.models.ParameterLocation
 import play.api.Logger
-import play.api.libs.ws.{StreamedResponse, WSClient}
+import play.api.libs.ws.{DefaultWSResponseHeaders, StreamedResponse, WSClient}
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -385,40 +385,33 @@ class ServerProxyImpl @Inject()(
     val startMs = System.currentTimeMillis
 
     response.map {
-      case r: Result => {
-        logFilter(request, r.header.status, r.body.dataStream)
-        r
-      }
+      case r: Result if r.header.status >= 400 && r.header.status < 500 => logBodyStream(request, r.header.status, r.body.dataStream)
+
+      case StreamedResponse(DefaultWSResponseHeaders(status, headers), body) if status >= 400 && status < 500 => logBodyStream(request, status, body)
 
       case StreamedResponse(r, body) => {
-        logFilter(request, r.status, body) match {
-          case Right(body) => {
-            val timeToFirstByteMs = System.currentTimeMillis - startMs
-            val contentType: Option[String] = r.headers.get("Content-Type").flatMap(_.headOption)
-            val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
+        val timeToFirstByteMs = System.currentTimeMillis - startMs
+        val contentType: Option[String] = r.headers.get("Content-Type").flatMap(_.headOption)
+        val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
 
-            actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, r.status, organization, partner)
-            Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId ${request.requestId} requestContentType[${request.contentType}] responseContentType[${contentType.getOrElse("NONE")}]")
-            val headers: Seq[(String, String)] = toHeaders(r.headers)
+        actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, r.status, organization, partner)
+        Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId ${request.requestId} requestContentType[${request.contentType}] responseContentType[${contentType.getOrElse("NONE")}]")
+        val headers: Seq[(String, String)] = toHeaders(r.headers)
 
-            // If there's a content length, send that, otherwise return the body chunked
-            contentLength match {
-              case Some(length) => {
-                Status(r.status).
-                  sendEntity(HttpEntity.Streamed(body, Some(length), contentType)).
-                  withHeaders(headers: _*)
-              }
+        // If there's a content length, send that, otherwise return the body chunked
+        contentLength match {
+          case Some(length) => {
+            Status(r.status).
+              sendEntity(HttpEntity.Streamed(body, Some(length), contentType)).
+              withHeaders(headers: _*)
+          }
 
-              case None => {
-                contentType match {
-                  case None => Status(r.status).chunked(body).withHeaders(headers: _*)
-                  case Some(ct) => Status(r.status).chunked(body).withHeaders(headers: _*).as(ct)
-                }
-              }
+          case None => {
+            contentType match {
+              case None => Status(r.status).chunked(body).withHeaders(headers: _*)
+              case Some(ct) => Status(r.status).chunked(body).withHeaders(headers: _*).as(ct)
             }
           }
-          case Left(_) =>
-            Status(r.status).chunked(body).withHeaders(toHeaders(r.headers): _*)
         }
       }
       case r: play.api.libs.ws.ahc.AhcWSResponse => {
@@ -498,22 +491,20 @@ class ServerProxyImpl @Inject()(
     }
   }
 
-  private[this] def logFilter(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Either[String, Source[ByteString, _]] = {
-    if (status >= 400 && status < 500) {
-      Try {
-        body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
-      } match {
-        case Success(is) => {
-          val msg = scala.io.Source.fromInputStream(is).mkString
-          log4xx(request, status, msg)
-          Right(StreamConverters.fromInputStream(() => is))
-        }
-        case Failure(ex) => {
-          Logger.info(s"$request responded with $status requestId[${request.requestId}]: Failed to deserialize ${ex.getMessage}")
-          Left(ex.getMessage)
-        }
+  private[this] def logBodyStream(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Result = {
+    Try {
+      body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
+    } match {
+      case Success(is) => {
+        val msg = scala.io.Source.fromInputStream(is).mkString
+        log4xx(request, status, msg)
+        Result(ResponseHeader(status, Map.empty, None), HttpEntity.Strict(data = ByteString(msg), contentType = Option(request.contentType.toString)))
       }
-    } else Right(body)
+      case Failure(ex) => {
+        log4xx(request, status, s"Failed to deserialize ${ex.getMessage}")
+        Result(ResponseHeader(status, Map.empty, None), HttpEntity.Strict(data = ByteString(ex.getMessage), contentType = Option(request.contentType.toString)))
+      }
+    }
   }
 
   private[this] def log4xx(request: ProxyRequest, status: Int, body: String): Unit = {
