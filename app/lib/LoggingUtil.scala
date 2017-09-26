@@ -8,7 +8,7 @@ object LoggingUtil {
   val logger = JsonSafeLogger(
     JsonSafeLoggerConfig(
       blacklistFields = Set(
-        "cvv", "number", "token", "email", "email_address", "code",
+        "cvv", "number", "token", "email", "email_address",
         "password", "name", "first_name", "last_name", "streets", "phone", "phone_number"
       ),
       blacklistModels = Set("password_change_form"),
