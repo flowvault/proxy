@@ -10,10 +10,10 @@ object LoggingUtil {
       blacklistFields = Set("cvv", "number", "token", "email", "password", "name", "first_name", "last_name", "streets"),
       blacklistModels = Set("password_change_form"),
       whitelistModelFields = Map(
+        "customer" -> Set("number"),
         "item_form" -> Set("number"),
         "harmonized_item_form" -> Set("number"),
-        "order_form" -> Set("number"),
-        "order_put_form" -> Set("number")
+        "line_item_form" -> Set("number")
       )
     )
   )
