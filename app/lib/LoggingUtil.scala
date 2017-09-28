@@ -20,6 +20,8 @@ object LoggingUtil {
         "hs10" -> Set("code"),
         "item_form" -> Set("number"),
         "line_item_form" -> Set("number"),
+        "packaging" -> Set("number"),
+        "partner_order_identifier_form" -> Set("number"),
         "organization_put_form" -> Set("name"),
         "tariff_code" -> Set("code")
       )
