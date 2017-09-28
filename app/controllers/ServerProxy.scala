@@ -494,10 +494,10 @@ class ServerProxyImpl @Inject()(
 
   private[this] def logBodyStream(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Result = {
     Try {
-      body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
+      val is = body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
+      scala.io.Source.fromInputStream(is).mkString
     } match {
-      case Success(is) => {
-        val msg = scala.io.Source.fromInputStream(is).mkString
+      case Success(msg) => {
         log4xx(request, status, msg)
         Result(ResponseHeader(status, Map.empty, None), HttpEntity.Strict(data = ByteString(msg), contentType = Option(request.contentType.toString)))
       }
