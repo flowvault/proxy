@@ -16,18 +16,15 @@ class Config @Inject() (
   }
 
   lazy val jwtSalt = requiredString(Names.JwtSalt)
-  private[this] lazy val VerboseLogPrefixes = requiredList(Names.VerboseLogPrefixes)
+  private[this] lazy val VerboseLogPrefixes: Seq[String] = requiredString(Names.VerboseLogPrefixes).
+    split(",").
+    map(_.trim).
+    filterNot(_.isEmpty)
 
   def requiredString(name: String): String = {
     configuration.getString(name).getOrElse {
       sys.error(s"Missing configuration parameter[$name]")
     }
-  }
-
-  def requiredList(name: String): Seq[String] = {
-    configuration.getList(name).getOrElse {
-      sys.error(s"Missing configuration parameter[$name]")
-    }.unwrapped.asScala.map(_.toString)
   }
 
   def missing(): Seq[String] = {
