@@ -130,15 +130,16 @@ class ServerProxyModule extends AbstractModule {
 }
 
 class ServerProxyImpl @Inject()(
-                                 @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
-                                 implicit val system: ActorSystem,
-                                 ws: WSClient,
-                                 flowAuth: FlowAuth,
-                                 @Assisted override val definition: ServerProxyDefinition
-                               ) extends ServerProxy with Controller with lib.Errors {
+  @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
+  implicit val system: ActorSystem,
+  config: Config,
+  ws: WSClient,
+  flowAuth: FlowAuth,
+  @Assisted override val definition: ServerProxyDefinition
+) extends ServerProxy with Controller with lib.Errors {
 
   private[this] implicit val (ec, name) = resolveContextName(definition.server.name)
-  private[this] implicit val materializer = ActorMaterializer()
+  private[this] implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   /**
     * Returns the execution context to use, if found. Works by recursively
@@ -484,7 +485,7 @@ class ServerProxyImpl @Inject()(
       val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
       val safeBody = body match {
         case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
-        case j: JsObject => LoggingUtil.logger.safeJson(body, typ = typ)
+        case j: JsObject => toLogValue(request, body, typ)
         case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
       }
       Logger.info(s"$request body type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
@@ -513,7 +514,7 @@ class ServerProxyImpl @Inject()(
       val finalBody = Try {
         Json.parse(body)
       } match {
-        case Success(js) => LoggingUtil.logger.safeJson(js, typ = None)
+        case Success(js) => toLogValue(request, js, typ = None)
         case Failure(_) => body
       }
 
@@ -525,7 +526,7 @@ class ServerProxyImpl @Inject()(
     // GET too noisy due to bots
     if (request.method != "GET" && status >= 400 && status < 500) {
       // TODO: PARSE TYPE
-      val finalBody = LoggingUtil.logger.safeJson(js, typ = None)
+      val finalBody = toLogValue(request, js, typ = None)
       Logger.info(s"$request responded with $status requestId[${request.requestId}] Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
     }
   }
@@ -537,4 +538,17 @@ class ServerProxyImpl @Inject()(
       }
     }.toSeq
   }
+
+  private[this] def toLogValue(
+    request: ProxyRequest,
+    js: JsValue,
+    typ: Option[String]
+  ): JsValue = {
+    if (config.isVerboseLogEnabled(request.path)) {
+      js
+    } else {
+      LoggingUtil.logger.safeJson(js, typ = None)
+    }
+  }
+
 }

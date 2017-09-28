@@ -11,10 +11,12 @@ class Config @Inject() (
 
   private[this] object Names {
     val JwtSalt = "jwt.salt"
+    val VerboseLogPrefixes = "integration.path.prefixes"
     val All = Seq(JwtSalt)
   }
 
   lazy val jwtSalt = requiredString(Names.JwtSalt)
+  private[this] lazy val VerboseLogPrefixes = requiredList(Names.VerboseLogPrefixes)
 
   def requiredString(name: String): String = {
     configuration.getString(name).getOrElse {
@@ -30,6 +32,12 @@ class Config @Inject() (
 
   def missing(): Seq[String] = {
     Names.All.filter { configuration.getString(_).isEmpty }
+  }
+
+  def isVerboseLogEnabled(path: String): Boolean = {
+    VerboseLogPrefixes.exists { p =>
+      path.startsWith(p)
+    }
   }
 
 }

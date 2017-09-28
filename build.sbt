@@ -30,6 +30,7 @@ val credsToUse = Option(System.getenv("ARTIFACTORY_USERNAME")) match {
 lazy val commonSettings: Seq[Setting[_]] = Seq(
   name ~= ("proxy-" + _),
   scalacOptions += "-feature",
+  javaOptions in Test += "-Dconfig.file=conf/application.test.conf",
   sources in (Compile,doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false,
   credentials += credsToUse,
