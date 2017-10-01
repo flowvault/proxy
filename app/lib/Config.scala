@@ -22,9 +22,13 @@ class Config @Inject() (
     filterNot(_.isEmpty)
 
   def requiredString(name: String): String = {
-    configuration.getString(name).getOrElse {
+    optionalString(name).getOrElse {
       sys.error(s"Missing configuration parameter[$name]")
     }
+  }
+
+  def optionalString(name: String): Option[String] = {
+    configuration.getString(name).map(_.trim).filter(_.nonEmpty)
   }
 
   def missing(): Seq[String] = {
