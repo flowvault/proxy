@@ -16,7 +16,7 @@ class Config @Inject() (
   }
 
   lazy val jwtSalt = requiredString(Names.JwtSalt)
-  private[this] lazy val VerboseLogPrefixes: Seq[String] = requiredString(Names.VerboseLogPrefixes).
+  private[this] lazy val VerboseLogPrefixes: Seq[String] = optionalString(Names.VerboseLogPrefixes).getOrElse("").
     split(",").
     map(_.trim).
     filterNot(_.isEmpty)
