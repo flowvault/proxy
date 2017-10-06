@@ -47,18 +47,18 @@ org = response.json
 
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
-#assert_generic_error(response, "HTTP 'POST /foo' is not defined")
+assert_generic_error(response, "HTTP path '/foo' is not defined")
 
 response = helpers.json_post("/foo?envelope=res").execute
 assert_generic_error(response, "Invalid value 'res' for query parameter 'envelope' - must be one of request, response")
 
 response = helpers.json_post("/foo?envelope=response").execute
 assert_envelope(response)
-#assert_generic_error(response.unwrap_envelope, "HTTP 'POST /foo' is not defined")
+assert_generic_error(response.unwrap_envelope, "HTTP path '/foo' is not defined")
 
 response = helpers.json_post("/foo?envelope=response&callback=cb").execute
 assert_jsonp(response, "cb")
-#assert_generic_error(response.unwrap_jsonp, "HTTP 'POST /foo' is not defined")
+assert_generic_error(response.unwrap_jsonp, "HTTP path '/foo' is not defined")
 
 response = helpers.json_post("/token-validations").execute
 assert_generic_error(response, "Missing required field for token_validation_form: token")

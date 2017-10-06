@@ -16,6 +16,7 @@ sealed trait Route {
   private[this] val InternalOrganization = "flow"
 
   private[this] val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
+  private[this] val hasOrganizationResourceId: Boolean = path.startsWith("/organizations/:organization_id")
   private[this] val hasPartner: Boolean = path == "/partners/:partner" || path.startsWith("/partners/:partner/")
   private[this] val isInternal: Boolean = path == "/internal" || path.startsWith("/internal/")
 
@@ -42,6 +43,12 @@ sealed trait Route {
       requestPath.split("/").toList match {
         case _ :: org :: _ => Some(org)
         case _ => sys.error(s"$method $requestPath: Could not extract organization from url")
+      }
+
+    } else if (hasOrganizationResourceId) {
+      requestPath.split("/").toList match {
+        case _ :: org :: _ => Some(org)
+        case _ => sys.error(s"$method $requestPath: Could not extract organization from organization resource url")
       }
 
     } else {
