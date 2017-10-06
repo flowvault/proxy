@@ -71,7 +71,13 @@ assert_status(200, response)
 assert_equals(response.json["status"], "Hooray! The provided API Token is valid.")
 
 response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent => 'demo', :id => "proxy-test" }).execute
-assert_unauthorized(response)
+assert_status(200, response)
+assert_equals(response.json["status"], "Hooray! The provided API Token is valid.")
+
+# Validate we cannot access another organization
+response = helpers.get("/organizations/demo/settings/regions").with_api_key.execute
+assert_status(422, response)
+assert_equals(response.json["messages"], ["Not authorized to access organization 'organizations' or the organization does not exist"])
 
 # Test response envelopes for valid requests
 response = helpers.get("/organizations/#{id}?envelope=response").with_api_key.execute
