@@ -57,7 +57,7 @@ sealed trait Route {
 
     } else if (hasOrganizationResourceId) {
       requestPath.split("/").toList match {
-        case _ :: _ :: org :: _ => println(s"ORG requestPath[$requestPath] org[$org]");Some(org)
+        case _ :: _ :: org :: _ => Some(org)
         case _ => sys.error(s"$method $requestPath: Could not extract organization from organization resource url")
       }
 
