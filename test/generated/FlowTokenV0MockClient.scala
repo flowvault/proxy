@@ -9,10 +9,10 @@ package io.flow.token.v0.mock {
 
     val baseUrl: String = "http://mock.localhost"
 
-    override def organizationTokens: MockOrganizationTokens = MockOrganizationTokensImpl
-    override def partnerTokens: MockPartnerTokens = MockPartnerTokensImpl
-    override def tokens: MockTokens = MockTokensImpl
-    override def tokenValidations: MockTokenValidations = MockTokenValidationsImpl
+    override def organizationTokens: io.flow.token.v0.OrganizationTokens = MockOrganizationTokensImpl
+    override def partnerTokens: io.flow.token.v0.PartnerTokens = MockPartnerTokensImpl
+    override def tokens: io.flow.token.v0.Tokens = MockTokensImpl
+    override def tokenValidations: io.flow.token.v0.TokenValidations = MockTokenValidationsImpl
 
   }
 
