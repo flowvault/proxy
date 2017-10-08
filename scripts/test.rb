@@ -9,7 +9,7 @@ load 'assert.rb'
 PARENT_ORGANIZATION_ID = "flow"
 TEST_ORG_PREFIX = "proxy-test"
 
-api_key_file = File.expand_path("~/.flow/%s" % PARENT_ORGANIZATION_ID)
+api_key_file = File.expand_path("~/.flow/%s-sandboxes" % PARENT_ORGANIZATION_ID)
 if !File.exists?(api_key_file)
   puts "ERROR: Missing api key file: %s" % api_key_file
   exit(1)
@@ -45,7 +45,6 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 org = response.json
 
-if false
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
 assert_generic_error(response, "HTTP path '/foo' is not defined")
@@ -75,10 +74,9 @@ response = helpers.json_put("/organizations/#{id}", { :environment => 'sandbox',
 assert_status(401, response)
 
 # Validate we cannot access another organization
-response = helpers.get("/organizations/demo").with_api_key.execute
+response = helpers.get("/organizations/remolacha").with_api_key.execute
 assert_status(422, response)
-assert_equals(response.json["messages"], ["Not authorized to access organization 'demo' or the organization does not exist"])
-end ## TODO: tmp
+assert_equals(response.json["messages"], ["Not authorized to access organization 'remolacha' or the organization does not exist"])
 
 # Validate can access own organization
 response = helpers.get("/organizations/#{id}").with_api_key.execute
@@ -153,5 +151,3 @@ puts "API Proxy Tests against %s" % uri
 puts " All tests Passed"
 puts ""
 puts ""
-
-
