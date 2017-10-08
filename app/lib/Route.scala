@@ -15,19 +15,29 @@ sealed trait Route {
 
   private[this] val InternalOrganization = "flow"
 
-  private[this] val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
-  private[this] val hasOrganizationResourceId: Boolean = path.startsWith("/organizations/:organization_id")
+  private[this] val hasOrganizationPrefix: Boolean = path == "/:organization" || path.startsWith("/:organization/")
+  // POST /organizations/:organization_id is reserved to create an org
+  private[this] val hasOrganizationResourceId: Boolean = path.startsWith("/organizations/:organization_id") && !(
+    path == "/organizations/:organization_id" && method == "POST"
+  )
   private[this] val hasPartner: Boolean = path == "/partners/:partner" || path.startsWith("/partners/:partner/")
   private[this] val isInternal: Boolean = path == "/internal" || path.startsWith("/internal/")
 
+  private[this] val hasAnyOrganization = hasOrganizationPrefix || hasOrganizationResourceId
+
   assert(
-    (isInternal && !hasOrganization) || !isInternal,
-    s"Route cannot both be internal and have an organization: $method $path"
+    !hasOrganizationPrefix || !hasOrganizationResourceId,
+    s"Route[$method $path] cannot both be hasOrganizationPrefix[$hasOrganizationPrefix] and hasOrganizationResourceId[$hasOrganizationResourceId]"
+  )
+
+  assert(
+    (isInternal && !hasAnyOrganization) || !isInternal,
+    s"Route[$method $path] cannot both be isInternal[$isInternal] and hasAnyOrganization[$hasAnyOrganization]"
   )
 
   assert(
     (isInternal && !hasPartner) || !isInternal,
-    s"Route cannot both be internal and have a partner: $method $path"
+    s"Route[$method $path] cannot both be isInternal[$isInternal] and hasPartner[$hasPartner]"
   )
 
   /**
@@ -39,7 +49,7 @@ sealed trait Route {
     if (isInternal) {
       Some(InternalOrganization)
 
-    } else if (hasOrganization) {
+    } else if (hasOrganizationPrefix) {
       requestPath.split("/").toList match {
         case _ :: org :: _ => Some(org)
         case _ => sys.error(s"$method $requestPath: Could not extract organization from url")
@@ -47,7 +57,7 @@ sealed trait Route {
 
     } else if (hasOrganizationResourceId) {
       requestPath.split("/").toList match {
-        case _ :: _ :: org :: _ => Some(org)
+        case _ :: _ :: org :: _ => println(s"ORG requestPath[$requestPath] org[$org]");Some(org)
         case _ => sys.error(s"$method $requestPath: Could not extract organization from organization resource url")
       }
 
@@ -71,7 +81,7 @@ sealed trait Route {
       None
     }
   }
-  
+
 }
 
 object Route {

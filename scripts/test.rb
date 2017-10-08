@@ -45,6 +45,7 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 org = response.json
 
+if false
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
 assert_generic_error(response, "HTTP path '/foo' is not defined")
@@ -70,14 +71,18 @@ response = helpers.json_post("/token-validations", { :token => IO.read(api_key_f
 assert_status(200, response)
 assert_equals(response.json["status"], "Hooray! The provided API Token is valid.")
 
-response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent => 'demo', :id => "proxy-test" }).execute
-assert_status(200, response)
-assert_equals(response.json["status"], "Hooray! The provided API Token is valid.")
+response = helpers.json_put("/organizations/#{id}", { :environment => 'sandbox', :parent => 'demo' }).execute
+assert_status(401, response)
 
 # Validate we cannot access another organization
-response = helpers.get("/organizations/demo/settings/regions").with_api_key.execute
+response = helpers.get("/organizations/demo").with_api_key.execute
 assert_status(422, response)
-assert_equals(response.json["messages"], ["Not authorized to access organization 'organizations' or the organization does not exist"])
+assert_equals(response.json["messages"], ["Not authorized to access organization 'demo' or the organization does not exist"])
+end ## TODO: tmp
+
+# Validate can access own organization
+response = helpers.get("/organizations/#{id}").with_api_key.execute
+assert_status(200, response)
 
 # Test response envelopes for valid requests
 response = helpers.get("/organizations/#{id}?envelope=response").with_api_key.execute

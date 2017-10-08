@@ -127,7 +127,7 @@ class Helpers
   end
 
   def json_put(url, hash = nil)
-    json_request("POST", url, hash).with_content_type("application/json")
+    json_request("PUT", url, hash).with_content_type("application/json")
 
   end
 
