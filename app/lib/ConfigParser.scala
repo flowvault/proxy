@@ -1,8 +1,6 @@
 package lib
 
 import org.yaml.snakeyaml.Yaml
-import org.yaml.snakeyaml.scanner.ScannerException
-import play.api.Logger
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -30,8 +28,8 @@ object ConfigParser {
         val yaml = new Yaml()
 
         Try {
-          val all = Option(yaml.load(contents)) match {
-            case None => Map[String, Object]()
+          val all = Option(yaml.loadAs(value, classOf[java.util.Map[String, Object]])) match {
+            case None => Map.empty[String, Object]
             case Some(data) => toMap(data)
           }
 
@@ -62,13 +60,8 @@ object ConfigParser {
             errors = Nil
           )
         } match {
-          case Success(result) => {
-            result
-          }
-
-          case Failure(ex) => {
-            EmptyProxyConfig.copy(errors = Seq(ex.getMessage))
-          }
+          case Success(result) => result
+          case Failure(ex) => EmptyProxyConfig.copy(errors = Seq(ex.getMessage))
         }
       }
     }
@@ -85,8 +78,8 @@ object ConfigParser {
   private[this] def toMap(value: Any): Map[String, Any] = {
     value match {
       case map: java.util.HashMap[_, _] => {
-        map.asScala.map { case (key, value) =>
-          (key.toString -> value)
+        map.asScala.map { case (k, v) =>
+          k.toString -> v
         }.toMap
       }
 
