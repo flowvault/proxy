@@ -18,7 +18,7 @@ lazy val root = project
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
       "io.flow" %% "apibuilder-validation" % "0.1.6",
       "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % "test",
-      "org.yaml" % "snakeyaml" % "1.18"
+      "org.yaml" % "snakeyaml" % "1.19"
     )
   )
 
