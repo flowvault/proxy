@@ -566,8 +566,10 @@ class ServerProxyImpl @Inject()(
   }
 
   /**
-    * Logs the response we received from the underlying service, also validating that the response code
-    * was expected / validate based on the documented API Builder specification
+    * Logs data about a response from an underlying service.
+    *   - Publishes metrics
+    *   - Logs warnings if the response code is unexpected based
+    *     on the documented API Builder specification
     */
   private[this] def logResponse(
     request: ProxyRequest,
