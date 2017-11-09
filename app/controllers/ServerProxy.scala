@@ -27,9 +27,9 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import akka.stream.scaladsl.StreamConverters
 
 case class ServerProxyDefinition(
-                                  server: Server,
-                                  multiService: io.apibuilder.validation.MultiService // TODO Move higher level
-                                ) {
+  server: Server,
+  multiService: io.apibuilder.validation.MultiService // TODO Move higher level
+) {
 
   val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
     sys.error(s"Could not parse host from server[$server]")
@@ -169,12 +169,12 @@ class ServerProxyImpl @Inject()(
   }
 
   override final def proxy(
-                            request: ProxyRequest,
-                            route: Route,
-                            token: ResolvedToken,
-                            organization: Option[String] = None,
-                            partner: Option[String] = None
-                          ) = {
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken,
+    organization: Option[String] = None,
+    partner: Option[String] = None
+  ) = {
     Logger.info(s"[proxy] $request to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId ${request.requestId}")
 
     /**
@@ -245,10 +245,16 @@ class ServerProxyImpl @Inject()(
 
         val startMs = System.currentTimeMillis
         req.execute.map { response =>
-          val timeToFirstByteMs = System.currentTimeMillis - startMs
+          logResponse(
+            request = request,
+            definition = definition,
+            route = route,
+            timeToFirstByteMs = System.currentTimeMillis - startMs,
+            status = response.status,
+            organization = organization,
+            partner = partner
+          )
 
-          actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, response.status, organization, partner)
-          Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId ${request.requestId}")
           request.response(response.status, response.body, response.allHeaders)
         }.recover {
           case ex: Throwable => {
@@ -260,12 +266,12 @@ class ServerProxyImpl @Inject()(
   }
 
   private[this] def standard(
-                              request: ProxyRequest,
-                              route: Route,
-                              token: ResolvedToken,
-                              organization: Option[String] = None,
-                              partner: Option[String] = None
-                            ): Future[Result] = {
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken,
+    organization: Option[String] = None,
+    partner: Option[String] = None
+  ): Future[Result] = {
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
@@ -395,8 +401,16 @@ class ServerProxyImpl @Inject()(
         val contentType: Option[String] = r.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
 
-        actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, r.status, organization, partner)
-        Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId ${request.requestId} requestContentType[${request.contentType}] responseContentType[${contentType.getOrElse("NONE")}]")
+        logResponse(
+          request = request,
+          definition = definition,
+          route = route,
+          timeToFirstByteMs = timeToFirstByteMs,
+          status = r.status,
+          organization = organization,
+          partner = partner
+        )
+
         val headers: Seq[(String, String)] = toHeaders(r.headers)
 
         // If there's a content length, send that, otherwise return the body chunked
@@ -518,7 +532,7 @@ class ServerProxyImpl @Inject()(
         case Failure(_) => body
       }
 
-      Logger.info(s"$request responded with $status requestId[${request.requestId}]: $finalBody")
+      Logger.info(s"$request responded with status:$status requestId[${request.requestId}]: $finalBody")
     }
   }
 
@@ -527,7 +541,7 @@ class ServerProxyImpl @Inject()(
     if (request.method != "GET" && status >= 400 && status < 500) {
       // TODO: PARSE TYPE
       val finalBody = toLogValue(request, js, typ = None)
-      Logger.info(s"$request responded with $status requestId[${request.requestId}] Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
+      Logger.info(s"$request responded with status:$status requestId[${request.requestId}] Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
     }
   }
 
@@ -548,6 +562,35 @@ class ServerProxyImpl @Inject()(
       js
     } else {
       LoggingUtil.logger.safeJson(js, typ = None)
+    }
+  }
+
+  /**
+    * Logs the response we received from the underlying service, also validating that the response code
+    * was expected / validate based on the documented API Builder specification
+    */
+  private[this] def logResponse(
+    request: ProxyRequest,
+    definition: ServerProxyDefinition,
+    route: Route,
+    timeToFirstByteMs: Long,
+    status: Int,
+    organization: Option[String],
+    partner: Option[String]
+  ): Unit = {
+    actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, status, organization, partner)
+    Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} status:$status ${timeToFirstByteMs}ms requestId ${request.requestId} requestContentType[${request.contentType}]")
+
+    definition.multiService.validate(request.method, request.path) match {
+      case Left(_) => {
+        Logger.warn(s"[proxy] FlowProxyError UnknownRoute path[${request.method} ${request.path}] was not found as a valid API Builder Operation")
+      }
+      case Right(op) => {
+        definition.multiService.validateResponseCode(op, status) match {
+          case Left(error) => Logger.warn(s"[proxy] FlowProxyError $error")
+          case Right(_) => // no-op
+        }
+      }
     }
   }
 
