@@ -585,11 +585,11 @@ class ServerProxyImpl @Inject()(
 
     definition.multiService.validate(request.method, request.path) match {
       case Left(_) => {
-        Logger.warn(s"[proxy] FlowProxyError UnknownRoute path[${request.method} ${request.path}] was not found as a valid API Builder Operation")
+        Logger.warn(s"[proxy] FlowError UnknownRoute path[${request.method} ${request.path}] was not found as a valid API Builder Operation")
       }
       case Right(op) => {
         definition.multiService.validateResponseCode(op, status) match {
-          case Left(error) => Logger.warn(s"[proxy] FlowProxyError $error")
+          case Left(error) => Logger.warn(s"[proxy] FlowError $error")
           case Right(_) => // no-op
         }
       }
