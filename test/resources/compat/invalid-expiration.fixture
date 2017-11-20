@@ -1,0 +1,23 @@
+POST /:organization/authorizations/card 422
+{
+    "code": "invalid_expiration",
+    "messages": ["Expiration date must be on or after 11/2017"],
+    "current_month": 11,
+    "current_year": 2017
+}
+
+locale:en_US
+{
+    "code": "invalid_expiration",
+    "messages": ["Expiration date must be on or after 11/2017"]
+    "current_month": 11,
+    "current_year": 2017
+}
+
+locale:en_FR
+{
+  "code":"invalid_expiration",
+  "messages":["La date d'expiration doit etre apres 11/2017"],
+  "current_month": 11,
+  "current_year": 2017
+}
