@@ -31,7 +31,11 @@ case class ServerProxyDefinition(
   multiService: io.apibuilder.validation.MultiService // TODO Move higher level
 ) {
 
-  val requestTimeout = FiniteDuration(10, SECONDS)
+  val requestTimeout: FiniteDuration = server.name match {
+    case "payment" | "payment-internal" | "partner" | "label" | "label-internal" => FiniteDuration(60, SECONDS)
+    case "token" | "session" | "organization" => FiniteDuration(5, SECONDS)
+    case _ => FiniteDuration(10, SECONDS)
+  }
 
   val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
     sys.error(s"Could not parse host from server[$server]")
