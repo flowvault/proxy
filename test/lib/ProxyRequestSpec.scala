@@ -61,7 +61,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
     request.responseEnvelope must be(true)
     request.envelopes must be(Nil)
     request.queryParameters must be(query - "callback")
-    request.toString must be("GET /users/?foo=1&foo=2")
+    request.toString must be(s"id:${request.requestId} GET /users/?foo=1&foo=2")
     request.envelopes.contains(Envelope.Request) must be(false)
     request.envelopes.contains(Envelope.Response) must be(false)
   }
