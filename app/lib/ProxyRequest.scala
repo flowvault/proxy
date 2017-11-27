@@ -262,7 +262,7 @@ case class ProxyRequest(
   }
 
   override def toString: String = {
-    s"$method $pathWithQuery"
+    s"id:$requestId $method $pathWithQuery"
   }
 
   def parseRequestEnvelope(): Either[Seq[String], ProxyRequest] = {

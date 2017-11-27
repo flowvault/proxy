@@ -181,7 +181,7 @@ class ServerProxyImpl @Inject()(
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
-    Logger.info(s"[proxy requestId:${request.requestId}] $request to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path}")
+    Logger.info(s"[proxy $request] to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path}")
 
     /**
       * Choose the type of request based on callback/envelope or standard implementation
@@ -222,7 +222,7 @@ class ServerProxyImpl @Inject()(
           }
 
           case ContentType.Other(n) => {
-            Logger.warn(s"[proxy] $request: Unsupported Content-Type[$n] - will proxy with empty json body")
+            Logger.warn(s"[proxy $request] Unsupported Content-Type[$n] - will proxy with empty json body")
             Json.obj()
           }
         }
@@ -328,7 +328,7 @@ class ServerProxyImpl @Inject()(
           }
         } match {
           case Failure(e) => {
-            Logger.info(s"[proxy] $request 422 invalid json")
+            Logger.info(s"[proxy $request] 422 invalid json")
             Future(
               UnprocessableEntity(
                 genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
@@ -512,7 +512,7 @@ class ServerProxyImpl @Inject()(
         case j: JsObject => toLogValue(request, body, typ)
         case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
       }
-      Logger.info(s"[proxy requestId:${request.requestId}] $request body type[${typ.getOrElse("unknown")}]: $safeBody")
+      Logger.info(s"[proxy $request] body type[${typ.getOrElse("unknown")}]: $safeBody")
     }
   }
 
@@ -542,7 +542,7 @@ class ServerProxyImpl @Inject()(
         case Failure(_) => body
       }
 
-      Logger.info(s"[proxy requestId:${request.requestId}] $request responded with status:$status: $finalBody")
+      Logger.info(s"[proxy $request] responded with status:$status: $finalBody")
     }
   }
 
@@ -551,7 +551,7 @@ class ServerProxyImpl @Inject()(
     if (request.method != "GET" && status >= 400 && status < 500) {
       // TODO: PARSE TYPE
       val finalBody = toLogValue(request, js, typ = None)
-      Logger.info(s"[proxy requestId:${request.requestId}] $request responded with status:$status Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
+      Logger.info(s"[proxy $request] responded with status:$status Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
     }
   }
 
@@ -591,16 +591,16 @@ class ServerProxyImpl @Inject()(
     partner: Option[String]
   ): Unit = {
     actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, status, organization, partner)
-    Logger.info(s"[proxy requestId:${request.requestId}] $request ${definition.server.name}:${route.method} ${definition.server.host} status:$status ${timeToFirstByteMs}ms requestContentType[${request.contentType}]")
+    Logger.info(s"[proxy $request] ${definition.server.name}:${route.method} ${definition.server.host} status:$status ${timeToFirstByteMs}ms")
 
     definition.multiService.validate(request.method, request.path) match {
       case Left(_) => {
-        Logger.warn(s"[proxy requestId:${request.requestId}] FlowError UnknownRoute path[${request.method} ${request.path}] was not found as a valid API Builder Operation")
+        Logger.warn(s"[proxy $request] FlowError UnknownRoute path[${request.method} ${request.path}] was not found as a valid API Builder Operation")
       }
       case Right(op) => {
         definition.multiService.validateResponseCode(op, status) match {
           case Left(error) => {
-            Logger.warn(s"[proxy requestId:${request.requestId}] FlowError $error")
+            Logger.warn(s"[proxy $request] FlowError $error")
           }
           case Right(_) => // no-op
         }
