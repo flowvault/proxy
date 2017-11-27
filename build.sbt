@@ -4,6 +4,8 @@ organization := "io.flow"
 
 scalaVersion in ThisBuild := "2.11.11"
 
+newrelicConfig := (resourceDirectory in Compile).value / "newrelic.yml"
+
 lazy val root = project
   .in(file("."))
   .enablePlugins(PlayScala)
