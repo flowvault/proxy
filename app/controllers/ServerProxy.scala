@@ -234,7 +234,7 @@ class ServerProxyImpl @Inject()(
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
         log4xx(request, 422, formData, errors)
-        Future(request.response(422, genericErrors(errors).toString))
+        Future.successful(request.response(422, genericErrors(errors).toString))
       }
 
       case Right(body) => {
@@ -298,7 +298,7 @@ class ServerProxyImpl @Inject()(
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
             log4xx(request, 422, newBody, errors)
-            Future(
+            Future.successful(
               UnprocessableEntity(
                 genericErrors(errors)
               ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
@@ -329,7 +329,7 @@ class ServerProxyImpl @Inject()(
         } match {
           case Failure(e) => {
             Logger.info(s"[proxy $request] 422 invalid json")
-            Future(
+            Future.successful(
               UnprocessableEntity(
                 genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
               ).withHeaders("X-Flow-Proxy-Validation" -> "proxy")
@@ -342,7 +342,7 @@ class ServerProxyImpl @Inject()(
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
                 log4xx(request, 422, js, errors)
-                Future(
+                Future.successful(
                   UnprocessableEntity(
                     genericErrors(errors)
                   ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
