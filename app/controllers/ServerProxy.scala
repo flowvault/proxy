@@ -33,7 +33,8 @@ case class ServerProxyDefinition(
 
   val requestTimeout: FiniteDuration = server.name match {
     case "payment" | "payment-internal" | "partner" | "label" | "label-internal" => FiniteDuration(60, SECONDS)
-    case "token" | "session" | "organization" => FiniteDuration(5, SECONDS)
+    case "session" => FiniteDuration(10, SECONDS)
+    case "token" | "organization" => FiniteDuration(5, SECONDS)
     case _ => FiniteDuration(30, SECONDS) // TODO: Figure out what the optimal value should be for this
   }
 
