@@ -13,12 +13,13 @@ lazy val root = project
     libraryDependencies ++= Seq(
       filters,
       ws,
+      guice,
       "commons-codec" % "commons-codec" % "1.11",
       "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.244",
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
       "io.flow" %% "apibuilder-validation" % "0.1.13",
-      "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % "test",
-      "org.yaml" % "snakeyaml" % "1.19"
+      "org.yaml" % "snakeyaml" % "1.19",
+      "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % "test"
     )
   )
 

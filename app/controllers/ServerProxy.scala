@@ -13,7 +13,7 @@ import actors.MetricActor
 import akka.stream.ActorMaterializer
 import io.apibuilder.spec.v0.models.ParameterLocation
 import play.api.Logger
-import play.api.libs.ws.{DefaultWSResponseHeaders, StreamedResponse, WSClient}
+import play.api.libs.ws.{WSResponse, WSClient}
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -245,8 +245,8 @@ class ServerProxyImpl @Inject()(
         val req = ws.url(definition.server.host + request.path)
           .withFollowRedirects(false)
           .withMethod(route.method)
-          .withHeaders(finalHeaders.headers: _*)
-          .withQueryString(definition.definedQueryParameters(route.method, route.path, request.queryParametersAsSeq()): _*)
+          .withHttpHeaders(finalHeaders.headers: _*)
+          .addQueryStringParameters(definition.definedQueryParameters(route.method, route.path, request.queryParametersAsSeq()): _*)
           .withBody(body)
 
         val startMs = System.currentTimeMillis
@@ -261,7 +261,7 @@ class ServerProxyImpl @Inject()(
             partner = partner
           )
 
-          request.response(response.status, response.body, response.allHeaders)
+          request.response(response.status, response.body, response.headers)
         }.recover {
           case ex: Throwable => {
             throw new Exception(ex)
@@ -281,7 +281,7 @@ class ServerProxyImpl @Inject()(
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
-      .withQueryString(request.queryParametersAsSeq(): _*)
+      .addQueryStringParameters(request.queryParametersAsSeq(): _*)
 
     val finalHeaders = proxyHeaders(request, token)
     val response = request.contentType match {
@@ -307,7 +307,7 @@ class ServerProxyImpl @Inject()(
 
           case Right(validatedBody) => {
             req
-              .withHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
+              .withHttpHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
               .withBody(validatedBody)
               .withRequestTimeout(definition.requestTimeout)
               .stream
@@ -351,7 +351,7 @@ class ServerProxyImpl @Inject()(
 
               case Right(validatedBody) => {
                 req
-                  .withHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
+                  .withHttpHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
                   .withBody(validatedBody)
                   .withRequestTimeout(definition.requestTimeout)
                   .stream
@@ -366,21 +366,21 @@ class ServerProxyImpl @Inject()(
         request.body match {
           case None => {
             req
-              .withHeaders(finalHeaders.headers: _*)
+              .withHttpHeaders(finalHeaders.headers: _*)
               .stream()
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
 
           case Some(ProxyRequestBody.File(file)) => {
             req
-              .withHeaders(finalHeaders.headers: _*)
+              .withHttpHeaders(finalHeaders.headers: _*)
               .post(file)
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
 
           case Some(ProxyRequestBody.Bytes(bytes)) => {
             req
-              .withHeaders(finalHeaders.headers: _*)
+              .withHttpHeaders(finalHeaders.headers: _*)
               .withBody(bytes)
               .withRequestTimeout(definition.requestTimeout)
               .stream
@@ -389,7 +389,7 @@ class ServerProxyImpl @Inject()(
 
           case Some(ProxyRequestBody.Json(json)) => {
             req
-              .withHeaders(finalHeaders.headers: _*)
+              .withHttpHeaders(finalHeaders.headers: _*)
               .withBody(json)
               .withRequestTimeout(definition.requestTimeout)
               .stream
@@ -404,9 +404,10 @@ class ServerProxyImpl @Inject()(
     response.map {
       case r: Result if r.header.status >= 400 && r.header.status < 500 => logBodyStream(request, r.header.status, r.body.dataStream)
 
-      case StreamedResponse(DefaultWSResponseHeaders(status, headers), body) if status >= 400 && status < 500 => logBodyStream(request, status, body)
-
-      case StreamedResponse(r, body) => {
+      case r: WSResponse => {
+        if (r.status >= 400 && r.status < 500) {
+          logBodyStream(request, r.status, r.bodyAsSource)
+        }
         val timeToFirstByteMs = System.currentTimeMillis - startMs
         val contentType: Option[String] = r.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
@@ -427,23 +428,18 @@ class ServerProxyImpl @Inject()(
         contentLength match {
           case Some(length) => {
             Status(r.status).
-              sendEntity(HttpEntity.Streamed(body, Some(length), contentType)).
+              sendEntity(HttpEntity.Streamed(r.bodyAsSource, Some(length), contentType)).
               withHeaders(headers: _*)
           }
 
           case None => {
             contentType match {
-              case None => Status(r.status).chunked(body).withHeaders(headers: _*)
-              case Some(ct) => Status(r.status).chunked(body).withHeaders(headers: _*).as(ct)
+              case None => Status(r.status).chunked(r.bodyAsSource).withHeaders(headers: _*)
+              case Some(ct) => Status(r.status).chunked(r.bodyAsSource).withHeaders(headers: _*).as(ct)
             }
           }
         }
       }
-      case r: play.api.libs.ws.ahc.AhcWSResponse => {
-        log4xx(request, r.status, r.body)
-        Status(r.status)(r.body).withHeaders(toHeaders(r.allHeaders): _*)
-      }
-
       case other => {
         sys.error("Unhandled response of type: " + other.getClass.getName)
       }
