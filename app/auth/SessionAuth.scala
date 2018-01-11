@@ -42,22 +42,22 @@ trait SessionAuth {
       }
 
       case SessionAuthorizationUndefinedType(other) => {
-        Logger.warn(s"[proxy] SessionAuthorizationUndefinedType($other)")
+        Logger.warn(s"[proxy] session [$sessionId] SessionAuthorizationUndefinedType($other)")
         None
       }
     }.recover {
       case io.flow.organization.v0.errors.UnitResponse(code) => {
-        Logger.warn(s"HTTP $code during session authorization")
+        Logger.warn(s"HTTP $code during session [$sessionId] authorization")
         None
       }
 
       case e: io.flow.session.v0.errors.GenericErrorResponse => {
-        Logger.warn(s"[proxy] 422 authorizing session: ${e.genericError.messages.mkString(", ")}")
+        Logger.warn(s"[proxy] 422 authorizing session [$sessionId]: ${e.genericError.messages.mkString(", ")}")
         None
       }
 
       case ex: Throwable => {
-        val msg = s"Error communication with session service: ${ex.getMessage}"
+        val msg = s"Error communication with session service for session [$sessionId]: ${ex.getMessage}"
         Logger.error(msg, ex)
         throw new RuntimeException(msg, ex)
       }
