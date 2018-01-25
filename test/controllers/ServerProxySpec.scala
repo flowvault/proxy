@@ -25,8 +25,9 @@ class ServerProxySpec extends PlaySpec with OneServerPerSuite {
         "foo2" -> Seq("c")
       )
     )
-    parts.contains(("foo", "a")) must be(true)
-    parts.contains(("foo", "b")) must be(true)
+    println(s"parts: $parts")
+    parts.contains(("foo[0]", "a")) must be(true)
+    parts.contains(("foo[1]", "b")) must be(true)
     parts.contains(("foo2", "c")) must be(true)
     parts.size must be(3)
   }
