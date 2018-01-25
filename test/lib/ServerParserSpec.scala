@@ -10,8 +10,6 @@ import scala.io.Source
 
 class ServerParserSpec extends PlaySpec with OneServerPerSuite {
 
-  private[this] lazy val serverProxyFactory = play.api.Play.current.injector.instanceOf[ServerProxy.Factory]
-
   val uri = "file:///test"
 
   val source = ProxyConfigSource(
@@ -26,8 +24,11 @@ class ServerParserSpec extends PlaySpec with OneServerPerSuite {
   }
 
   "hostHeaderValue" in {
+    val apibuilderServicesFetcher = app.injector.instanceOf[ApiBuilderServicesFetcher]
     Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
-      ServerProxyDefinition(Server("user", host), MultiService(Nil)).hostHeaderValue must be("user.api.flow.io")
+      ServerProxyDefinition(Server("user", host), apibuilderServicesFetcher.current()).hostHeaderValue must be(
+        "user.api.flow.io"
+      )
     }
   }
 
