@@ -67,8 +67,7 @@ package io.flow.session.v0.models {
     country: io.flow.reference.v0.models.Country,
     currency: io.flow.reference.v0.models.Currency,
     language: io.flow.reference.v0.models.Language,
-    locale: io.flow.reference.v0.models.Locale,
-    experience: io.flow.experience.v0.models.ExperienceGeo
+    locale: io.flow.reference.v0.models.Locale
   )
 
   /**
@@ -93,7 +92,6 @@ package io.flow.session.v0.models {
     ip: _root_.scala.Option[String] = None,
     local: _root_.scala.Option[io.flow.session.v0.models.LocalSession] = None,
     geo: _root_.scala.Option[io.flow.session.v0.models.SessionGeo] = None,
-    experience: _root_.scala.Option[io.flow.experience.v0.models.ExperienceGeo] = None,
     format: _root_.scala.Option[io.flow.session.v0.models.SessionFormat] = None
   ) extends Session
 
@@ -248,7 +246,6 @@ package io.flow.session.v0.models {
     import play.api.libs.functional.syntax._
     import io.flow.common.v0.models.json._
     import io.flow.error.v0.models.json._
-    import io.flow.experience.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.v0.models.json._
 
@@ -307,8 +304,7 @@ package io.flow.session.v0.models {
         (__ \ "country").read[io.flow.reference.v0.models.Country] and
         (__ \ "currency").read[io.flow.reference.v0.models.Currency] and
         (__ \ "language").read[io.flow.reference.v0.models.Language] and
-        (__ \ "locale").read[io.flow.reference.v0.models.Locale] and
-        (__ \ "experience").read[io.flow.experience.v0.models.ExperienceGeo]
+        (__ \ "locale").read[io.flow.reference.v0.models.Locale]
       )(LocalSession.apply _)
     }
 
@@ -317,8 +313,7 @@ package io.flow.session.v0.models {
         "country" -> io.flow.reference.v0.models.json.jsObjectCountry(obj.country),
         "currency" -> io.flow.reference.v0.models.json.jsObjectCurrency(obj.currency),
         "language" -> io.flow.reference.v0.models.json.jsObjectLanguage(obj.language),
-        "locale" -> io.flow.reference.v0.models.json.jsObjectLocale(obj.locale),
-        "experience" -> io.flow.experience.v0.models.json.jsObjectExperienceGeo(obj.experience)
+        "locale" -> io.flow.reference.v0.models.json.jsObjectLocale(obj.locale)
       )
     }
 
@@ -341,7 +336,6 @@ package io.flow.session.v0.models {
         (__ \ "ip").readNullable[String] and
         (__ \ "local").readNullable[io.flow.session.v0.models.LocalSession] and
         (__ \ "geo").readNullable[io.flow.session.v0.models.SessionGeo] and
-        (__ \ "experience").readNullable[io.flow.experience.v0.models.ExperienceGeo] and
         (__ \ "format").readNullable[io.flow.session.v0.models.SessionFormat]
       )(OrganizationSession.apply _)
     }
@@ -365,10 +359,6 @@ package io.flow.session.v0.models {
       (obj.geo match {
         case None => play.api.libs.json.Json.obj()
         case Some(x) => play.api.libs.json.Json.obj("geo" -> jsObjectSessionGeo(x))
-      }) ++
-      (obj.experience match {
-        case None => play.api.libs.json.Json.obj()
-        case Some(x) => play.api.libs.json.Json.obj("experience" -> io.flow.experience.v0.models.json.jsObjectExperienceGeo(x))
       }) ++
       (obj.format match {
         case None => play.api.libs.json.Json.obj()
@@ -745,7 +735,6 @@ package io.flow.session.v0 {
   ) extends interfaces.Client {
     import io.flow.common.v0.models.json._
     import io.flow.error.v0.models.json._
-    import io.flow.experience.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.v0.models.json._
 
@@ -1016,7 +1005,6 @@ package io.flow.session.v0 {
 
     import io.flow.common.v0.models.json._
     import io.flow.error.v0.models.json._
-    import io.flow.experience.v0.models.json._
     import io.flow.reference.v0.models.json._
     import io.flow.session.v0.models.json._
 
