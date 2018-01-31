@@ -3,7 +3,7 @@ flow:
   common:
     play_2_x_json:
     - "/Users/mbryzek/flowvault/proxy/app/generated/FlowCommonV0Models.scala"
-    play_2_5_mock_client:
+    play_2_6_mock_client:
     - "/Users/mbryzek/flowvault/proxy/test/generated/FlowCommonV0MockClient.scala"
   error:
     play_2_x_json:
@@ -12,13 +12,13 @@ flow:
     play_2_x_json:
     - "/Users/mbryzek/flowvault/proxy/app/generated/FlowReferenceV0Models.scala"
   organization:
-    play_2_5_client:
+    play_2_6_client:
     - "/Users/mbryzek/flowvault/proxy/app/generated/FlowOrganizationV0Client.scala"
   session:
-    play_2_5_client:
+    play_2_6_client:
     - "/Users/mbryzek/flowvault/proxy/app/generated/FlowSessionV0Client.scala"
   token:
-    play_2_5_client:
+    play_2_6_client:
     - "/Users/mbryzek/flowvault/proxy/app/generated/FlowTokenV0Client.scala"
-    play_2_5_mock_client:
+    play_2_6_mock_client:
     - "/Users/mbryzek/flowvault/proxy/test/generated/FlowTokenV0MockClient.scala"

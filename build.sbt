@@ -2,7 +2,7 @@ name := "proxy"
 
 organization := "io.flow"
 
-scalaVersion in ThisBuild := "2.11.12"
+scalaVersion in ThisBuild := "2.12.4"
 
 lazy val root = project
   .in(file("."))
