@@ -61,6 +61,10 @@ if nodes.empty?
   exit(1)
 end
 
+# CANARY for play 2.6
+puts "Only deploying to node 1 for play 2.6 upgrade"
+nodes = [nodes.first]
+
 # Installs and starts software
 def deploy(node, version)
   cmd = "ssh #{node} ./deploy-proxy.sh #{version}"
