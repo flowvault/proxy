@@ -290,7 +290,7 @@ class ServerProxyImpl @Inject()(
       // We turn url form encoded into application/json
       case ContentType.UrlFormEncoded => {
         val b = request.bodyUtf8.getOrElse {
-          sys.error(s"Failed to serialize body as string for ContentType.UrlFormEncoded")
+          sys.error(s"Request[${request.requestId}] Failed to serialize body as string for ContentType.UrlFormEncoded")
         }
         val newBody = FormData.parseEncodedToJsObject(b)
 
