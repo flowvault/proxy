@@ -25,6 +25,7 @@ import play.api.libs.json.{JsObject, JsValue, Json}
 import scala.annotation.tailrec
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS, SECONDS}
 import akka.stream.scaladsl.StreamConverters
+import handlers.UrlFormEncodedHandler
 
 case class ServerProxyDefinition(
   server: Server,
@@ -139,11 +140,16 @@ class ServerProxyModule extends AbstractModule {
 class ServerProxyImpl @Inject()(
   @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
   implicit val system: ActorSystem,
+  urlFormEncodedHandler: UrlFormEncodedHandler,
   config: Config,
   ws: WSClient,
   flowAuth: FlowAuth,
   @Assisted override val definition: ServerProxyDefinition
-) extends ServerProxy with BaseControllerHelpers with lib.Errors {
+) extends ServerProxy
+  with BaseControllerHelpers
+  with lib.Errors
+  with handlers.HandlerUtilities
+{
 
   private[this] implicit val (ec, name) = resolveContextName(definition.server.name)
   private[this] implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -230,7 +236,7 @@ class ServerProxyImpl @Inject()(
       }
     }
 
-    logFormData(request, formData)
+    logFormData(definition, request, formData)
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
@@ -240,7 +246,7 @@ class ServerProxyImpl @Inject()(
 
       case Right(body) => {
         val finalHeaders = setApplicationJsonContentType(
-          proxyHeaders(request, token)
+          proxyHeaders(definition, request, token)
         )
 
         val req = ws.url(definition.server.host + request.path)
@@ -284,83 +290,16 @@ class ServerProxyImpl @Inject()(
       .withMethod(route.method)
       .addQueryStringParameters(request.queryParametersAsSeq(): _*)
 
-    val finalHeaders = proxyHeaders(request, token)
+    val finalHeaders = proxyHeaders(definition, request, token)
     val response = request.contentType match {
 
       // We turn url form encoded into application/json
       case ContentType.UrlFormEncoded => {
-        val b = request.bodyUtf8.getOrElse {
-          sys.error(s"Request[${request.requestId}] Failed to serialize body as string for ContentType.UrlFormEncoded")
-        }
-        val newBody = FormData.parseEncodedToJsObject(b)
-
-        logFormData(request, newBody)
-
-        definition.multiService.upcast(route.method, route.path, newBody) match {
-          case Left(errors) => {
-            log4xx(request, 422, newBody, errors)
-            Future.successful(
-              UnprocessableEntity(
-                genericErrors(errors)
-              ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
-            )
-          }
-
-          case Right(validatedBody) => {
-            req
-              .addHttpHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
-              .withBody(validatedBody)
-              .withRequestTimeout(definition.requestTimeout)
-              .stream
-              .recover { case ex: Throwable => throw new Exception(ex) }
-          }
-        }
+        urlFormEncodedHandler.process(definition, request, route, token)
       }
 
       case ContentType.ApplicationJson => {
-        val body = request.bodyUtf8.getOrElse("")
-
-        Try {
-          if (body.trim.isEmpty) {
-            // e.g. PUT/DELETE with empty body
-            Json.obj()
-          } else {
-            Json.parse(body)
-          }
-        } match {
-          case Failure(e) => {
-            Logger.info(s"[proxy $request] 422 invalid json")
-            Future.successful(
-              UnprocessableEntity(
-                genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
-              ).withHeaders("X-Flow-Proxy-Validation" -> "proxy")
-            )
-          }
-
-          case Success(js) => {
-            logFormData(request, js)
-
-            definition.multiService.upcast(route.method, route.path, js) match {
-              case Left(errors) => {
-                log4xx(request, 422, js, errors)
-                Future.successful(
-                  UnprocessableEntity(
-                    genericErrors(errors)
-                  ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
-                )
-              }
-
-              case Right(validatedBody) => {
-                req
-                  .addHttpHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
-                  .withBody(validatedBody)
-                  .withRequestTimeout(definition.requestTimeout)
-                  .stream
-                  .recover { case ex: Throwable => throw new Exception(ex) }
-              }
-            }
-          }
-        }
+        applicationJsonHandler.process(definition, request, route, token)
       }
 
       case _ => {
@@ -402,7 +341,8 @@ class ServerProxyImpl @Inject()(
 
     val startMs = System.currentTimeMillis
 
-    response.map {
+    response.map { r =>
+
       case r: Result if r.header.status >= 400 && r.header.status < 500 => logBodyStream(request, r.header.status, r.body.dataStream)
 
       case StreamedResponse(DefaultWSResponseHeaders(status, headers), body) if status >= 400 && status < 500 => logBodyStream(request, status, body)
@@ -451,69 +391,12 @@ class ServerProxyImpl @Inject()(
     }
   }
 
-  /**
-    * Modifies headers by:
-    *   - removing X-Flow-* headers if they were set
-    *   - adding a default content-type
-    */
-  private[this] def proxyHeaders(
-    request: ProxyRequest,
-    token: ResolvedToken
-  ): Headers = {
-
-    val headersToAdd = Seq(
-      Constants.Headers.FlowServer -> name,
-      Constants.Headers.FlowRequestId -> request.requestId,
-      Constants.Headers.Host -> definition.hostHeaderValue,
-      Constants.Headers.ForwardedHost -> request.headers.get(Constants.Headers.Host).getOrElse(""),
-      Constants.Headers.ForwardedOrigin -> request.headers.get(Constants.Headers.Origin).getOrElse(""),
-      Constants.Headers.ForwardedMethod -> request.originalMethod
-    ) ++ Seq(
-      Some(
-        Constants.Headers.FlowAuth -> flowAuth.jwt(token)
-      ),
-
-      request.clientIp().map { ip =>
-        Constants.Headers.FlowIp -> ip
-      },
-
-      request.headers.get("Content-Type") match {
-        case None => Some("Content-Type" -> request.contentType.toString)
-        case Some(_) => None
-      }
-    ).flatten
-
-    val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(request.headers) { case (h, n) => h.remove(n) }
-
-    headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
-  }
-
-  private[this] def setApplicationJsonContentType(
-                                                   headers: Headers
-                                                 ): Headers = {
-    headers.
-      remove("Content-Type").
-      add("Content-Type" -> ContentType.ApplicationJson.toString)
-  }
-
   private[this] def toLongSafe(value: String): Option[Long] = {
     Try {
       value.toLong
     } match {
       case Success(v) => Some(v)
       case Failure(_) => None
-    }
-  }
-
-  private[this] def logFormData(request: ProxyRequest, body: JsValue): Unit = {
-    if (request.method != "GET") {
-      val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
-      val safeBody = body match {
-        case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
-        case _: JsObject => toLogValue(request, body, typ)
-        case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
-      }
-      Logger.info(s"[proxy $request] body type[${typ.getOrElse("unknown")}]: $safeBody")
     }
   }
 
@@ -533,47 +416,12 @@ class ServerProxyImpl @Inject()(
     }
   }
 
-  private[this] def log4xx(request: ProxyRequest, status: Int, body: String): Unit = {
-    // GET too noisy due to bots
-    if (request.method != "GET" && status >= 400 && status < 500) {
-      val finalBody = Try {
-        Json.parse(body)
-      } match {
-        case Success(js) => toLogValue(request, js, typ = None)
-        case Failure(_) => body
-      }
-
-      Logger.info(s"[proxy $request] responded with status:$status: $finalBody")
-    }
-  }
-
-  private[this] def log4xx(request: ProxyRequest, status: Int, js: JsValue, errors: Seq[String]): Unit = {
-    // GET too noisy due to bots
-    if (request.method != "GET" && status >= 400 && status < 500) {
-      // TODO: PARSE TYPE
-      val finalBody = toLogValue(request, js, typ = None)
-      Logger.info(s"[proxy $request] responded with status:$status Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
-    }
-  }
-
   private[this] def toHeaders(headers: Map[String, Seq[String]]): Seq[(String, String)] = {
     headers.flatMap { case (k, vs) =>
       vs.map { v =>
         (k, v)
       }
     }.toSeq
-  }
-
-  private[this] def toLogValue(
-    request: ProxyRequest,
-    js: JsValue,
-    typ: Option[String]
-  ): JsValue = {
-    if (config.isVerboseLogEnabled(request.path)) {
-      js
-    } else {
-      LoggingUtil.logger.safeJson(js, typ = None)
-    }
   }
 
   /**

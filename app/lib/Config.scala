@@ -1,6 +1,5 @@
 package lib
 
-import collection.JavaConverters._
 import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 
