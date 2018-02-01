@@ -13,7 +13,7 @@ import actors.MetricActor
 import akka.stream.ActorMaterializer
 import io.apibuilder.spec.v0.models.ParameterLocation
 import play.api.Logger
-import play.api.libs.ws.{DefaultWSResponseHeaders, StreamedResponse, WSClient}
+import play.api.libs.ws.WSClient
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -128,7 +128,7 @@ object ServerProxy {
 }
 
 class ServerProxyModule extends AbstractModule {
-  def configure: Unit = {
+  def configure(): Unit = {
     install(new FactoryModuleBuilder()
       .implement(classOf[ServerProxy], classOf[ServerProxyImpl])
       .build(classOf[ServerProxy.Factory])
@@ -143,7 +143,7 @@ class ServerProxyImpl @Inject()(
   ws: WSClient,
   flowAuth: FlowAuth,
   @Assisted override val definition: ServerProxyDefinition
-) extends ServerProxy with Controller with lib.Errors {
+) extends ServerProxy with BaseControllerHelpers with lib.Errors {
 
   private[this] implicit val (ec, name) = resolveContextName(definition.server.name)
   private[this] implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -158,9 +158,9 @@ class ServerProxyImpl @Inject()(
     Try {
       system.dispatchers.lookup(contextName)
     } match {
-      case Success(ec) => {
+      case Success(context) => {
         Logger.info(s"ServerProxy[${definition.server.name}] using configured execution context[$contextName]")
-        (ec, name)
+        (context, name)
       }
 
       case Failure(_) => {
@@ -181,7 +181,7 @@ class ServerProxyImpl @Inject()(
     token: ResolvedToken,
     organization: Option[String] = None,
     partner: Option[String] = None
-  ) = {
+  ): Future[Result] = {
     Logger.info(s"[proxy $request] to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path}")
 
     /**
@@ -246,8 +246,8 @@ class ServerProxyImpl @Inject()(
         val req = ws.url(definition.server.host + request.path)
           .withFollowRedirects(false)
           .withMethod(route.method)
-          .withHeaders(finalHeaders.headers: _*)
-          .withQueryString(definition.definedQueryParameters(route.method, route.path, request.queryParametersAsSeq()): _*)
+          .addHttpHeaders(finalHeaders.headers: _*)
+          .addQueryStringParameters(definition.definedQueryParameters(route.method, route.path, request.queryParametersAsSeq()): _*)
           .withBody(body)
 
         val startMs = System.currentTimeMillis
@@ -262,7 +262,7 @@ class ServerProxyImpl @Inject()(
             partner = partner
           )
 
-          request.response(response.status, response.body, response.allHeaders)
+          request.response(response.status, response.body, response.headers)
         }.recover {
           case ex: Throwable => {
             throw new Exception(ex)
@@ -282,7 +282,7 @@ class ServerProxyImpl @Inject()(
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
-      .withQueryString(request.queryParametersAsSeq(): _*)
+      .addQueryStringParameters(request.queryParametersAsSeq(): _*)
 
     val finalHeaders = proxyHeaders(request, token)
     val response = request.contentType match {
@@ -308,7 +308,7 @@ class ServerProxyImpl @Inject()(
 
           case Right(validatedBody) => {
             req
-              .withHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
+              .addHttpHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
               .withBody(validatedBody)
               .withRequestTimeout(definition.requestTimeout)
               .stream
@@ -352,7 +352,7 @@ class ServerProxyImpl @Inject()(
 
               case Right(validatedBody) => {
                 req
-                  .withHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
+                  .addHttpHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
                   .withBody(validatedBody)
                   .withRequestTimeout(definition.requestTimeout)
                   .stream
@@ -367,21 +367,21 @@ class ServerProxyImpl @Inject()(
         request.body match {
           case None => {
             req
-              .withHeaders(finalHeaders.headers: _*)
+              .addHttpHeaders(finalHeaders.headers: _*)
               .stream()
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
 
           case Some(ProxyRequestBody.File(file)) => {
             req
-              .withHeaders(finalHeaders.headers: _*)
+              .addHttpHeaders(finalHeaders.headers: _*)
               .post(file)
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
 
           case Some(ProxyRequestBody.Bytes(bytes)) => {
             req
-              .withHeaders(finalHeaders.headers: _*)
+              .addHttpHeaders(finalHeaders.headers: _*)
               .withBody(bytes)
               .withRequestTimeout(definition.requestTimeout)
               .stream
@@ -390,7 +390,7 @@ class ServerProxyImpl @Inject()(
 
           case Some(ProxyRequestBody.Json(json)) => {
             req
-              .withHeaders(finalHeaders.headers: _*)
+              .addHttpHeaders(finalHeaders.headers: _*)
               .withBody(json)
               .withRequestTimeout(definition.requestTimeout)
               .stream
@@ -442,7 +442,7 @@ class ServerProxyImpl @Inject()(
       }
       case r: play.api.libs.ws.ahc.AhcWSResponse => {
         log4xx(request, r.status, r.body)
-        Status(r.status)(r.body).withHeaders(toHeaders(r.allHeaders): _*)
+        Status(r.status)(r.body).withHeaders(toHeaders(r.headers): _*)
       }
 
       case other => {
@@ -457,9 +457,9 @@ class ServerProxyImpl @Inject()(
     *   - adding a default content-type
     */
   private[this] def proxyHeaders(
-                                  request: ProxyRequest,
-                                  token: ResolvedToken
-                                ): Headers = {
+    request: ProxyRequest,
+    token: ResolvedToken
+  ): Headers = {
 
     val headersToAdd = Seq(
       Constants.Headers.FlowServer -> name,
@@ -510,7 +510,7 @@ class ServerProxyImpl @Inject()(
       val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
       val safeBody = body match {
         case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
-        case j: JsObject => toLogValue(request, body, typ)
+        case _: JsObject => toLogValue(request, body, typ)
         case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
       }
       Logger.info(s"[proxy $request] body type[${typ.getOrElse("unknown")}]: $safeBody")
