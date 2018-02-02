@@ -32,7 +32,8 @@ def cleanup(helpers)
   delete_test_orgs(helpers, PARENT_ORGANIZATION_ID, TEST_ORG_PREFIX)
 end
 
-def wait_for_status(status, interval = 5, seconds = 90, &block)
+def wait_for_status(description, status, interval = 5, seconds = 90, &block)
+  puts "Waiting for %s. interval[%s seconds] max[%s seconds]" % [description, interval, seconds]
   finish = Time.now.to_i + seconds
 
   response = nil
@@ -129,12 +130,12 @@ response = helpers.json_post("/organizations/#{id}?envelope=request", { :method 
 assert_unauthorized(response)
 
 # Start session testing
-response = wait_for_status(201) { helpers.json_post("/sessions/organizations/#{id}").execute }
+response = wait_for_status("Org to propagate to session", 201) { helpers.json_post("/sessions/organizations/#{id}").execute }
 assert_status(201, response)
 session_id = response.json['id']
 assert_not_nil(session_id)
 
-response = wait_for_status(200) { helpers.get("/#{id}/countries").with_header("Authorization", "session %s" % session_id).execute }
+response = wait_for_status("Org countries endpoint", 200) { helpers.get("/#{id}/countries").with_header("Authorization", "session %s" % session_id).execute }
 assert_status(200, response)
 
 response = helpers.get("/#{id}/countries").execute
