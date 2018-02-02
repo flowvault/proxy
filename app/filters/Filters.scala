@@ -29,7 +29,7 @@ class LoggingFilter @Inject() (implicit val mat: Materializer, ec: ExecutionCont
 
       val line = Seq(
         requestHeader.method,
-        s"${requestHeader.host}${requestHeader.uri}",
+        s"${requestHeader.host}${requestHeader.path}",
         result.header.status,
         s"${requestTime}ms",
         headerMap.getOrElse("User-Agent", Nil).mkString(","),

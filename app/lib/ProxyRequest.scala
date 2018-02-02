@@ -4,7 +4,6 @@ import java.nio.charset.Charset
 import java.util.UUID
 
 import akka.util.ByteString
-import io.flow.error.v0.models.GenericError
 import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
@@ -75,7 +74,7 @@ object ProxyRequest {
   def validate(request: Request[RawBuffer]): Either[Seq[String], ProxyRequest] = {
     validate(
       requestMethod = request.method,
-      requestPath = request.uri,
+      requestPath = request.path,
       body = Some(
           request.body.asBytes() match {
           case None => ProxyRequestBody.File(request.body.asFile)
