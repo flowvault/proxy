@@ -3,10 +3,9 @@ package handlers
 import javax.inject.{Inject, Singleton}
 
 import controllers.ServerProxyDefinition
-import io.apibuilder.validation.FormData
 import lib._
 import play.api.Logger
-import play.api.libs.json.Json
+import play.api.libs.json.{JsValue, Json}
 import play.api.libs.ws.WSClient
 
 import scala.concurrent.Future
@@ -16,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 class ApplicationJsonHandler @Inject() (
   config: Config,
   flowAuth: FlowAuth,
-  ws: WSClient
+  wsClient: WSClient
 ) extends HandlerUtilities  {
 
   def process(
@@ -45,27 +44,41 @@ class ApplicationJsonHandler @Inject() (
       }
 
       case Success(js) => {
-        logFormData(definition, request, js)
+        processJson(
+          definition,
+          request,
+          route,
+          token,
+          js
+        )
+      }
+    }
+  }
 
-        definition.multiService.upcast(route.method, route.path, js) match {
-          case Left(errors) => {
-            log4xx(request, 422, js, errors)
-            Future.successful(
-              UnprocessableEntity(
-                genericErrors(errors)
-              ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
-            )
-          }
+  private[handlers] def processJson(
+    definition: ServerProxyDefinition,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken,
+    js: JsValue
+  ) = {
+    logFormData(definition, request, js)
 
-          case Right(validatedBody) => {
-            buildRequest(ws, definition.server, request, route)
-              .addHttpHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
-              .withBody(validatedBody)
-              .withRequestTimeout(definition.requestTimeout)
-              .stream
-              .recover { case ex: Throwable => throw new Exception(ex) }
-          }
-        }
+    definition.multiService.upcast(route.method, route.path, js) match {
+      case Left(errors) => {
+        log4xx(request, 422, js, errors)
+        Future.successful(
+          UnprocessableEntity(
+            genericErrors(errors)
+          ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
+        )
+      }
+
+      case Right(validatedBody) => {
+        buildRequestApplicationJson(definition, request, route, token)
+          .withBody(validatedBody)
+          .stream
+          .recover { case ex: Throwable => throw new Exception(ex) }
       }
     }
   }

@@ -78,12 +78,12 @@ trait ServerProxy {
   def definition: ServerProxyDefinition
 
   def proxy(
-             request: ProxyRequest,
-             route: Route,
-             token: ResolvedToken,
-             organization: Option[String] = None,
-             partner: Option[String] = None
-           ): Future[play.api.mvc.Result]
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken,
+    organization: Option[String] = None,
+    partner: Option[String] = None
+  ): Future[play.api.mvc.Result]
 
 }
 
@@ -140,7 +140,9 @@ class ServerProxyModule extends AbstractModule {
 class ServerProxyImpl @Inject()(
   @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
   implicit val system: ActorSystem,
-  urlFormEncodedHandler: UrlFormEncodedHandler,
+  urlFormEncodedHandler: handlers.UrlFormEncodedHandler,
+  applicationJsonHandler: handlers.ApplicationJsonHandler,
+  genericHandler: handlers.GenericHandler,
   config: Config,
   ws: WSClient,
   flowAuth: FlowAuth,
@@ -290,10 +292,9 @@ class ServerProxyImpl @Inject()(
       .withMethod(route.method)
       .addQueryStringParameters(request.queryParametersAsSeq(): _*)
 
-    val finalHeaders = proxyHeaders(definition, request, token)
-    val response = request.contentType match {
+    val startMs = System.currentTimeMillis
 
-      // We turn url form encoded into application/json
+    request.contentType match {
       case ContentType.UrlFormEncoded => {
         urlFormEncodedHandler.process(definition, request, route, token)
       }
@@ -303,43 +304,10 @@ class ServerProxyImpl @Inject()(
       }
 
       case _ => {
-        request.body match {
-          case None => {
-            req
-              .addHttpHeaders(finalHeaders.headers: _*)
-              .stream()
-              .recover { case ex: Throwable => throw new Exception(ex) }
-          }
-
-          case Some(ProxyRequestBody.File(file)) => {
-            req
-              .addHttpHeaders(finalHeaders.headers: _*)
-              .post(file)
-              .recover { case ex: Throwable => throw new Exception(ex) }
-          }
-
-          case Some(ProxyRequestBody.Bytes(bytes)) => {
-            req
-              .addHttpHeaders(finalHeaders.headers: _*)
-              .withBody(bytes)
-              .withRequestTimeout(definition.requestTimeout)
-              .stream
-              .recover { case ex: Throwable => throw new Exception(ex) }
-          }
-
-          case Some(ProxyRequestBody.Json(json)) => {
-            req
-              .addHttpHeaders(finalHeaders.headers: _*)
-              .withBody(json)
-              .withRequestTimeout(definition.requestTimeout)
-              .stream
-              .recover { case ex: Throwable => throw new Exception(ex) }
-          }
-        }
+        genericHandler.process(definition, request, route, token)
       }
     }
 
-    val startMs = System.currentTimeMillis
 
     response.map { r =>
 

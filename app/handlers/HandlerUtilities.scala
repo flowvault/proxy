@@ -1,7 +1,7 @@
 package handlers
 
 import controllers.ServerProxyDefinition
-import lib.{Server, _}
+import lib._
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.libs.ws.{WSClient, WSRequest}
@@ -15,15 +15,43 @@ trait HandlerUtilities {
 
   def flowAuth: FlowAuth
 
+  def wsClient: WSClient
+
+  def buildRequestApplicationJson(
+    definition: ServerProxyDefinition,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken
+  ): WSRequest = {
+    baseRequest(definition, request, route)
+      .addHttpHeaders(
+        setApplicationJsonContentType(
+          proxyHeaders(definition, request, token)
+        ).headers: _*
+      )
+  }
+
   def buildRequest(
-    ws: WSClient,
-    server: Server,
+    definition: ServerProxyDefinition,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken
+  ): WSRequest = {
+    baseRequest(definition, request, route)
+      .addHttpHeaders(
+        proxyHeaders(definition, request, token).headers: _*
+      )
+  }
+
+  private[this] def baseRequest(
+    definition: ServerProxyDefinition,
     request: ProxyRequest,
     route: Route
   ): WSRequest = {
-    ws.url(server.host + request.path)
+    wsClient.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
+      .withRequestTimeout(definition.requestTimeout)
       .addQueryStringParameters(request.queryParametersAsSeq(): _*)
   }
 

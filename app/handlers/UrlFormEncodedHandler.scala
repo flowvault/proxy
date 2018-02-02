@@ -4,17 +4,16 @@ import javax.inject.{Inject, Singleton}
 
 import controllers.ServerProxyDefinition
 import io.apibuilder.validation.FormData
-import lib._
-import play.api.libs.ws.WSClient
+import lib.{ProxyRequest, ResolvedToken, Route}
 
-import scala.concurrent.Future
-
+/**
+  * Converts url form encodes into a JSON body, then
+  * delegates processing to the application json handler
+  */
 @Singleton
 class UrlFormEncodedHandler @Inject() (
-  config: Config,
-  flowAuth: FlowAuth,
-  ws: WSClient
-) extends HandlerUtilities  {
+  applicationJsonHandler: ApplicationJsonHandler
+) {
 
   def process(
     definition: ServerProxyDefinition,
@@ -22,36 +21,19 @@ class UrlFormEncodedHandler @Inject() (
     route: Route,
     token: ResolvedToken
   ) = {
-    val finalHeaders = proxyHeaders(definition, request, token)
-
-    val b = request.bodyUtf8.getOrElse {
-      sys.error(s"Request[${request.requestId}] Failed to serialize body as string for ContentType.UrlFormEncoded")
-    }
-    val newBody = FormData.parseEncodedToJsObject(b)
-
-    logFormData(request, newBody)
-
-    definition.multiService.upcast(route.method, route.path, newBody) match {
-      case Left(errors) => {
-        log4xx(request, 422, newBody, errors)
-        Future.successful(
-          UnprocessableEntity(
-            genericErrors(errors)
-          ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
-        )
+    val newBody = FormData.parseEncodedToJsObject(
+      request.bodyUtf8.getOrElse {
+        sys.error(s"Request[${request.requestId}] Failed to serialize body as string for ContentType.UrlFormEncoded")
       }
+    )
 
-      case Right(validatedBody) => {
-        buildRequest(ws, definition.server, request, route)
-          .addHttpHeaders(
-            setApplicationJsonContentType(finalHeaders).headers: _*
-          )
-          .withBody(validatedBody)
-          .withRequestTimeout(definition.requestTimeout)
-          .stream
-          .recover { case ex: Throwable => throw new Exception(ex) }
-      }
-    }
+    applicationJsonHandler.processJson(
+      definition,
+      request,
+      route,
+      token,
+      newBody
+    )
   }
 
 }
