@@ -113,7 +113,7 @@ class GenericHandler @Inject() (
       }.toSeq
     ).flatten
 
-    wsRequest.addHttpHeaders(headers: _*)
+    wsRequest.withHttpHeaders(headers: _*)
   }
 
   private[this] def addContentType(
