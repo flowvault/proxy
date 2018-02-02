@@ -7,7 +7,7 @@ import io.apibuilder.validation.FormData
 import lib.{ProxyRequest, ResolvedToken, Route}
 import play.api.mvc.Result
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Converts url form encodes into a JSON body, then
@@ -23,6 +23,8 @@ class UrlFormEncodedHandler @Inject() (
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
+  )(
+    implicit ec: ExecutionContext
   ): Future[Result] = {
     val newBody = FormData.parseEncodedToJsObject(
       request.bodyUtf8.getOrElse {

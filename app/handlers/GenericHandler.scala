@@ -7,7 +7,7 @@ import lib._
 import play.api.libs.ws.WSClient
 import play.api.mvc.Result
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class GenericHandler @Inject() (
@@ -21,6 +21,8 @@ class GenericHandler @Inject() (
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
+  )(
+    implicit ec: ExecutionContext
   ): Future[Result] = {
     val req = buildRequest(definition, request, route, token)
 

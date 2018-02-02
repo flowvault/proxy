@@ -9,7 +9,7 @@ import play.api.libs.json.{JsValue, Json}
 import play.api.libs.ws.WSClient
 import play.api.mvc.{Result, Results}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 @Singleton
@@ -24,6 +24,8 @@ class ApplicationJsonHandler @Inject() (
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
+  )(
+    implicit ec: ExecutionContext
   ): Future[Result] = {
     val body = request.bodyUtf8.getOrElse("")
 
