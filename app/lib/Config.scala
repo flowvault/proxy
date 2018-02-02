@@ -14,7 +14,8 @@ class Config @Inject() (
     val All = Seq(JwtSalt)
   }
 
-  lazy val jwtSalt = requiredString(Names.JwtSalt)
+  lazy val jwtSalt: String = requiredString(Names.JwtSalt)
+
   private[this] lazy val VerboseLogPrefixes: Seq[String] = optionalString(Names.VerboseLogPrefixes).getOrElse("").
     split(",").
     map(_.trim).
@@ -22,16 +23,16 @@ class Config @Inject() (
 
   def requiredString(name: String): String = {
     optionalString(name).getOrElse {
-      sys.error(s"Missing configuration parameter[$name]")
+      sys.error(s"Missing configuration parameter named[$name]")
     }
   }
 
   def optionalString(name: String): Option[String] = {
-    configuration.getString(name).map(_.trim).filter(_.nonEmpty)
+    configuration.getOptional[String](name).map(_.trim).filter(_.nonEmpty)
   }
 
   def missing(): Seq[String] = {
-    Names.All.filter { configuration.getString(_).isEmpty }
+    Names.All.filter { optionalString(_).isEmpty }
   }
 
   def isVerboseLogEnabled(path: String): Boolean = {
