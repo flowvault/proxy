@@ -18,7 +18,7 @@ class UrlFormEncodedHandler @Inject() (
   applicationJsonHandler: ApplicationJsonHandler
 ) extends Handler {
 
-  def process(
+  override def process(
     definition: ServerProxyDefinition,
     request: ProxyRequest,
     route: Route,
@@ -28,6 +28,7 @@ class UrlFormEncodedHandler @Inject() (
   ): Future[Result] = {
     val newBody = FormData.parseEncodedToJsObject(
       request.bodyUtf8.getOrElse {
+        // TODO: Return 422 on invalid content here
         sys.error(s"Request[${request.requestId}] Failed to serialize body as string for ContentType.UrlFormEncoded")
       }
     )

@@ -19,7 +19,7 @@ class ApplicationJsonHandler @Inject() (
   wsClient: WSClient
 ) extends Handler with HandlerUtilities {
 
-  def process(
+  override def process(
     definition: ServerProxyDefinition,
     request: ProxyRequest,
     route: Route,
