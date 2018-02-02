@@ -14,6 +14,7 @@ import scala.util.{Failure, Success, Try}
 
 @Singleton
 class ApplicationJsonHandler @Inject() (
+  genericHandler: GenericHandler,
   config: Config,
   flowAuth: FlowAuth,
   wsClient: WSClient
@@ -83,6 +84,7 @@ class ApplicationJsonHandler @Inject() (
         buildRequestApplicationJson(definition, request, route, token)
           .withBody(validatedBody)
           .stream
+          .map(processResponse)
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
     }

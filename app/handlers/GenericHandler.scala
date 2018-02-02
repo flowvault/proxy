@@ -4,8 +4,9 @@ import javax.inject.{Inject, Singleton}
 
 import controllers.ServerProxyDefinition
 import lib._
-import play.api.libs.ws.WSClient
-import play.api.mvc.Result
+import play.api.http.HttpEntity
+import play.api.libs.ws.{WSClient, WSResponse}
+import play.api.mvc.{Result, Results}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,12 +31,14 @@ class GenericHandler @Inject() (
       case None => {
         req
           .stream()
+          .map(processResponse)
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
 
       case Some(ProxyRequestBody.File(file)) => {
         req
           .post(file)
+          .map(processResponse)
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
 
@@ -43,6 +46,7 @@ class GenericHandler @Inject() (
         req
           .withBody(bytes)
           .stream
+          .map(processResponse)
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
 
@@ -50,6 +54,7 @@ class GenericHandler @Inject() (
         req
           .withBody(json)
           .stream
+          .map(processResponse)
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
     }
