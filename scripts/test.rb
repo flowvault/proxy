@@ -40,7 +40,7 @@ def wait_for_status(description, status, interval = 5, seconds = 120, &block)
   while response.nil? && Time.now.to_i < finish
     sleep(interval)
     r = block.call
-    if r.status == 201
+    if r.status == status
       response = r
     end
   end
