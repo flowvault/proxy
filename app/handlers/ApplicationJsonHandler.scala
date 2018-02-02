@@ -64,6 +64,8 @@ class ApplicationJsonHandler @Inject() (
     route: Route,
     token: ResolvedToken,
     js: JsValue
+  )(
+    implicit ec: ExecutionContext
   ): Future[Result] = {
     logFormData(definition, request, js)
 

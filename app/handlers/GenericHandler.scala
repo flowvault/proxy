@@ -30,7 +30,6 @@ class GenericHandler @Inject() (
       case None => {
         req
           .stream()
-          .map
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
 
