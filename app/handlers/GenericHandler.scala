@@ -78,12 +78,10 @@ class GenericHandler @Inject() (
   }
 
   private[this] def processResponse(request: ProxyRequest, response: WSResponse) = {
-    // Get the content type
-    val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("application/octet-stream")
-
     if (request.responseEnvelope) {
       request.response(response.status, response.body, response.headers)
     } else {
+      val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("application/octet-stream")
       // If there's a content length, send that, otherwise return the body chunked
       response.headers.get("Content-Length") match {
         case Some(Seq(length)) =>
