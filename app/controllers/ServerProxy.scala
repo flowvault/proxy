@@ -143,13 +143,13 @@ class ServerProxyImpl @Inject()(
   urlFormEncodedHandler: handlers.UrlFormEncodedHandler,
   applicationJsonHandler: handlers.ApplicationJsonHandler,
   genericHandler: handlers.GenericHandler,
-  config: Config,
-  ws: WSClient,
-  flowAuth: FlowAuth,
+  val controllerComponents: ControllerComponents,
+  val config: Config,
+  val wsClient: WSClient,
+  val flowAuth: FlowAuth,
   @Assisted override val definition: ServerProxyDefinition
 ) extends ServerProxy
   with BaseControllerHelpers
-  with lib.Errors
   with handlers.HandlerUtilities
 {
 
@@ -209,6 +209,7 @@ class ServerProxyImpl @Inject()(
     organization: Option[String] = None,
     partner: Option[String] = None
   ) = {
+    // TODO: Refactor to handlers
     val formData: JsValue = request.jsonpCallback match {
       case Some(_) => {
         FormData.toJson(request.queryParameters)
@@ -251,7 +252,7 @@ class ServerProxyImpl @Inject()(
           proxyHeaders(definition, request, token)
         )
 
-        val req = ws.url(definition.server.host + request.path)
+        val req = wsClient.url(definition.server.host + request.path)
           .withFollowRedirects(false)
           .withMethod(route.method)
           .addHttpHeaders(finalHeaders.headers: _*)

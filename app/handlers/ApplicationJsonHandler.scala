@@ -6,7 +6,6 @@ import controllers.ServerProxyDefinition
 import lib._
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
-import play.api.libs.ws.WSClient
 import play.api.mvc.{Result, Results}
 
 import scala.concurrent.{ExecutionContext, Future}
