@@ -68,7 +68,7 @@ class GenericHandler @Inject() (
       case Some(ProxyRequestBody.Json(json)) => {
         logFormData(definition, request, json)
 
-        wsRequest
+        setContentTypeHeader(wsRequest, ContentType.ApplicationJson)
           .withBody(json)
           .stream
           .map(processResponse)
@@ -90,6 +90,31 @@ class GenericHandler @Inject() (
       case _ =>
         Results.Status(response.status).chunked(response.bodyAsSource).as(contentType)
     }
+  }
+
+  private[this] def setContentTypeHeader(
+    wsRequest: WSRequest,
+    contentType: ContentType
+  ): WSRequest = {
+    val headers = Seq(
+      addContentType(wsRequest.headers, contentType).flatMap { case (key, values) =>
+        values.map { v =>
+          (key, v)
+        }
+      }.toSeq
+    ).flatten
+
+    wsRequest.addHttpHeaders(headers: _*)
+  }
+
+  private[this] def addContentType(
+    headers: Map[String, Seq[String]],
+    contentType: ContentType
+  ): Map[String, Seq[String]] = {
+    val name = "Content-Type"
+    headers.filter(_._1.toLowerCase != name.toLowerCase) ++ Map(
+      "Content-Type" -> Seq(contentType.toString)
+    )
   }
 
 }

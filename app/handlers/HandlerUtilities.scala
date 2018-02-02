@@ -17,44 +17,25 @@ trait HandlerUtilities extends Errors {
 
   def wsClient: WSClient
 
-  def buildRequestApplicationJson(
-    definition: ServerProxyDefinition,
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken
-  ): WSRequest = {
-    baseRequest(definition, request, route)
-      .addHttpHeaders(
-        setApplicationJsonContentType(
-          proxyHeaders(definition, request, token)
-        ).headers: _*
-      )
-  }
-
   def buildRequest(
     definition: ServerProxyDefinition,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
   ): WSRequest = {
-    baseRequest(definition, request, route)
-      .addHttpHeaders(
-        proxyHeaders(definition, request, token).headers: _*
-      )
-  }
-
-  private[this] def baseRequest(
-    definition: ServerProxyDefinition,
-    request: ProxyRequest,
-    route: Route
-  ): WSRequest = {
     wsClient.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
       .withRequestTimeout(definition.requestTimeout)
-      .addQueryStringParameters(request.queryParametersAsSeq(): _*)
+      .addQueryStringParameters(
+        definition.definedQueryParameters(
+          route.method, route.path, request.queryParametersAsSeq()
+        ): _*
+      )
+      .addHttpHeaders(
+        proxyHeaders(definition, request, token).headers: _*
+      )
   }
-
 
   def log4xx(request: ProxyRequest, status: Int, body: String): Unit = {
     // GET too noisy due to bots
@@ -108,24 +89,11 @@ trait HandlerUtilities extends Errors {
   }
 
   /**
-    * Overwrites the "Content-Type" header, setting a single
-    * header for "Content-Type" with the value "application/json"
-    */
-  def setApplicationJsonContentType(
-    headers: Headers
-  ): Headers = {
-    headers.
-      remove("Content-Type").
-      add("Content-Type" -> ContentType.ApplicationJson.toString)
-  }
-
-
-  /**
     * Modifies headers by:
     *   - removing X-Flow-* headers if they were set
     *   - adding a default content-type
     */
-  def proxyHeaders(
+  private[this] def proxyHeaders(
     definition: ServerProxyDefinition,
     request: ProxyRequest,
     token: ResolvedToken

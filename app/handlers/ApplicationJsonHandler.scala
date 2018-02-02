@@ -78,7 +78,7 @@ class ApplicationJsonHandler @Inject() (
         genericHandler.process(
           definition,
           request,
-          genericHandler.buildRequestApplicationJson(definition, request, route, token),
+          genericHandler.buildRequest(definition, request, route, token),
           Some(ProxyRequestBody.Json(validatedBody))
         )
       }

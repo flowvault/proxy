@@ -47,10 +47,10 @@ case class ServerProxyDefinition(
     * Returns the subset of query parameters that are documented as acceptable for this method
     */
   def definedQueryParameters(
-                              method: String,
-                              path: String,
-                              allQueryParameters: Seq[(String, String)]
-                            ): Seq[(String, String)] = {
+    method: String,
+    path: String,
+    allQueryParameters: Seq[(String, String)]
+  ): Seq[(String, String)] = {
     multiService.parametersFromPath(method, path) match {
       case None => {
         allQueryParameters
@@ -142,15 +142,12 @@ class ServerProxyImpl @Inject()(
   implicit val system: ActorSystem,
   urlFormEncodedHandler: handlers.UrlFormEncodedHandler,
   applicationJsonHandler: handlers.ApplicationJsonHandler,
+  jsonpHandler: handlers.JsonpHandler,
   genericHandler: handlers.GenericHandler,
   val controllerComponents: ControllerComponents,
-  val config: Config,
-  val wsClient: WSClient,
-  val flowAuth: FlowAuth,
   @Assisted override val definition: ServerProxyDefinition
 ) extends ServerProxy
   with BaseControllerHelpers
-  with handlers.HandlerUtilities
 {
 
   private[this] implicit val (ec, name) = resolveContextName(definition.server.name)
@@ -192,178 +189,20 @@ class ServerProxyImpl @Inject()(
   ): Future[Result] = {
     Logger.info(s"[proxy $request] to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path}")
 
-    /**
-      * Choose the type of request based on callback/envelope or standard implementation
-      */
-    if (request.responseEnvelope) {
-      envelopeResponse(request, route, token, organization = organization, partner = partner)
+    if (request.jsonpCallback.isDefined) {
+      jsonpHandler.process(definition, request, route, token)
     } else {
-      standard(request, route, token, organization = organization, partner = partner)
-    }
-  }
-
-  private[this] def envelopeResponse(
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken,
-    organization: Option[String] = None,
-    partner: Option[String] = None
-  ) = {
-    // TODO: Refactor to handlers
-    val formData: JsValue = request.jsonpCallback match {
-      case Some(_) => {
-        FormData.toJson(request.queryParameters)
-      }
-      case None => {
-        request.contentType match {
-          // We turn url form encoded into application/json
-          case ContentType.UrlFormEncoded => {
-            val b = request.bodyUtf8.getOrElse {
-              sys.error(s"Failed to serialize body as string for ContentType.UrlFormEncoded")
-            }
-            FormData.parseEncodedToJsObject(b)
-          }
-
-          case ContentType.ApplicationJson => {
-            request.bodyUtf8.getOrElse("") match {
-              case "" => Json.obj()
-              case b => Json.parse(b)
-            }
-          }
-
-          case ContentType.Other(n) => {
-            Logger.warn(s"[proxy $request] Unsupported Content-Type[$n] - will proxy with empty json body")
-            Json.obj()
-          }
+      request.contentType match {
+        case ContentType.UrlFormEncoded => {
+          urlFormEncodedHandler.process(definition, request, route, token)
         }
-      }
-    }
 
-    logFormData(definition, request, formData)
-
-    definition.multiService.upcast(route.method, route.path, formData) match {
-      case Left(errors) => {
-        log4xx(request, 422, formData, errors)
-        Future.successful(request.response(422, genericErrors(errors).toString))
-      }
-
-      case Right(body) => {
-        val finalHeaders = setApplicationJsonContentType(
-          proxyHeaders(definition, request, token)
-        )
-
-        val req = wsClient.url(definition.server.host + request.path)
-          .withFollowRedirects(false)
-          .withMethod(route.method)
-          .addHttpHeaders(finalHeaders.headers: _*)
-          .addQueryStringParameters(definition.definedQueryParameters(route.method, route.path, request.queryParametersAsSeq()): _*)
-          .withBody(body)
-
-        val startMs = System.currentTimeMillis
-        req.execute.map { response =>
-          logResponse(
-            request = request,
-            definition = definition,
-            route = route,
-            timeToFirstByteMs = System.currentTimeMillis - startMs,
-            status = response.status,
-            organization = organization,
-            partner = partner
-          )
-
-          request.response(response.status, response.body, response.headers)
-        }.recover {
-          case ex: Throwable => {
-            throw new Exception(ex)
-          }
+        case ContentType.ApplicationJson => {
+          applicationJsonHandler.process(definition, request, route, token)
         }
-      }
-    }
-  }
 
-  private[this] def standard(
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken,
-    organization: Option[String] = None,
-    partner: Option[String] = None
-  ): Future[Result] = {
-    request.contentType match {
-      case ContentType.UrlFormEncoded => {
-        urlFormEncodedHandler.process(definition, request, route, token)
-      }
-
-      case ContentType.ApplicationJson => {
-        applicationJsonHandler.process(definition, request, route, token)
-      }
-
-      case _ => {
-        genericHandler.process(definition, request, route, token)
-      }
-    }
-  }
-
-  private[this] def toLongSafe(value: String): Option[Long] = {
-    Try {
-      value.toLong
-    } match {
-      case Success(v) => Some(v)
-      case Failure(_) => None
-    }
-  }
-
-  private[this] def logBodyStream(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Result = {
-    Try {
-      val is = body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
-      scala.io.Source.fromInputStream(is, "UTF-8").mkString
-    } match {
-      case Success(msg) => {
-        log4xx(request, status, msg)
-        Result(ResponseHeader(status, Map.empty, None), HttpEntity.Strict(data = ByteString(msg), contentType = Option(request.contentType.toString)))
-      }
-      case Failure(ex) => {
-        log4xx(request, status, s"Failed to deserialize ${ex.getMessage}")
-        Result(ResponseHeader(status, Map.empty, None), HttpEntity.Strict(data = ByteString(ex.getMessage), contentType = Option(request.contentType.toString)))
-      }
-    }
-  }
-
-  private[this] def toHeaders(headers: Map[String, Seq[String]]): Seq[(String, String)] = {
-    headers.flatMap { case (k, vs) =>
-      vs.map { v =>
-        (k, v)
-      }
-    }.toSeq
-  }
-
-  /**
-    * Logs data about a response from an underlying service.
-    *   - Publishes metrics
-    *   - Logs warnings if the response code is unexpected based
-    *     on the documented API Builder specification
-    */
-  private[this] def logResponse(
-    request: ProxyRequest,
-    definition: ServerProxyDefinition,
-    route: Route,
-    timeToFirstByteMs: Long,
-    status: Int,
-    organization: Option[String],
-    partner: Option[String]
-  ): Unit = {
-    actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, status, organization, partner)
-    Logger.info(s"[proxy $request] ${definition.server.name}:${route.method} ${definition.server.host} status:$status ${timeToFirstByteMs}ms")
-
-    definition.multiService.validate(request.method, request.path) match {
-      case Left(_) => {
-        Logger.warn(s"[proxy $request] FlowError UnknownRoute path[${request.method} ${request.path}] was not found as a valid API Builder Operation")
-      }
-      case Right(op) => {
-        definition.multiService.validateResponseCode(op, status) match {
-          case Left(error) => {
-            Logger.warn(s"[proxy $request] FlowError $error")
-          }
-          case Right(_) => // no-op
+        case _ => {
+          genericHandler.process(definition, request, route, token)
         }
       }
     }
