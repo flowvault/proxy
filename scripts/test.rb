@@ -32,7 +32,7 @@ def cleanup(helpers)
   delete_test_orgs(helpers, PARENT_ORGANIZATION_ID, TEST_ORG_PREFIX)
 end
 
-def wait_for_status(description, status, interval = 5, seconds = 90, &block)
+def wait_for_status(description, status, interval = 5, seconds = 120, &block)
   puts "Waiting for %s. interval[%s seconds] max[%s seconds]" % [description, interval, seconds]
   finish = Time.now.to_i + seconds
 
