@@ -7,6 +7,7 @@ import lib._
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 import play.api.libs.ws.WSClient
+import play.api.mvc.{Result, Results}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -16,14 +17,14 @@ class ApplicationJsonHandler @Inject() (
   config: Config,
   flowAuth: FlowAuth,
   wsClient: WSClient
-) extends HandlerUtilities  {
+) extends Handler with HandlerUtilities {
 
   def process(
     definition: ServerProxyDefinition,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
-  ) = {
+  ): Future[Result] = {
     val body = request.bodyUtf8.getOrElse("")
 
     Try {
@@ -37,7 +38,7 @@ class ApplicationJsonHandler @Inject() (
       case Failure(e) => {
         Logger.info(s"[proxy $request] 422 invalid json")
         Future.successful(
-          UnprocessableEntity(
+          Results.UnprocessableEntity(
             genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
           ).withHeaders("X-Flow-Proxy-Validation" -> "proxy")
         )
@@ -61,14 +62,14 @@ class ApplicationJsonHandler @Inject() (
     route: Route,
     token: ResolvedToken,
     js: JsValue
-  ) = {
+  ): Future[Result] = {
     logFormData(definition, request, js)
 
     definition.multiService.upcast(route.method, route.path, js) match {
       case Left(errors) => {
         log4xx(request, 422, js, errors)
         Future.successful(
-          UnprocessableEntity(
+          Results.UnprocessableEntity(
             genericErrors(errors)
           ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
         )

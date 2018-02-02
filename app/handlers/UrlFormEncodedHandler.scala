@@ -5,6 +5,9 @@ import javax.inject.{Inject, Singleton}
 import controllers.ServerProxyDefinition
 import io.apibuilder.validation.FormData
 import lib.{ProxyRequest, ResolvedToken, Route}
+import play.api.mvc.Result
+
+import scala.concurrent.Future
 
 /**
   * Converts url form encodes into a JSON body, then
@@ -13,14 +16,14 @@ import lib.{ProxyRequest, ResolvedToken, Route}
 @Singleton
 class UrlFormEncodedHandler @Inject() (
   applicationJsonHandler: ApplicationJsonHandler
-) {
+) extends Handler {
 
   def process(
     definition: ServerProxyDefinition,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
-  ) = {
+  ): Future[Result] = {
     val newBody = FormData.parseEncodedToJsObject(
       request.bodyUtf8.getOrElse {
         sys.error(s"Request[${request.requestId}] Failed to serialize body as string for ContentType.UrlFormEncoded")

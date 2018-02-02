@@ -5,26 +5,30 @@ import javax.inject.{Inject, Singleton}
 import controllers.ServerProxyDefinition
 import lib._
 import play.api.libs.ws.WSClient
+import play.api.mvc.Result
+
+import scala.concurrent.Future
 
 @Singleton
 class GenericHandler @Inject() (
   config: Config,
   flowAuth: FlowAuth,
   wsClient: WSClient
-) extends HandlerUtilities  {
+) extends Handler with HandlerUtilities  {
 
-  def process(
+  override def process(
     definition: ServerProxyDefinition,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
-  ) = {
+  ): Future[Result] = {
     val req = buildRequest(definition, request, route, token)
 
     request.body match {
       case None => {
         req
           .stream()
+          .map
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
 

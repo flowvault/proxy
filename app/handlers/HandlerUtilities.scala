@@ -9,7 +9,7 @@ import play.api.mvc.Headers
 
 import scala.util.{Failure, Success, Try}
 
-trait HandlerUtilities {
+trait HandlerUtilities extends Errors {
 
   def config: Config
 

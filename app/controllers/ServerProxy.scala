@@ -203,12 +203,12 @@ class ServerProxyImpl @Inject()(
   }
 
   private[this] def envelopeResponse(
-                                      request: ProxyRequest,
-                                      route: Route,
-                                      token: ResolvedToken,
-                                      organization: Option[String] = None,
-                                      partner: Option[String] = None
-                                    ) = {
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken,
+    organization: Option[String] = None,
+    partner: Option[String] = None
+  ) = {
     val formData: JsValue = request.jsonpCallback match {
       case Some(_) => {
         FormData.toJson(request.queryParameters)
@@ -287,13 +287,6 @@ class ServerProxyImpl @Inject()(
     organization: Option[String] = None,
     partner: Option[String] = None
   ): Future[Result] = {
-    val req = ws.url(definition.server.host + request.path)
-      .withFollowRedirects(false)
-      .withMethod(route.method)
-      .addQueryStringParameters(request.queryParametersAsSeq(): _*)
-
-    val startMs = System.currentTimeMillis
-
     request.contentType match {
       case ContentType.UrlFormEncoded => {
         urlFormEncodedHandler.process(definition, request, route, token)
@@ -305,56 +298,6 @@ class ServerProxyImpl @Inject()(
 
       case _ => {
         genericHandler.process(definition, request, route, token)
-      }
-    }
-
-
-    response.map { r =>
-
-      case r: Result if r.header.status >= 400 && r.header.status < 500 => logBodyStream(request, r.header.status, r.body.dataStream)
-
-      case StreamedResponse(DefaultWSResponseHeaders(status, headers), body) if status >= 400 && status < 500 => logBodyStream(request, status, body)
-
-      case StreamedResponse(r, body) => {
-        val timeToFirstByteMs = System.currentTimeMillis - startMs
-        val contentType: Option[String] = r.headers.get("Content-Type").flatMap(_.headOption)
-        val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
-
-        logResponse(
-          request = request,
-          definition = definition,
-          route = route,
-          timeToFirstByteMs = timeToFirstByteMs,
-          status = r.status,
-          organization = organization,
-          partner = partner
-        )
-
-        val headers: Seq[(String, String)] = toHeaders(r.headers)
-
-        // If there's a content length, send that, otherwise return the body chunked
-        contentLength match {
-          case Some(length) => {
-            Status(r.status).
-              sendEntity(HttpEntity.Streamed(body, Some(length), contentType)).
-              withHeaders(headers: _*)
-          }
-
-          case None => {
-            contentType match {
-              case None => Status(r.status).chunked(body).withHeaders(headers: _*)
-              case Some(ct) => Status(r.status).chunked(body).withHeaders(headers: _*).as(ct)
-            }
-          }
-        }
-      }
-      case r: play.api.libs.ws.ahc.AhcWSResponse => {
-        log4xx(request, r.status, r.body)
-        Status(r.status)(r.body).withHeaders(toHeaders(r.headers): _*)
-      }
-
-      case other => {
-        sys.error("Unhandled response of type: " + other.getClass.getName)
       }
     }
   }
