@@ -219,7 +219,7 @@ case class ProxyRequest(
     */
   val responseEnvelope: Boolean = jsonpCallback.isDefined || envelopes.contains(Envelope.Response)
 
-  val requestEnvelope: Boolean =envelopes.contains(Envelope.Request)
+  val requestEnvelope: Boolean = envelopes.contains(Envelope.Request)
 
   /**
     * Returns the content type of the request. WS Client defaults to
