@@ -17,12 +17,13 @@ class ReverseProxy @Inject () (
   system: ActorSystem,
   authorizationParser: AuthorizationParser,
   config: Config,
-  override val flowAuth: FlowAuth,
+  val flowAuth: FlowAuth,
   proxyConfigFetcher: ProxyConfigFetcher,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   serverProxyFactory: ServerProxy.Factory,
+  val controllerComponents: ControllerComponents,
   ws: play.api.libs.ws.WSClient
-) extends Controller
+) extends BaseController
   with lib.Errors
   with auth.OrganizationAuth
   with auth.TokenAuth
@@ -95,19 +96,19 @@ class ReverseProxy @Inject () (
       }
 
       case Authorization.Unrecognized => Future.successful(
-        request.responseError(401, "Authorization header value must start with one of: " + Authorization.Prefixes.all.mkString(", "))
+        request.responseUnauthorized( "Authorization header value must start with one of: " + Authorization.Prefixes.all.mkString(", "))
       )
 
       case Authorization.InvalidApiToken => Future.successful(
-        request.responseError(401, "API Token is not valid")
+        request.responseUnauthorized( "API Token is not valid")
       )
 
       case Authorization.InvalidJwt(missing) => Future.successful(
-        request.responseError(401, s"JWT Token is not valid. Missing ${missing.mkString(", ")} from the JWT Claimset")
+        request.responseUnauthorized( s"JWT Token is not valid. Missing ${missing.mkString(", ")} from the JWT Claimset")
       )
 
       case Authorization.InvalidBearer => Future.successful(
-        request.responseError(401, "Value for Bearer header was not formatted correctly. We expect a JWT Token.")
+        request.responseUnauthorized( "Value for Bearer header was not formatted correctly. We expect a JWT Token.")
       )
 
       case Authorization.Token(token) => {
@@ -116,7 +117,7 @@ class ReverseProxy @Inject () (
           token = token
         ).flatMap {
           case None => Future.successful(
-            request.responseError(401, "API Token is not valid")
+            request.responseUnauthorized( "API Token is not valid")
           )
           case Some(t) => {
             proxyPostAuth(request, token = t)
@@ -130,7 +131,7 @@ class ReverseProxy @Inject () (
           sessionId = sessionId
         ).flatMap {
           case None => Future.successful(
-            request.responseError(401, "Session is not valid")
+            request.responseUnauthorized( "Session is not valid")
           )
           case Some(token) => {
             proxyPostAuth(request, token)
@@ -167,7 +168,7 @@ class ReverseProxy @Inject () (
               case Some(partner) => {
                 // should return 401 if the path is for a partner route, but the token doesn't have an explicit partnerId
                 token.partnerId match {
-                  case None => Future.successful(request.responseError(401, invalidPartnerMessage(partner)))
+                  case None => Future.successful(request.responseUnauthorized( invalidPartnerMessage(partner)))
                   case Some(_) => proxyPartner(operation, partner, request, token)
                 }
               }
@@ -179,7 +180,7 @@ class ReverseProxy @Inject () (
             // note that console uses a token without an org, just a user - so can't be too strict here
             token.partnerId match {
               case None => proxyOrganization(operation, org, request, token)
-              case Some(_) => Future.successful(request.responseError(401, invalidOrgMessage(org)))
+              case Some(_) => Future.successful(request.responseUnauthorized( invalidOrgMessage(org)))
             }
           }
         }
@@ -222,9 +223,9 @@ class ReverseProxy @Inject () (
             if (tokenOrganizationId == organization) {
               proxyDefault(operation, request, token)
             } else {
-              Future.successful {
-                request.responseError(422, invalidOrgMessage(organization))
-              }
+              Future.successful(
+                request.responseUnprocessableEntity(invalidOrgMessage(organization))
+              )
             }
           }
         }
@@ -232,9 +233,9 @@ class ReverseProxy @Inject () (
 
       case Some(_) => {
         authorizeOrganization(token, organization).flatMap {
-          case None => Future.successful {
-            request.responseError(422, invalidOrgMessage(organization))
-          }
+          case None => Future.successful(
+            request.responseUnprocessableEntity(invalidOrgMessage(organization))
+          )
 
           case Some(orgToken) => {
             // Use org token here as the data returned came from the
@@ -264,7 +265,7 @@ class ReverseProxy @Inject () (
         // Currently all partner requests require authorization. Deny
         // access as there is no auth token present.
         Future.successful(
-          request.responseError(401, "Missing authorization headers")
+          request.responseUnauthorized( "Missing authorization headers")
         )
       }
 
@@ -278,7 +279,7 @@ class ReverseProxy @Inject () (
           )
         } else {
           Future.successful(
-            request.responseError(401, invalidPartnerMessage(partner))
+            request.responseUnauthorized( invalidPartnerMessage(partner))
           )
         }
       }
@@ -329,7 +330,7 @@ class ReverseProxy @Inject () (
       token.userId match {
         case None => Future.successful(
           Left(
-            request.responseError(401, s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
+            request.responseUnauthorized( s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
           )
         )
 
@@ -337,7 +338,7 @@ class ReverseProxy @Inject () (
           authorizeOrganization(token, Constants.FlowOrganizationId).map {
             case None => {
               Left(
-                request.responseError(401, invalidOrgMessage(Constants.FlowOrganizationId))
+                request.responseUnauthorized( invalidOrgMessage(Constants.FlowOrganizationId))
               )
             }
 

@@ -35,11 +35,11 @@ class ApplicationJsonHandler @Inject() (
       }
     } match {
       case Failure(e) => {
-        Logger.info(s"[proxy $request] 422 invalid json")
         Future.successful(
-          Results.UnprocessableEntity(
-            genericHandler.genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
-          ).withHeaders("X-Flow-Proxy-Validation" -> "proxy")
+          request.responseUnprocessableEntity(
+            s"The body of an application/json request must contain valid json: ${e.getMessage}",
+            Map("X-Flow-Proxy-Validation" -> Seq("proxy"))
+          )
         )
       }
 
@@ -66,11 +66,11 @@ class ApplicationJsonHandler @Inject() (
   ): Future[Result] = {
     definition.multiService.upcast(route.method, route.path, js) match {
       case Left(errors) => {
-        genericHandler.log4xx(request, 422, js, errors)
         Future.successful(
-          Results.UnprocessableEntity(
-            genericHandler.genericErrors(errors)
-          ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
+          request.responseUnprocessableEntity(
+            errors.mkString(", "),
+            Map("X-Flow-Proxy-Validation" -> Seq("apibuilder"))
+          )
         )
       }
 

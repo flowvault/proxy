@@ -5,6 +5,7 @@ import java.util.UUID
 
 import akka.util.ByteString
 import io.flow.error.v0.models.GenericError
+import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 
@@ -309,7 +310,11 @@ case class ProxyRequest(
   /**
     * Returns a valid play result, taking into account any requests for response envelopes
     */
-  def response(status: Int, body: String, headers: Map[String,Seq[String]] = Map()): Result = {
+  def response(
+    status: Int,
+    body: String,
+    headers: Map[String,Seq[String]] = Map()
+  ): Result = {
     if (responseEnvelope) {
       Ok(wrappedResponseBody(status, body, headers)).as("application/javascript; charset=utf-8")
     } else {
@@ -317,8 +322,32 @@ case class ProxyRequest(
     }
   }
 
-  def responseError(status: Int, message: String): Result = {
-    response(status, genericError(message).toString)
+  def responseUnauthorized(
+    message: String,
+    headers: Map[String,Seq[String]] = Map()
+  ): Result = {
+    responseError(401, message, headers)
+  }
+
+  def responseUnprocessableEntity(
+    message: String,
+    headers: Map[String,Seq[String]] = Map()
+  ): Result = {
+    responseError(422, message, headers)
+  }
+
+  private[this] def responseError(
+    status: Int,
+    message: String,
+    headers: Map[String,Seq[String]] = Map()
+  ): Result = {
+    Logger.info(s"[proxy $toString] status:$status $message")
+
+    response(
+      status = status,
+      body = genericError(message).toString,
+      headers = headers
+    )
   }
 
   /**
