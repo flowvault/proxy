@@ -395,9 +395,7 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def lookup(name: String): ServerProxy = {
-    proxies.get(name).getOrElse {
-      sys.error(s"No proxy defined for the server with name[$name]")
-    }
+    proxies.getOrElse(name, sys.error(s"No proxy defined for the server with name[$name]"))
   }
 
   private[this] def findServerByName(name: String): Option[Server] = {
