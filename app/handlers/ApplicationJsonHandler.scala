@@ -14,11 +14,8 @@ import scala.util.{Failure, Success, Try}
 
 @Singleton
 class ApplicationJsonHandler @Inject() (
-  genericHandler: GenericHandler,
-  config: Config,
-  flowAuth: FlowAuth,
-  wsClient: WSClient
-) extends Handler with HandlerUtilities {
+  genericHandler: GenericHandler
+) extends Handler {
 
   override def process(
     definition: ServerProxyDefinition,
@@ -42,7 +39,7 @@ class ApplicationJsonHandler @Inject() (
         Logger.info(s"[proxy $request] 422 invalid json")
         Future.successful(
           Results.UnprocessableEntity(
-            genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
+            genericHandler.genericError(s"The body of an application/json request must contain valid json: ${e.getMessage}")
           ).withHeaders("X-Flow-Proxy-Validation" -> "proxy")
         )
       }
@@ -68,24 +65,23 @@ class ApplicationJsonHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    logFormData(definition, request, js)
-
     definition.multiService.upcast(route.method, route.path, js) match {
       case Left(errors) => {
-        log4xx(request, 422, js, errors)
+        genericHandler.log4xx(request, 422, js, errors)
         Future.successful(
           Results.UnprocessableEntity(
-            genericErrors(errors)
+            genericHandler.genericErrors(errors)
           ).withHeaders("X-Flow-Proxy-Validation" -> "apibuilder")
         )
       }
 
       case Right(validatedBody) => {
-        buildRequestApplicationJson(definition, request, route, token)
-          .withBody(validatedBody)
-          .stream
-          .map(processResponse)
-          .recover { case ex: Throwable => throw new Exception(ex) }
+        genericHandler.process(
+          definition,
+          request,
+          genericHandler.buildRequestApplicationJson(definition, request, route, token),
+          Some(ProxyRequestBody.Json(validatedBody))
+        )
       }
     }
   }

@@ -5,16 +5,16 @@ import javax.inject.{Inject, Singleton}
 import controllers.ServerProxyDefinition
 import lib._
 import play.api.http.HttpEntity
-import play.api.libs.ws.{WSClient, WSResponse}
+import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Result, Results}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class GenericHandler @Inject() (
-  config: Config,
-  flowAuth: FlowAuth,
-  wsClient: WSClient
+  override val config: Config,
+  override val flowAuth: FlowAuth,
+  override val wsClient: WSClient
 ) extends Handler with HandlerUtilities  {
 
   override def process(
@@ -25,25 +25,40 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    val req = buildRequest(definition, request, route, token)
+    process(
+      definition,
+      request,
+      buildRequest(definition, request, route, token),
+      request.body
+    )
+  }
 
-    request.body match {
+  private[handlers] def process(
+    definition: ServerProxyDefinition,
+    request: ProxyRequest,
+    wsRequest: WSRequest,
+    body: Option[ProxyRequestBody]
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Result] = {
+
+    body match {
       case None => {
-        req
+        wsRequest
           .stream()
           .map(processResponse)
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
 
       case Some(ProxyRequestBody.File(file)) => {
-        req
+        wsRequest
           .post(file)
           .map(processResponse)
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
 
       case Some(ProxyRequestBody.Bytes(bytes)) => {
-        req
+        wsRequest
           .withBody(bytes)
           .stream
           .map(processResponse)
@@ -51,12 +66,29 @@ class GenericHandler @Inject() (
       }
 
       case Some(ProxyRequestBody.Json(json)) => {
-        req
+        logFormData(definition, request, json)
+
+        wsRequest
           .withBody(json)
           .stream
           .map(processResponse)
           .recover { case ex: Throwable => throw new Exception(ex) }
       }
+    }
+  }
+
+  private[this] def processResponse(response: WSResponse) = {
+    // Get the content type
+    val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("application/octet-stream")
+
+    // If there's a content length, send that, otherwise return the body chunked
+    response.headers.get("Content-Length") match {
+      case Some(Seq(length)) =>
+        Results.Status(response.status).sendEntity(
+          HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
+        )
+      case _ =>
+        Results.Status(response.status).chunked(response.bodyAsSource).as(contentType)
     }
   }
 

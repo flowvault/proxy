@@ -3,10 +3,9 @@ package handlers
 import controllers.ServerProxyDefinition
 import lib._
 import play.api.Logger
-import play.api.http.HttpEntity
 import play.api.libs.json.{JsObject, JsValue, Json}
-import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
-import play.api.mvc.{Headers, Results}
+import play.api.libs.ws.{WSClient, WSRequest}
+import play.api.mvc.Headers
 
 import scala.util.{Failure, Success, Try}
 
@@ -159,19 +158,4 @@ trait HandlerUtilities extends Errors {
     headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
   }
 
-  def processResponse(response: WSResponse) = {
-    // Get the content type
-    val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("application/octet-stream")
-
-    // If there's a content length, send that, otherwise return the body chunked
-    response.headers.get("Content-Length") match {
-      case Some(Seq(length)) =>
-        Results.Status(response.status).sendEntity(
-          HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
-        )
-      case _ =>
-        Results.Status(response.status).chunked(response.bodyAsSource).as(contentType)
-    }
-
-  }
 }
