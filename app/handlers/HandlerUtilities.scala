@@ -27,6 +27,7 @@ trait HandlerUtilities extends Errors {
     route: Route,
     token: ResolvedToken
   ): WSRequest = {
+    println(s"URL: ${definition.server.host + request.path}")
     wsClient.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
