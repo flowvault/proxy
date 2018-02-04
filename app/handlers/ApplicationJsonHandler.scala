@@ -4,15 +4,15 @@ import javax.inject.{Inject, Singleton}
 
 import controllers.ServerProxyDefinition
 import lib._
-import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
-import play.api.mvc.{Result, Results}
+import play.api.mvc.Result
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 @Singleton
 class ApplicationJsonHandler @Inject() (
+  apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   genericHandler: GenericHandler
 ) extends Handler {
 
@@ -64,7 +64,7 @@ class ApplicationJsonHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    definition.multiService.upcast(route.method, route.path, js) match {
+    apiBuilderServicesFetcher.multiService.upcast(route.method, route.path, js) match {
       case Left(errors) => {
         Future.successful(
           request.responseUnprocessableEntity(

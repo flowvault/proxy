@@ -1,11 +1,7 @@
 package lib
 
-import controllers.{ServerProxy, ServerProxyDefinition, ServerProxyImpl}
-import io.apibuilder.validation.MultiService
-import org.scalatest._
+import controllers.ServerProxyDefinition
 import org.scalatestplus.play._
-import play.api.test._
-import play.api.test.Helpers._
 import scala.io.Source
 
 class ServerParserSpec extends PlaySpec with OneServerPerSuite {
@@ -24,9 +20,8 @@ class ServerParserSpec extends PlaySpec with OneServerPerSuite {
   }
 
   "hostHeaderValue" in {
-    val apibuilderServicesFetcher = app.injector.instanceOf[ApiBuilderServicesFetcher]
     Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
-      ServerProxyDefinition(Server("user", host), apibuilderServicesFetcher.current()).hostHeaderValue must be(
+      ServerProxyDefinition(Server("user", host)).hostHeaderValue must be(
         "user.api.flow.io"
       )
     }

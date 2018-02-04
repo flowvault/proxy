@@ -19,6 +19,8 @@ trait HandlerUtilities extends Errors {
 
   def wsClient: WSClient
 
+  def multiService: MultiService
+
   def buildRequest(
     definition: ServerProxyDefinition,
     request: ProxyRequest,
@@ -30,9 +32,7 @@ trait HandlerUtilities extends Errors {
       .withMethod(route.method)
       .withRequestTimeout(definition.requestTimeout)
       .addQueryStringParameters(
-        definedQueryParameters(
-          request, definition.multiService, route, request.queryParametersAsSeq()
-        ): _*
+        definedQueryParameters(request, route): _*
       )
       .addHttpHeaders(
         proxyHeaders(definition, request, token).headers: _*
@@ -80,7 +80,7 @@ trait HandlerUtilities extends Errors {
     body: JsValue)
   : Unit = {
     if (request.method != "GET") {
-      val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
+      val typ = multiService.bodyTypeFromPath(request.method, request.path)
       val safeBody = body match {
         case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
         case _: JsObject => toLogValue(request, body, typ)
@@ -133,10 +133,9 @@ trait HandlerUtilities extends Errors {
     */
   def definedQueryParameters(
     request: ProxyRequest,
-    multiService: MultiService,
-    route: Route,
-    allQueryParameters: Seq[(String, String)]
+    route: Route
   ): Seq[(String, String)] = {
+    val allQueryParameters = request.queryParametersAsSeq()
     if (request.requestEnvelope) {
       // For request envelopes - we ONLY proxy parameters defined in the spec
       multiService.operation(route.method, route.path) match {

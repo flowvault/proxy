@@ -3,6 +3,7 @@ package handlers
 import javax.inject.{Inject, Singleton}
 
 import controllers.ServerProxyDefinition
+import io.apibuilder.validation.MultiService
 import lib._
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
@@ -14,8 +15,11 @@ import scala.concurrent.{ExecutionContext, Future}
 class GenericHandler @Inject() (
   override val config: Config,
   override val flowAuth: FlowAuth,
-  override val wsClient: WSClient
+  override val wsClient: WSClient,
+  apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities  {
+
+  override def multiService: MultiService = apiBuilderServicesFetcher.multiService
 
   override def process(
     definition: ServerProxyDefinition,
