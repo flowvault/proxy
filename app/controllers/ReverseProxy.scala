@@ -61,7 +61,7 @@ class ReverseProxy @Inject () (
       if (all.isDefinedAt(s.name)) {
         sys.error(s"Duplicate server with name[${s.name}]")
       } else {
-        all += (s.name -> serverProxyFactory(ServerProxyDefinition(s)))
+        all += (s.name -> serverProxyFactory(ServerProxyDefinition(s, multiService)))
       }
     }
     all.toMap
