@@ -46,9 +46,6 @@ class GenericHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
 
-    println(s"definition: ${definition}")
-    println(s"server: ${definition.server}")
-
     body match {
       case None => {
         processResponse(request, wsRequest.stream())
@@ -90,8 +87,6 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    println(s"request: ${request}")
-    println(s"pathWithQuery: ${request.pathWithQuery}")
     response.map { response =>
       if (request.responseEnvelope) {
         request.response(response.status, response.body, response.headers)
