@@ -19,7 +19,8 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 case class ServerProxyDefinition(
-  server: Server
+  server: Server,
+  multiService: io.apibuilder.validation.MultiService // TODO Move higher level
 ) {
 
   val requestTimeout: FiniteDuration = server.name match {
