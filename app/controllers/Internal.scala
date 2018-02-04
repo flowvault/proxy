@@ -1,10 +1,8 @@
 package controllers
 
-import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import lib.{Config, Constants, ProxyRequest}
-import play.api._
+import lib.{ApiBuilderServicesFetcher, Config, ProxyRequest}
 import play.api.mvc._
 import play.api.libs.json._
 
@@ -17,9 +15,11 @@ case class RouteResult(
 
 @Singleton
 class Internal @Inject() (
+  apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   config: Config,
-  reverseProxy: ReverseProxy
-) extends Controller {
+  reverseProxy: ReverseProxy,
+  val controllerComponents: ControllerComponents
+) extends BaseController {
 
   private[this] val HealthyJson = Json.obj(
     "status" -> "healthy"
@@ -32,7 +32,7 @@ class Internal @Inject() (
   }
 
   def getHealthcheck = Action { _ =>
-    config.missing.toList match {
+    config.missing().toList match {
       case Nil => {
         reverseProxy.index.config.operations.toList match {
           case Nil => {
@@ -44,7 +44,15 @@ class Internal @Inject() (
           }
 
           case _ => {
-            Ok(HealthyJson)
+            if (apiBuilderServicesFetcher.multiService.services.isEmpty) {
+              UnprocessableEntity(
+                Json.toJson(
+                  Seq("No apibuilder services found")
+                )
+              )
+            } else {
+              Ok(HealthyJson)
+            }
           }
         }
       }
