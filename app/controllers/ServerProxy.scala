@@ -19,8 +19,7 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 case class ServerProxyDefinition(
-  server: Server,
-  multiService: io.apibuilder.validation.MultiService // TODO Move higher level
+  server: Server
 ) {
 
   val requestTimeout: FiniteDuration = server.name match {
@@ -31,7 +30,7 @@ case class ServerProxyDefinition(
   }
 
   val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
-    sys.error(s"Could not parse host from server[$server]")
+    sys.error(s"Could not parse host from server[${server.name}] host[${server.host}]")
   }
 
 }
