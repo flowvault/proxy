@@ -278,7 +278,7 @@ case class ProxyRequest(
       case Success(js) => {
         val (method, methodErrors) = parseMethod(js, "method") match {
           case Left(errors) => ("", errors)
-          case Right(method) => (method, Nil)
+          case Right(m) => (m, Nil)
         }
 
         val body = (js \ "body").asOpt[JsValue].map(ProxyRequestBody.Json)

@@ -1,8 +1,9 @@
 package controllers
 
+import helpers.BasePlaySpec
 import org.scalatestplus.play._
 
-class ServerProxySpec extends PlaySpec with OneServerPerSuite {
+class ServerProxySpec extends BasePlaySpec {
 
   "query" in {
     ServerProxy.query(Map[String, Seq[String]]()) must be(Nil)
