@@ -111,29 +111,29 @@ class GenericHandler @Inject() (
     }
   }
 
+  /**
+    * Removes any existing Content-Type headers from the map, adding
+    * a header with single new value to the specified contentType
+    */
   private[this] def setContentTypeHeader(
     wsRequest: WSRequest,
     contentType: ContentType
   ): WSRequest = {
     val headers = Seq(
-      addContentType(wsRequest.headers, contentType).flatMap { case (key, values) =>
-        values.map { v =>
-          (key, v)
+      wsRequest.headers.flatMap { case (key, values) =>
+        if (key.toLowerCase == "content-type") {
+          Seq(
+            ("Content-Type", contentType.toString)
+          )
+        } else {
+          values.map { v =>
+            (key, v)
+          }
         }
       }.toSeq
     ).flatten
 
     wsRequest.withHttpHeaders(headers: _*)
-  }
-
-  private[this] def addContentType(
-    headers: Map[String, Seq[String]],
-    contentType: ContentType
-  ): Map[String, Seq[String]] = {
-    val name = "Content-Type"
-    headers.filter(_._1.toLowerCase != name.toLowerCase) ++ Map(
-      "Content-Type" -> Seq(contentType.toString)
-    )
   }
 
 }
