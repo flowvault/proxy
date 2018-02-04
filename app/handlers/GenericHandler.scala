@@ -53,7 +53,9 @@ class GenericHandler @Inject() (
           case "PUT" => processResponse(request, wsRequest.put(file))
           case "PATCH" => processResponse(request, wsRequest.patch(file))
           case _ => Future.successful(
-            request.responseUnprocessableEntity(s"Invalid method for body with file. Must be POST, PUT, or PATCH and not '${request.method}'")
+            request.responseUnprocessableEntity(
+              s"Invalid method '${request.method}' for body with file. Must be POST, PUT, or PATCH"
+            )
           )
         }
       }
