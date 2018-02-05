@@ -1,7 +1,5 @@
 package lib
 
-import io.flow.error.v0.models.GenericError
-import io.flow.error.v0.models.json._
 import play.api.libs.json.{Json, JsValue}
 import java.util.UUID
 
@@ -16,26 +14,22 @@ trait Errors {
   }
 
   def genericErrors(messages: Seq[String]): JsValue = {
-    Json.toJson(
-      GenericError(
-        messages = messages
-      )
-    )
+    jsonErrors("generic_error", messages)
   }
 
   def clientErrors(messages: Seq[String]): JsValue = {
-    Json.obj(
-      "code" -> "client_error",
-      "messages" -> messages
-    )
+    jsonErrors("client_error", messages)
   }
 
   def serverErrors(messages: Seq[String]): JsValue = {
+    jsonErrors("server_error", messages)
+  }
+
+  private[this] def jsonErrors(code: String, messages: Seq[String]): JsValue = {
     Json.obj(
-      "code" -> "server_error",
+      "code" -> code,
       "messages" -> messages
     )
   }
-
 }
 
