@@ -5,20 +5,21 @@ package lib
   */
 sealed trait Route {
 
-  def method: String
+  def method: Method
+
   def path: String
 
   /**
     * Returns true if this route matches the specified method and path
     */
-  def matches(incomingMethod: String, incomingPath: String): Boolean
+  def matches(incomingMethod: Method, incomingPath: String): Boolean
 
   private[this] val InternalOrganization = "flow"
 
   private[this] val hasOrganizationPrefix: Boolean = path == "/:organization" || path.startsWith("/:organization/")
   // POST /organizations/:organization_id is reserved to create an org
   private[this] val hasOrganizationResourceId: Boolean = path.startsWith("/organizations/:organization_id") && !(
-    path == "/organizations/:organization_id" && method == "POST"
+    path == "/organizations/:organization_id" && method == Method.Post
   )
   private[this] val hasPartner: Boolean = path == "/partners/:partner" || path.startsWith("/partners/:partner/")
   private[this] val isInternal: Boolean = path == "/internal" || path.startsWith("/internal/")
@@ -89,11 +90,10 @@ object Route {
   /**
     * Represents a static route (e.g. /organizations) with no wildcards
     */
-  case class Static(method: String, path: String) extends Route {
-    assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
+  case class Static(method: Method, path: String) extends Route {
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 
-    override def matches(incomingMethod: String, incomingPath: String): Boolean = {
+    override def matches(incomingMethod: Method, incomingPath: String): Boolean = {
       method == incomingMethod && path == incomingPath
     }
   }
@@ -104,8 +104,7 @@ object Route {
     * that replaces any ":xxx" with a pattern of one or more
     * characters that are not a '/'
     */
-  case class Dynamic(method: String, path: String) extends Route {
-    assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
+  case class Dynamic(method: Method, path: String) extends Route {
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 
     private[this] val isOrganizationPath = path.startsWith("/:organization/")
@@ -122,7 +121,7 @@ object Route {
         "$"
     ).r
 
-    override def matches(incomingMethod: String, incomingPath: String): Boolean = {
+    override def matches(incomingMethod: Method, incomingPath: String): Boolean = {
       if (method == incomingMethod) {
         incomingPath match {
           case pattern() => {
@@ -142,7 +141,7 @@ object Route {
 
   }
 
-  def apply(method: String, path: String): Route = {
+  def apply(method: Method, path: String): Route = {
     if (path.indexOf(":") >= 0) {
       Dynamic(method = method, path = path)
     } else {

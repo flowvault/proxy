@@ -1,18 +1,23 @@
 package handlers
 
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Source, StreamConverters}
+import akka.util.ByteString
 import helpers.{BasePlaySpec, MockStandaloneServer}
 import lib._
 import play.api.mvc.Headers
+
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 class GenericHandlerSpec extends BasePlaySpec {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  private[this] val genericHandler = app.injector.instanceOf[GenericHandler]
-  private[this] val mockStandaloneServer = app.injector.instanceOf[MockStandaloneServer]
+  private[this] def genericHandler = app.injector.instanceOf[GenericHandler]
 
   def createProxyRequest(
-    requestMethod: String,
+    requestMethod: Method,
     requestPath: String,
     body: Option[ProxyRequestBody] = None,
     queryParameters: Map[String, Seq[String]] = Map.empty,
@@ -20,7 +25,7 @@ class GenericHandlerSpec extends BasePlaySpec {
   ): ProxyRequest = {
     rightOrErrors(
       ProxyRequest.validate(
-        requestMethod = requestMethod,
+        requestMethod = requestMethod.toString,
         requestPath = requestPath,
         body = body,
         queryParameters = queryParameters,
@@ -35,8 +40,20 @@ class GenericHandlerSpec extends BasePlaySpec {
     )
   }
 
+  def toString(body: Source[ByteString, _]): String = {
+    implicit val system: ActorSystem = app.injector.instanceOf[ActorSystem]
+    implicit val materializer: ActorMaterializer = ActorMaterializer()
+
+    println(s"toString - 1")
+    val is = body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
+    println(s"toString - 2")
+    val r = scala.io.Source.fromInputStream(is, "UTF-8").mkString
+    println(s"toString - 3")
+    r
+  }
+
   "GET request" in {
-    mockStandaloneServer.withServer { (server, wsClient) =>
+    MockStandaloneServer.withServer { (server, wsClient) =>
       /*
       println(s"server: $server")
       val url = s"${server.host}/users/"
@@ -49,18 +66,17 @@ class GenericHandlerSpec extends BasePlaySpec {
           wsClient = wsClient,
           server = server,
           request = createProxyRequest(
-            requestMethod = "GET",
+            requestMethod = Method.Get,
             requestPath = "/users/"
           ),
-          route = Route("GET", "/users/"),
+          route = Route(Method.Get, "/users/"),
           token = ResolvedToken(requestId = createTestId())
         )
       )
-
-      response.body.dataStream
-
-
+      wsClient.underlying
       println(s"response: ${response.body}")
+      println(s"BODY: " + toString(response.body.dataStream))
+      Thread.sleep(5000)
     }
   }
 

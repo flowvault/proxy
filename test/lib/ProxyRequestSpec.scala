@@ -1,17 +1,10 @@
 package lib
 
 import akka.util.ByteString
-import org.scalatestplus.play._
+import helpers.BasePlaySpec
 import play.api.mvc.Headers
 
-class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
-
-  def rightOrErrors[T](result: Either[Seq[String], T]): T = {
-    result match {
-      case Left(errors) => sys.error("Unexpected error: " + errors.mkString(", "))
-      case Right(obj) => obj
-    }
-  }
+class ProxyRequestSpec extends BasePlaySpec {
 
   private[this] val testBody = Some(ProxyRequestBody.Bytes(ByteString("test".getBytes())))
 

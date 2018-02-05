@@ -52,8 +52,8 @@ trait HandlerUtilities extends Errors {
     request: ProxyRequest,
     body: JsValue)
   : Unit = {
-    if (request.method != "GET") {
-      val typ = multiService.bodyTypeFromPath(request.method, request.path)
+    if (request.method != Method.Get) {
+      val typ = multiService.bodyTypeFromPath(request.method.toString, request.path)
       val safeBody = body match {
         case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
         case _: JsObject => toLogValue(request, body, typ)

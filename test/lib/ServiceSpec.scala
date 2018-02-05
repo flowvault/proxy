@@ -1,45 +1,42 @@
 package lib
 
-import play.api.test._
-import play.api.test.Helpers._
-import org.scalatest._
-import org.scalatestplus.play._
+import helpers.BasePlaySpec
 
-class ServiceSpec extends PlaySpec with OneServerPerSuite {
+class ServiceSpec extends BasePlaySpec {
 
   "organization" in {
-    Route("GET", "/foo").organization("/foo") must be(None)
-    Route("GET", "/users").organization("/foo") must be(None)
-    Route("GET", "/organization").organization("/foo") must be(None)
-    Route("GET", "/organization/catalog").organization("/foo") must be(None)
-    Route("GET", "/:organization").organization("/flow") must be(Some("flow"))
-    Route("GET", "/:organization/catalog").organization("/flow/catalog") must be(Some("flow"))
-    Route("GET", "/:organization/currency/rates").organization("/test/currency/rates") must be(Some("test"))
-    Route("GET", "/internal/currency/rates").organization("/internal/currency/rates") must be(Some("flow"))
-    Route("GET", "/foo/:id").organization("/foo") must be(None)
-    Route("GET", "/users/:id").organization("/foo") must be(None)
-    Route("GET", "/organization/:id").organization("/foo") must be(None)
-    Route("GET", "/organization/catalog/:id").organization("/foo") must be(None)
-    Route("GET", "/:organization/:id").organization("/flow/5") must be(Some("flow"))
-    Route("GET", "/:organization/catalog/:id").organization("/flow/catalog/5") must be(Some("flow"))
+    Route(Method.Get, "/foo").organization("/foo") must be(None)
+    Route(Method.Get, "/users").organization("/foo") must be(None)
+    Route(Method.Get, "/organization").organization("/foo") must be(None)
+    Route(Method.Get, "/organization/catalog").organization("/foo") must be(None)
+    Route(Method.Get, "/:organization").organization("/flow") must be(Some("flow"))
+    Route(Method.Get, "/:organization/catalog").organization("/flow/catalog") must be(Some("flow"))
+    Route(Method.Get, "/:organization/currency/rates").organization("/test/currency/rates") must be(Some("test"))
+    Route(Method.Get, "/internal/currency/rates").organization("/internal/currency/rates") must be(Some("flow"))
+    Route(Method.Get, "/foo/:id").organization("/foo") must be(None)
+    Route(Method.Get, "/users/:id").organization("/foo") must be(None)
+    Route(Method.Get, "/organization/:id").organization("/foo") must be(None)
+    Route(Method.Get, "/organization/catalog/:id").organization("/foo") must be(None)
+    Route(Method.Get, "/:organization/:id").organization("/flow/5") must be(Some("flow"))
+    Route(Method.Get, "/:organization/catalog/:id").organization("/flow/catalog/5") must be(Some("flow"))
   }
 
   "partner" in {
-    Route("GET", "/foo").partner("/partners/foo") must be(None)
-    Route("GET", "/users").partner("/partners/foo") must be(None)
-    Route("GET", "/partners").partner("/partners/foo") must be(None)
-    Route("GET", "/partners").partner("/partners/foo") must be(None)
-    Route("GET", "/partners/catalog").partner("/partners/foo") must be(None)
-    Route("GET", "/partners/:partner").partner("/partners/flow") must be(Some("flow"))
-    Route("GET", "/partners/:partner/catalog").partner("/partners/flow/catalog") must be(Some("flow"))
-    Route("GET", "/partners/:partner/labels").partner("/partners/ql/labels") must be(Some("ql"))
-    Route("GET", "/internal/currency/rates").partner("/internal/currency/rates") must be(None)
-    Route("GET", "/partners/foo/:id").partner("/partners/foo") must be(None)
-    Route("GET", "/users/:id").partner("/partners/foo") must be(None)
-    Route("GET", "/partners/partner/:id").partner("/partners/foo") must be(None)
-    Route("GET", "/partners/partner/catalog/:id").partner("/partners/foo") must be(None)
-    Route("GET", "/partners/:partner/:id").partner("/partners/flow/5") must be(Some("flow"))
-    Route("GET", "/partners/:partner/catalog/:id").partner("/partners/flow/catalog/5") must be(Some("flow"))
+    Route(Method.Get, "/foo").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/users").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/partners").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/partners").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/partners/catalog").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/partners/:partner").partner("/partners/flow") must be(Some("flow"))
+    Route(Method.Get, "/partners/:partner/catalog").partner("/partners/flow/catalog") must be(Some("flow"))
+    Route(Method.Get, "/partners/:partner/labels").partner("/partners/ql/labels") must be(Some("ql"))
+    Route(Method.Get, "/internal/currency/rates").partner("/internal/currency/rates") must be(None)
+    Route(Method.Get, "/partners/foo/:id").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/users/:id").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/partners/partner/:id").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/partners/partner/catalog/:id").partner("/partners/foo") must be(None)
+    Route(Method.Get, "/partners/:partner/:id").partner("/partners/flow/5") must be(Some("flow"))
+    Route(Method.Get, "/partners/:partner/catalog/:id").partner("/partners/flow/catalog/5") must be(Some("flow"))
   }
 
 }

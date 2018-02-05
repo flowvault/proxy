@@ -50,10 +50,10 @@ class GenericHandler @Inject() (
       }
 
       case Some(ProxyRequestBody.File(file)) => {
-        request.method.toUpperCase match {
-          case "POST" => processResponse(request, wsRequest.post(file))
-          case "PUT" => processResponse(request, wsRequest.put(file))
-          case "PATCH" => processResponse(request, wsRequest.patch(file))
+        request.method match {
+          case Method.Post => processResponse(request, wsRequest.post(file))
+          case Method.Put => processResponse(request, wsRequest.put(file))
+          case Method.Patch => processResponse(request, wsRequest.patch(file))
           case _ => Future.successful(
             request.responseUnprocessableEntity(
               s"Invalid method '${request.method}' for body with file. Must be POST, PUT, or PATCH"
@@ -90,7 +90,7 @@ class GenericHandler @Inject() (
     println(s"URL: ${server.host + request.path}")
     wsClient.url(server.host + request.path)
       .withFollowRedirects(false)
-      .withMethod(route.method)
+      .withMethod(route.method.toString)
       .withRequestTimeout(server.requestTimeout)
       .addQueryStringParameters(
         definedQueryParameters(request, route): _*
@@ -206,7 +206,7 @@ class GenericHandler @Inject() (
   ): Seq[(String, String)] = {
     val allQueryParameters = request.queryParametersAsSeq()
     if (request.requestEnvelope) {
-      multiService.operation(route.method, route.path) match {
+      multiService.operation(route.method.toString, route.path) match {
         case None => {
           allQueryParameters
         }

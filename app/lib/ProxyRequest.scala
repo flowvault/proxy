@@ -1,75 +1,14 @@
 package lib
 
-import java.nio.charset.Charset
 import java.util.UUID
-
-import akka.util.ByteString
 import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
-
-import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
-
-sealed trait ContentType
-object ContentType {
-
-  case object ApplicationJson extends ContentType { override def toString = "application/json" }
-  case object UrlFormEncoded extends ContentType { override def toString = "application/x-www-form-urlencoded" }
-  case class Other(name: String) extends ContentType { override def toString: String = name }
-
-  val all = Seq(ApplicationJson, UrlFormEncoded)
-
-  private[this]
-  val byName = all.map(x => x.toString.toLowerCase -> x).toMap
-
-  def apply(value: String): ContentType = fromString(value).getOrElse(Other(value))
-
-  @tailrec
-  def fromString(value: String): Option[ContentType] = {
-    byName.get(value.toLowerCase) match {
-      case Some(ct) => Some(ct)
-      case None => {
-        // check for charset
-        val index = value.indexOf(";")
-        if (index > 0 ) {
-          fromString(value.substring(0, index))
-        } else {
-          None
-        }
-      }
-    }
-  }
-}
-
-sealed trait Envelope
-object Envelope {
-  case object Request extends Envelope { override def toString = "request" }
-  case object Response extends Envelope { override def toString = "response" }
-
-  val all = Seq(Request, Response)
-
-  private[this]
-  val byName = all.map(x => x.toString.toLowerCase -> x).toMap
-
-  def fromString(value: String): Option[Envelope] = byName.get(value.toLowerCase)
-
-}
-
-sealed trait ProxyRequestBody
-object ProxyRequestBody {
-  val Utf8: Charset = Charset.forName("UTF-8")
-
-  case class Bytes(bytes: ByteString) extends ProxyRequestBody
-  case class Json(js: JsValue) extends ProxyRequestBody
-  case class File(file: java.io.File) extends ProxyRequestBody
-}
 
 object ProxyRequest {
 
   val ReservedQueryParameters = Seq("method", "callback", "envelope")
-
-  val ValidMethods = Seq("GET", "POST", "PUT", "PATCH", "DELETE")
 
   def validate(request: Request[RawBuffer]): Either[Seq[String], ProxyRequest] = {
     validate(
@@ -94,18 +33,17 @@ object ProxyRequest {
     headers: Headers
   ): Either[Seq[String], ProxyRequest] = {
     val (method, methodErrors) = queryParameters.getOrElse("method", Nil).toList match {
-      case Nil => (requestMethod, Nil)
+      case Nil => (Some(Method(requestMethod)), Nil)
 
       case m :: Nil => {
-        if (ValidMethods.contains(m.toUpperCase)) {
-          (m, Nil)
-        } else {
-          (m, Seq(s"Invalid value '$m' for query parameter 'method' - must be one of ${ValidMethods.mkString(", ")}"))
+        Method.fromString(m) match {
+          case None => (None, Seq(s"Invalid value '$m' for query parameter 'method' - must be one of ${Method.all.map(_.toString).mkString(", ")}"))
+          case Some(methodInstance) => (Some(methodInstance), Nil)
         }
       }
 
-      case m :: _ => {
-        (m, Seq("Query parameter 'method', if specified, cannot be specified more than once"))
+      case _ => {
+        (None, Seq("Query parameter 'method', if specified, cannot be specified more than once"))
       }
     }
 
@@ -150,7 +88,7 @@ object ProxyRequest {
         ProxyRequest(
           headers = headers,
           originalMethod = requestMethod,
-          method = method.toUpperCase.trim,
+          method = method.get,
           pathWithQuery = requestPath,
           body = body,
           queryParameters = queryParameters.filter { case (k, _) => !ReservedQueryParameters.contains(k) },
@@ -179,7 +117,7 @@ object ProxyRequest {
 case class ProxyRequest(
   headers: Headers,
   originalMethod: String,
-  method: String,
+  method: Method,
   pathWithQuery: String,
   body: Option[ProxyRequestBody] = None,
   jsonpCallback: Option[String] = None,
@@ -189,11 +127,6 @@ case class ProxyRequest(
   assert(
     ProxyRequest.ReservedQueryParameters.filter { queryParameters.isDefinedAt } == Nil,
     "Cannot provide query reserved parameters"
-  )
-
-  assert(
-    method.toUpperCase.trim == method,
-    s"Method[$method] must be in uppercase, trimmed"
   )
 
   val requestId: String = headers.get(Constants.Headers.FlowRequestId).getOrElse {
@@ -382,7 +315,7 @@ case class ProxyRequest(
 
   private[this] def parseMethod(json: JsValue, field: String): Either[Seq[String], String] = {
     (json \ field).validateOpt[String] match {
-      case JsError(_) => Left(Seq(s"Field '$field' must be one of ${ProxyRequest.ValidMethods.mkString(", ")}"))
+      case JsError(_) => Left(Seq(s"Field '$field' must be one of ${Method.all.map(_.toString).mkString(", ")}"))
       case JsSuccess(value, _) => value match {
         case None => Left(Seq(s"Field '$field' is required"))
         case Some(v) => Right(v)

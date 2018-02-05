@@ -2,14 +2,14 @@ package controllers
 
 import javax.inject.{Inject, Singleton}
 
-import lib.{ApiBuilderServicesFetcher, Config, ProxyRequest}
+import lib.{ApiBuilderServicesFetcher, Config, Method, ProxyRequest}
 import play.api.mvc._
 import play.api.libs.json._
 
 import scala.concurrent.Future
 
 case class RouteResult(
-  method: String,
+  method: Method,
   operation: Option[lib.Operation]
 )
 
@@ -86,7 +86,7 @@ class Internal @Inject() (
 
         "operations" -> reverseProxy.index.config.operations.map { op =>
           Json.obj(
-            "method" -> op.route.method,
+            "method" -> op.route.method.toString,
             "path" -> op.route.path,
             "server" -> op.server.name
           )
@@ -129,7 +129,7 @@ class Internal @Inject() (
       val results = path match {
         case None => Nil
         case Some(p) => {
-          ProxyRequest.ValidMethods.map { method =>
+          Method.all.map { method =>
             RouteResult(
               method = method,
               operation = reverseProxy.index.resolve(method, p)

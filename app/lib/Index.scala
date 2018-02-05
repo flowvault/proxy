@@ -31,7 +31,7 @@ case class Index(config: ProxyConfig) {
     }
 
     // Map from method name to list of internal routes
-    var dynamicRouteMap = scala.collection.mutable.Map[String, Seq[Operation]]()
+    var dynamicRouteMap = scala.collection.mutable.Map[Method, Seq[Operation]]()
     all.foreach { op =>
       op.route match {
         case r: Route.Dynamic => {
@@ -66,11 +66,11 @@ case class Index(config: ProxyConfig) {
     (staticRouteMap, dynamicRouteMap.toMap)
   }
 
-  final def resolve(method: String, path: String): Option[Operation] = {
+  final def resolve(method: Method, path: String): Option[Operation] = {
     staticRouteMap.get(routeKey(method, path)) match {
       case None => {
-        dynamicRoutes.getOrElse(method.toUpperCase, Nil).find { op =>
-          op.route.matches(method.toUpperCase, path.toLowerCase.trim)
+        dynamicRoutes.getOrElse(method, Nil).find { op =>
+          op.route.matches(method, path.toLowerCase.trim)
         }
       }
       case Some(op) => {
@@ -79,7 +79,7 @@ case class Index(config: ProxyConfig) {
     }
   }
 
-  private[this] def routeKey(method: String, path: String): String = {
+  private[this] def routeKey(method: Method, path: String): String = {
     s"$method:$path".toLowerCase
   }
 }

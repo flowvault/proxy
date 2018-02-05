@@ -19,8 +19,8 @@ case class ProxyConfig(
   operations: Seq[Operation]
 ) {
 
-  def merge(other: ProxyConfig) = {
-    other.servers.find { s => servers.find(_.name == s.name).isDefined } match {
+  def merge(other: ProxyConfig): ProxyConfig = {
+    other.servers.find { s => servers.exists(_.name == s.name) } match {
       case None => //
       case Some(existing) => {
         sys.error(s"Duplicate server named[${existing.name}] -- cannot merge configuration files")
@@ -130,9 +130,10 @@ case class InternalServer(
 ) {
 
   def validate: Either[Seq[String], Server] = {
-    (name.isEmpty || host.isEmpty) match {
-      case true => Left(Seq("Server name and host are required"))
-      case false => Right(
+    if (name.isEmpty || host.isEmpty) {
+      Left(Seq("Server name and host are required"))
+    } else {
+      Right(
         Server(
           name = name,
           host = host
@@ -150,25 +151,24 @@ case class InternalOperation(
 ) {
 
   def validate(servers: Seq[Server]): Either[Seq[String], Operation] = {
-    (method.isEmpty || path.isEmpty || server.isEmpty) match {
-      case true => {
-        Left(Seq("Operation method, path, and server are required"))
-      }
+    if (method.isEmpty || path.isEmpty || server.isEmpty) {
+      Left(Seq("Operation method, path, and server are required"))
+    } else {
+      servers.find(_.name == server) match {
+        case None => {
+          Left(Seq(s"Server[$server] not found"))
+        }
 
-      case false => {
-        servers.find(_.name == server) match {
-          case None => Left(Seq(s"Server[$server] not found"))
-          case Some(s) => {
-            Right(
-              Operation(
-                Route(
-                  method = method,
-                  path = path
-                ),
-                server = s
-              )
+        case Some(s) => {
+          Right(
+            Operation(
+              Route(
+                method = Method(method),
+                path = path
+              ),
+              server = s
             )
-          }
+          )
         }
       }
     }
@@ -203,12 +203,8 @@ class ProxyConfigFetcher @Inject() (
 
       case uri :: rest => {
         load(uri) match {
-          case Left(errors) => {
-            Left(errors)
-          }
-          case Right(config) => {
-            combine(rest, config)
-          }
+          case Left(errors) => Left(errors)
+          case Right(c) => combine(rest, c)
         }
       }
     }
@@ -252,7 +248,7 @@ class ProxyConfigFetcher @Inject() (
     }
   }
 
-  private[this] var lastLoad: Index = refresh().getOrElse {
+  private[this] val lastLoad: Index = refresh().getOrElse {
     Index(
       ProxyConfig(
         sources = Nil,

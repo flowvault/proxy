@@ -78,9 +78,9 @@ operations:
     cfg.servers must be(Seq(user))
     cfg.operations must be(
       Seq(
-        Operation(Route("GET", "/users"), user),
-        Operation(Route("POST", "/users"), user),
-        Operation(Route("GET", "/users/:id"), user)
+        Operation(Route(Method.Get, "/users"), user),
+        Operation(Route(Method.Post, "/users"), user),
+        Operation(Route(Method.Get, "/users/:id"), user)
       )
     )
   }
@@ -103,9 +103,9 @@ operations:
 
         val index = Index(config)
         Seq(
-          ("GET", "/users", "user"),
-          ("GET", "/organizations", "organization"),
-          ("GET", "/:organization/catalog", "catalog")
+          (Method.Get, "/users", "user"),
+          (Method.Get, "/organizations", "organization"),
+          (Method.Get, "/:organization/catalog", "catalog")
         ).foreach { case (method, path, server) =>
           val op = index.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
@@ -140,9 +140,9 @@ operations:
 
         val index = Index(config)
         Seq(
-          ("GET", "/users", "user"),
-          ("GET", "/organizations", "organization"),
-          ("GET", "/:organization/catalog", "catalog")
+          (Method.Get, "/users", "user"),
+          (Method.Get, "/organizations", "organization"),
+          (Method.Get, "/:organization/catalog", "catalog")
         ).foreach { case (method, path, server) =>
           val op = index.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
@@ -170,14 +170,14 @@ operations:
     }
 
     val index = Index(config)
-    val op1 = index.resolve("GET", "/test/currency/rates").get
+    val op1 = index.resolve(Method.Get, "/test/currency/rates").get
     op1.server.name must be("currency")
-    op1.route.method must be("GET")
+    op1.route.method must be(Method.Get)
     op1.route.path must be("/:organization/currency/rates")
 
-    val op2 = index.resolve("GET", "/internal/currency/rates").get
+    val op2 = index.resolve(Method.Get, "/internal/currency/rates").get
     op2.server.name must be("currency-internal")
-    op2.route.method must be("GET")
+    op2.route.method must be(Method.Get)
     op2.route.path must be("/internal/currency/rates")
   }
   

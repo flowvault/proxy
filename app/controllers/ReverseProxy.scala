@@ -307,7 +307,7 @@ class ReverseProxy @Inject () (
       Future.successful(
         index.resolve(request.method, path) match {
           case None => {
-            apiBuilderServicesFetcher.multiService.validate(request.method, path) match {
+            apiBuilderServicesFetcher.multiService.validate(request.method.toString, path) match {
               case Left(errors) => {
                 Logger.info(s"[proxy $request] status:422 apibuilder validation error: $errors")
                 Left(

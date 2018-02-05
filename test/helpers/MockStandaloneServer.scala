@@ -8,7 +8,7 @@ import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.test.WsTestClient
 
-class MockStandaloneServer() {
+object MockStandaloneServer {
 
   def withServer[T](
     f: (lib.Server, WSClient) => T
@@ -46,6 +46,7 @@ class MockStandaloneServer() {
       WsTestClient.withClient { client =>
         println(s"CREATED SERVER ON PORT[${port.value}]")
         val r = f(port, client)
+        Thread.sleep(1000)
         println(s"CLOSED SERVER ON PORT[${port.value}]")
         r
       }
