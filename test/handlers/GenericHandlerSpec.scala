@@ -1,13 +1,15 @@
 package handlers
 
+import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, Materializer}
-import akka.stream.scaladsl.{Source, StreamConverters}
+import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
 import helpers.{BasePlaySpec, MockStandaloneServer}
 import lib._
 import play.api.mvc.Headers
 
+import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 class GenericHandlerSpec extends BasePlaySpec {
@@ -40,11 +42,10 @@ class GenericHandlerSpec extends BasePlaySpec {
     )
   }
 
-  def toString(body: Source[ByteString, _]): String = {
-    //implicit val system: ActorSystem = app.injector.instanceOf[ActorSystem]
-    implicit val materializer: Materializer = app.injector.instanceOf[Materializer]
-
-    val is = body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
+  private[this] def toString(source: Source[ByteString, _]): String = {
+    implicit val system: ActorSystem = ActorSystem("QuickStart")
+    implicit val materializer: ActorMaterializer = ActorMaterializer()
+    val is = source.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
     scala.io.Source.fromInputStream(is, "UTF-8").mkString
   }
 
@@ -59,7 +60,7 @@ class GenericHandlerSpec extends BasePlaySpec {
       val u2 = toString(await(client.url(url).stream()).bodyAsSource)
       println(s"USER: $u2")
 
-/*
+      /*
       println(s"Starting request")
       val response = await(
         genericHandler.process(
