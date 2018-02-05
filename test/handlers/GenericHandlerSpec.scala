@@ -73,10 +73,12 @@ class GenericHandlerSpec extends BasePlaySpec {
           token = ResolvedToken(requestId = createTestId())
         )
       )
+      /*
       wsClient.underlying
       println(s"response: ${response.body}")
       println(s"BODY: " + toString(response.body.dataStream))
-      Thread.sleep(5000)
+
+*/
     }
   }
 

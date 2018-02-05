@@ -46,7 +46,7 @@ class ProxyRequestSpec extends BasePlaySpec {
     request.headers.getAll("foo") must be(Seq("1", "2"))
     request.headers.getAll("foo2") must be(Nil)
     request.originalMethod must be("get")
-    request.method must be("GET")
+    request.method must be(Method.Get)
     request.pathWithQuery must be("/users/?foo=1&foo=2")
     request.path must be("/users/")
     request.bodyUtf8 must be(Some("test"))
@@ -70,7 +70,7 @@ class ProxyRequestSpec extends BasePlaySpec {
           queryParameters = Map("method" -> Seq("post")),
           headers = Headers()
         )
-      ).method must be("POST")
+      ).method must be(Method.Post)
     }
 
     "reject invalid" in {
@@ -81,7 +81,9 @@ class ProxyRequestSpec extends BasePlaySpec {
         queryParameters = Map("method" -> Seq("foo")),
         headers = Headers()
       ) must be(Left(
-        Seq("Invalid value 'foo' for query parameter 'method' - must be one of GET, POST, PUT, PATCH, DELETE")
+        Seq(
+          "Invalid value 'foo' for query parameter 'method' - must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE"
+        )
       ))
     }
 
