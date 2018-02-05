@@ -77,7 +77,7 @@ case class DefaultCloudwatch @Inject()(
         "response" -> Some(response.toString),
         "organization" -> organizationId,
         "partner" -> partnerId,
-        "user" -> userId
+        "user_id" -> userId
       ).flatMap { t =>
         t._2 match {
           case None => None
