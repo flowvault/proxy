@@ -52,39 +52,4 @@ object MockStandaloneServer {
       }
     }
   }
-
-  def embed(
-    name: String,
-    port: Int = 15432
-  )(
-    f: lib.Server => Any
-  ): Unit = {
-    import play.api.inject.guice.GuiceApplicationBuilder
-    import play.api.mvc._
-    import play.api.routing.SimpleRouterImpl
-    import play.api.routing.sird._
-    import play.core.server.{AkkaHttpServer, ServerConfig}
-
-    val server = AkkaHttpServer.fromApplication(GuiceApplicationBuilder().router(new SimpleRouterImpl({
-      case GET(p"/users/") => Action {
-        Results.Ok(s"Hello users")
-      }
-    })).build(), ServerConfig(
-      port = Some(port),
-      address = "127.0.0.1"
-    ))
-
-    try {
-      println(s"Created server on port[$port]")
-      f(
-        lib.Server(
-          name = name,
-          host = s"http://127.0.0.1:$port"
-        )
-      )
-    } finally {
-      println(s"Stopping server on port[$port]")
-      server.stop()
-    }
-  }
 }

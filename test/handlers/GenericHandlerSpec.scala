@@ -1,7 +1,7 @@
 package handlers
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import helpers.{BasePlaySpec, MockStandaloneServer}
@@ -41,26 +41,25 @@ class GenericHandlerSpec extends BasePlaySpec {
   }
 
   def toString(body: Source[ByteString, _]): String = {
-    implicit val system: ActorSystem = app.injector.instanceOf[ActorSystem]
-    implicit val materializer: ActorMaterializer = ActorMaterializer()
+    //implicit val system: ActorSystem = app.injector.instanceOf[ActorSystem]
+    implicit val materializer: Materializer = app.injector.instanceOf[Materializer]
 
-    println(s"toString - 1")
     val is = body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
-    println(s"toString - 2")
-    val r = scala.io.Source.fromInputStream(is, "UTF-8").mkString
-    println(s"toString - 3")
-    r
+    scala.io.Source.fromInputStream(is, "UTF-8").mkString
   }
 
   "GET request" in {
-    MockStandaloneServer.embed("user") { server =>
-      /*
+    MockStandaloneServer.withServer { (server, client) =>
       println(s"server: $server")
       val url = s"${server.host}/users/"
       println(s"URL - $url")
-      val u = await(wsClient.url(url).get()).body
-      println(s"USER: $u")
-      */
+      val u1 = await(client.url(url).get()).body
+      println(s"USER: $u1")
+
+      val u2 = toString(await(client.url(url).stream()).bodyAsSource)
+      println(s"USER: $u2")
+
+/*
       println(s"Starting request")
       val response = await(
         genericHandler.process(
@@ -76,7 +75,7 @@ class GenericHandlerSpec extends BasePlaySpec {
       println(s"Done with request")
       //println(s"response: ${response.body}")
       println(s"BODY: " + toString(response.body.dataStream))
-
+*/
     }
   }
 
