@@ -5,8 +5,6 @@ import io.apibuilder.validation.MultiService
 import lib._
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsValue, Json}
-import play.api.libs.ws.{WSClient, WSRequest}
-import play.api.mvc.Headers
 
 import scala.util.{Failure, Success, Try}
 
@@ -67,40 +65,4 @@ trait HandlerUtilities extends Errors {
       Logger.info(s"[proxy $request] body type[${typ.getOrElse("unknown")}]: $safeBody")
     }
   }
-
-  /**
-    * For envelope requests, returns the subset of query parameters
-    * that are documented as acceptable for this method.
-    */
-  private[this] def definedQueryParameters(
-    request: ProxyRequest,
-    route: Route
-  ): Seq[(String, String)] = {
-    val allQueryParameters = request.queryParametersAsSeq()
-    if (request.requestEnvelope) {
-      // For request envelopes - we ONLY proxy parameters defined in the spec
-      multiService.operation(route.method, route.path) match {
-        case None => {
-          allQueryParameters
-        }
-
-        case Some(operation) => {
-          val definedNames = operation.parameters.filter { p =>
-            p.location == ParameterLocation.Query
-          }.map(_.name)
-
-          allQueryParameters.filter { case (key, _) =>
-            val isDefined = definedNames.contains(key)
-            if (!isDefined) {
-              Logger.info(s"[HandlerUtilities $request] Filtering out query parameter[$key] as it is not defined as part of the spec")
-            }
-            isDefined
-          }
-        }
-      }
-    } else {
-      allQueryParameters
-    }
-  }
-
 }
