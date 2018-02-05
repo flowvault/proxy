@@ -302,6 +302,7 @@ class ReverseProxy @Inject () (
     val path = request.path
     val serverNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowServer)
     val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)
+    println(s"serverNameOverride[$serverNameOverride] hostOverride[$hostOverride]")
 
     if (serverNameOverride.isEmpty && hostOverride.isEmpty) {
       Future.successful(
@@ -330,7 +331,7 @@ class ReverseProxy @Inject () (
       token.userId match {
         case None => Future.successful(
           Left(
-            request.responseUnauthorized(s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
+            request.responseUnauthorized(s"Must authenticate to specify value for header '${Constants.Headers.FlowServer}' or '${Constants.Headers.FlowHost}'")
           )
         )
 
