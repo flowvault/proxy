@@ -1,9 +1,11 @@
 package lib
 
 import java.util.UUID
+
 import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
+
 import scala.util.{Failure, Success, Try}
 
 object ProxyRequest {
@@ -132,6 +134,8 @@ case class ProxyRequest(
   val requestId: String = headers.get(Constants.Headers.FlowRequestId).getOrElse {
     "api" + UUID.randomUUID.toString.replaceAll("-", "") // make easy to cut & paste
   }
+
+  val createdAtMillis: Long = System.currentTimeMillis()
 
   /**
     * path is everything up to the ? - e.g. /users/

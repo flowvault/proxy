@@ -1,7 +1,9 @@
 package handlers
 
-import javax.inject.{Inject, Singleton}
+import akka.actor.ActorRef
+import javax.inject.{Inject, Named, Singleton}
 
+import actors.MetricActor
 import io.apibuilder.spec.v0.models.ParameterLocation
 import io.apibuilder.validation.MultiService
 import lib._
@@ -14,6 +16,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class GenericHandler @Inject() (
+  @Named("metric-actor") val metricActor: ActorRef,
   override val config: Config,
   flowAuth: FlowAuth,
   wsClient: WSClient,
@@ -47,14 +50,14 @@ class GenericHandler @Inject() (
 
     request.body match {
       case None => {
-        processResponse(request, wsRequest.stream())
+        processResponse(server, request, token, wsRequest.stream())
       }
 
       case Some(ProxyRequestBody.File(file)) => {
         request.method match {
-          case Method.Post => processResponse(request, wsRequest.post(file))
-          case Method.Put => processResponse(request, wsRequest.put(file))
-          case Method.Patch => processResponse(request, wsRequest.patch(file))
+          case Method.Post => processResponse(server, request, token, wsRequest.post(file))
+          case Method.Put => processResponse(server, request, token, wsRequest.put(file))
+          case Method.Patch => processResponse(server, request, token, wsRequest.patch(file))
           case _ => Future.successful(
             request.responseUnprocessableEntity(
               s"Invalid method '${request.method}' for body with file. Must be POST, PUT, or PATCH"
@@ -65,7 +68,9 @@ class GenericHandler @Inject() (
 
       case Some(ProxyRequestBody.Bytes(bytes)) => {
         processResponse(
+          server,
           request,
+          token,
           wsRequest.withBody(bytes).stream()
         )
       }
@@ -73,8 +78,9 @@ class GenericHandler @Inject() (
       case Some(ProxyRequestBody.Json(json)) => {
         logFormData(request, json)
 
-        processResponse(
+        processResponse(server, 
           request,
+          token,
           wsRequest.withBody(json).stream
         )
       }
@@ -102,12 +108,26 @@ class GenericHandler @Inject() (
   }
 
   private[this] def processResponse(
+    server: Server,
     request: ProxyRequest,
+    token: ResolvedToken,
     response: Future[WSResponse]
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
     response.map { response =>
+      metricActor ! MetricActor.Messages.Send(
+        server = server.name,
+        requestId = request.requestId,
+        method = request.method.toString,
+        path = request.pathWithQuery,
+        ms = System.currentTimeMillis() - request.createdAtMillis,
+        response = response.status,
+        organizationId = token.organizationId,
+        partnerId = token.partnerId,
+        userId = token.userId
+      )
+
       if (request.responseEnvelope) {
         request.response(response.status, response.body, response.headers)
       } else {
