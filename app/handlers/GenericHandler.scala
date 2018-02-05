@@ -16,7 +16,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class GenericHandler @Inject() (
   override val config: Config,
   flowAuth: FlowAuth,
-  defaultWsClient: WSClient,
+  wsClient: WSClient,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities  {
 
@@ -30,19 +30,7 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    process(defaultWsClient, server, request, route, token)
-  }
-
-  private[handlers] def process(
-    wsClient: WSClient,
-    server: Server,
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken
-  )(
-    implicit ec: ExecutionContext
-  ): Future[Result] = {
-    val wsRequest = buildRequest(wsClient, server, request, route, token)
+    val wsRequest = buildRequest(server, request, route, token)
 
     request.body match {
       case None => {
@@ -82,7 +70,6 @@ class GenericHandler @Inject() (
   }
 
   private[this] def buildRequest(
-    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
