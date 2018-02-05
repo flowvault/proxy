@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class GenericHandler @Inject() (
   override val config: Config,
-  override val flowAuth: FlowAuth,
+  flowAuth: FlowAuth,
   wsClient: WSClient,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities  {

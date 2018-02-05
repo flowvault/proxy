@@ -34,7 +34,7 @@ class GenericHandlerSpec extends BasePlaySpec {
       )
     )
   }
-
+/*
   "GET request" in {
     mockStandaloneServer.withServer { (server, client) =>
       println(s"server: $server")
@@ -56,5 +56,6 @@ class GenericHandlerSpec extends BasePlaySpec {
       )
     }
   }
+  */
 
 }
