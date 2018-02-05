@@ -1,6 +1,5 @@
 package handlers
 
-import controllers.ServerProxyDefinition
 import helpers.{BasePlaySpec, MockStandaloneServer}
 import lib._
 import play.api.mvc.Headers
@@ -41,11 +40,12 @@ class GenericHandlerSpec extends BasePlaySpec {
       println(s"server: $server")
       val url = s"${server.host}/users/"
       println(s"URL - $url")
-      val u = await(client.url(url).get())
+      val u = await(client.url(url).get()).body
       println(s"USER: $u")
+
       val result = await(
         genericHandler.process(
-          definition = ServerProxyDefinition(server),
+          server = server,
           request = createProxyRequest(
             requestMethod = "GET",
             requestPath = "/users/"

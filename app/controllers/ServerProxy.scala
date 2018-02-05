@@ -18,23 +18,6 @@ import lib._
 import scala.annotation.tailrec
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
-case class ServerProxyDefinition(
-  server: Server
-) {
-
-  val requestTimeout: FiniteDuration = server.name match {
-    case "payment" | "payment-internal" | "partner" | "label" | "label-internal" => FiniteDuration(60, SECONDS)
-    case "session" => FiniteDuration(10, SECONDS)
-    case "token" | "organization" => FiniteDuration(5, SECONDS)
-    case _ => FiniteDuration(30, SECONDS) // TODO: Figure out what the optimal value should be for this
-  }
-
-  val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
-    sys.error(s"Could not parse host from server[${server.name}] host[${server.host}]")
-  }
-
-}
-
 /**
   * Server Proxy is responsible for proxying all requests to a given
   * server. The primary purpose of the proxy is to segment our thread
@@ -43,7 +26,7 @@ case class ServerProxyDefinition(
   */
 trait ServerProxy {
 
-  def definition: ServerProxyDefinition
+  def server: Server
 
   def proxy(
     request: ProxyRequest,
@@ -60,7 +43,7 @@ object ServerProxy {
   val DefaultContextName = s"default-server-context"
 
   trait Factory {
-    def apply(definition: ServerProxyDefinition): ServerProxy
+    def apply(server: Server): ServerProxy
   }
 
   /**
@@ -113,12 +96,12 @@ class ServerProxyImpl @Inject()(
   jsonpHandler: handlers.JsonpHandler,
   genericHandler: handlers.GenericHandler,
   val controllerComponents: ControllerComponents,
-  @Assisted override val definition: ServerProxyDefinition
+  @Assisted override val server: Server
 ) extends ServerProxy
   with BaseControllerHelpers
 {
 
-  private[this] implicit val (ec, name) = resolveContextName(definition.server.name)
+  private[this] implicit val (ec, name) = resolveContextName(server.name)
   private[this] implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   /**
@@ -132,7 +115,7 @@ class ServerProxyImpl @Inject()(
       system.dispatchers.lookup(contextName)
     } match {
       case Success(context) => {
-        Logger.info(s"ServerProxy[${definition.server.name}] using configured execution context[$contextName]")
+        Logger.info(s"ServerProxy[${server.name}] using configured execution context[$contextName]")
         (context, name)
       }
 
@@ -141,7 +124,7 @@ class ServerProxyImpl @Inject()(
         if (i > 0) {
           resolveContextName(name.substring(0, i))
         } else {
-          Logger.warn(s"ServerProxy[${definition.server.name}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
+          Logger.warn(s"ServerProxy[${server.name}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
           (system.dispatchers.lookup(ServerProxy.DefaultContextName), ServerProxy.DefaultContextName)
         }
       }
@@ -155,22 +138,22 @@ class ServerProxyImpl @Inject()(
     organization: Option[String] = None,
     partner: Option[String] = None
   ): Future[Result] = {
-    Logger.info(s"[proxy $request] to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path}")
+    Logger.info(s"[proxy $request] to [${server.name}] ${route.method} ${server.host}${request.path}")
 
     if (request.jsonpCallback.isDefined) {
-      jsonpHandler.process(definition, request, route, token)
+      jsonpHandler.process(server, request, route, token)
     } else {
       request.contentType match {
         case ContentType.UrlFormEncoded => {
-          urlFormEncodedHandler.process(definition, request, route, token)
+          urlFormEncodedHandler.process(server, request, route, token)
         }
 
         case ContentType.ApplicationJson => {
-          applicationJsonHandler.process(definition, request, route, token)
+          applicationJsonHandler.process(server, request, route, token)
         }
 
         case _ => {
-          genericHandler.process(definition, request, route, token)
+          genericHandler.process(server, request, route, token)
         }
       }
     }

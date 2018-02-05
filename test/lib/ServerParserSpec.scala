@@ -1,10 +1,9 @@
 package lib
 
-import controllers.ServerProxyDefinition
-import org.scalatestplus.play._
+import helpers.BasePlaySpec
 import scala.io.Source
 
-class ServerParserSpec extends PlaySpec with OneServerPerSuite {
+class ServerParserSpec extends BasePlaySpec {
 
   val uri = "file:///test"
 
@@ -21,7 +20,7 @@ class ServerParserSpec extends PlaySpec with OneServerPerSuite {
 
   "hostHeaderValue" in {
     Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
-      ServerProxyDefinition(Server("user", host)).hostHeaderValue must be(
+      Server("user", host).hostHeaderValue must be(
         "user.api.flow.io"
       )
     }
@@ -72,7 +71,9 @@ operations:
       "https://user.api.flow.io"
     )
 
-    val cfg = ConfigParser.parse(uri, spec).validate.right.get
+    val cfg = rightOrErrors(
+      ConfigParser.parse(uri, spec).validate()
+    )
     cfg.sources must be(Seq(source.copy(version = "1.2.3")))
     cfg.servers must be(Seq(user))
     cfg.operations must be(
@@ -87,7 +88,7 @@ operations:
   "latest production config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
     val contents = Source.fromURL(uri).mkString
-    ConfigParser.parse(uri, contents).validate match {
+    ConfigParser.parse(uri, contents).validate() match {
       case Left(errors) => {
         sys.error(s"Failed to parse config at URI[$uri]: $errors")
       }
@@ -159,7 +160,7 @@ operations:
       "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config",
       "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-internal-proxy/development.config"
     )
-    val proxyConfigFetcher = play.api.Play.current.injector.instanceOf[ProxyConfigFetcher]
+    val proxyConfigFetcher = app.injector.instanceOf[ProxyConfigFetcher]
     val config = proxyConfigFetcher.load(uris).right.get
 
     Seq("currency", "currency-internal").foreach { name =>

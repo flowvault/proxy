@@ -2,7 +2,6 @@ package handlers
 
 import javax.inject.{Inject, Singleton}
 
-import controllers.ServerProxyDefinition
 import io.apibuilder.validation.MultiService
 import lib._
 import play.api.http.HttpEntity
@@ -22,7 +21,7 @@ class GenericHandler @Inject() (
   override def multiService: MultiService = apiBuilderServicesFetcher.multiService
 
   override def process(
-    definition: ServerProxyDefinition,
+    server: Server,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
@@ -30,15 +29,15 @@ class GenericHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
     process(
-      definition,
+      server,
       request,
-      buildRequest(definition, request, route, token),
+      buildRequest(server, request, route, token),
       request.body
     )
   }
 
   private[handlers] def process(
-    definition: ServerProxyDefinition,
+    server: Server,
     request: ProxyRequest,
     wsRequest: WSRequest,
     body: Option[ProxyRequestBody]
@@ -46,8 +45,8 @@ class GenericHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
 
-    println(s"definition: ${definition}")
-    println(s"server: ${definition.server}")
+    println(s"server: ${server}")
+    println(s"server: ${server}")
 
     body match {
       case None => {
@@ -72,7 +71,7 @@ class GenericHandler @Inject() (
       }
 
       case Some(ProxyRequestBody.Json(json)) => {
-        logFormData(definition, request, json)
+        logFormData(request, json)
 
         processResponse(
           request,

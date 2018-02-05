@@ -2,7 +2,6 @@ package handlers
 
 import javax.inject.{Inject, Singleton}
 
-import controllers.ServerProxyDefinition
 import lib._
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.Result
@@ -17,7 +16,7 @@ class ApplicationJsonHandler @Inject() (
 ) extends Handler {
 
   override def process(
-    definition: ServerProxyDefinition,
+    server: Server,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
@@ -45,7 +44,7 @@ class ApplicationJsonHandler @Inject() (
 
       case Success(js) => {
         processJson(
-          definition,
+          server,
           request,
           route,
           token,
@@ -56,7 +55,7 @@ class ApplicationJsonHandler @Inject() (
   }
 
   private[handlers] def processJson(
-    definition: ServerProxyDefinition,
+    server: Server,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken,
@@ -76,9 +75,9 @@ class ApplicationJsonHandler @Inject() (
 
       case Right(validatedBody) => {
         genericHandler.process(
-          definition,
+          server,
           request,
-          genericHandler.buildRequest(definition, request, route, token),
+          genericHandler.buildRequest(server, request, route, token),
           Some(ProxyRequestBody.Json(validatedBody))
         )
       }

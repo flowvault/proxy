@@ -2,9 +2,8 @@ package handlers
 
 import javax.inject.{Inject, Singleton}
 
-import controllers.ServerProxyDefinition
 import io.apibuilder.validation.FormData
-import lib.{ProxyRequest, ResolvedToken, Route}
+import lib.{ProxyRequest, ResolvedToken, Route, Server}
 import play.api.mvc.Result
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,7 +18,7 @@ class UrlFormEncodedHandler @Inject() (
 ) extends Handler {
 
   override def process(
-    definition: ServerProxyDefinition,
+    server: Server,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
@@ -35,7 +34,7 @@ class UrlFormEncodedHandler @Inject() (
 
       case Some(body) => {
         applicationJsonHandler.processJson(
-          definition,
+          server,
           request,
           route,
           token,

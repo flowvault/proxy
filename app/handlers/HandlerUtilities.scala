@@ -1,6 +1,5 @@
 package handlers
 
-import controllers.ServerProxyDefinition
 import io.apibuilder.spec.v0.models.ParameterLocation
 import io.apibuilder.validation.MultiService
 import lib._
@@ -22,21 +21,21 @@ trait HandlerUtilities extends Errors {
   def multiService: MultiService
 
   def buildRequest(
-    definition: ServerProxyDefinition,
+    server: Server,
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
   ): WSRequest = {
-    println(s"URL: ${definition.server.host + request.path}")
-    wsClient.url(definition.server.host + request.path)
+    println(s"URL: ${server.host + request.path}")
+    wsClient.url(server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
-      .withRequestTimeout(definition.requestTimeout)
+      .withRequestTimeout(server.requestTimeout)
       .addQueryStringParameters(
         definedQueryParameters(request, route): _*
       )
       .addHttpHeaders(
-        proxyHeaders(definition, request, token).headers: _*
+        proxyHeaders(server, request, token).headers: _*
       )
   }
 
@@ -76,7 +75,6 @@ trait HandlerUtilities extends Errors {
   }
 
   def logFormData(
-    definition: ServerProxyDefinition,
     request: ProxyRequest,
     body: JsValue)
   : Unit = {
@@ -97,15 +95,15 @@ trait HandlerUtilities extends Errors {
     *   - adding a default content-type
     */
   private[this] def proxyHeaders(
-    definition: ServerProxyDefinition,
+    server: Server,
     request: ProxyRequest,
     token: ResolvedToken
   ): Headers = {
 
     val headersToAdd = Seq(
-      Constants.Headers.FlowServer -> definition.server.name,
+      Constants.Headers.FlowServer -> server.name,
       Constants.Headers.FlowRequestId -> request.requestId,
-      Constants.Headers.Host -> definition.hostHeaderValue,
+      Constants.Headers.Host -> server.hostHeaderValue,
       Constants.Headers.ForwardedHost -> request.headers.get(Constants.Headers.Host).getOrElse(""),
       Constants.Headers.ForwardedOrigin -> request.headers.get(Constants.Headers.Origin).getOrElse(""),
       Constants.Headers.ForwardedMethod -> request.originalMethod
