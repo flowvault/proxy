@@ -30,7 +30,20 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    val wsRequest = buildRequest(server, request, route, token)
+    process(wsClient, server, request, route, token)
+  }
+
+  private[handlers] def process(
+    wsClient: WSClient,
+    server: Server,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Result] = {
+
+    val wsRequest = buildRequest(wsClient, server, request, route, token)
 
     request.body match {
       case None => {
@@ -70,6 +83,7 @@ class GenericHandler @Inject() (
   }
 
   private[this] def buildRequest(
+    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,

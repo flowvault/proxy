@@ -60,10 +60,10 @@ class GenericHandlerSpec extends BasePlaySpec {
       val u2 = toString(await(client.url(url).stream()).bodyAsSource)
       println(s"USER: $u2")
 
-      /*
       println(s"Starting request")
       val response = await(
         genericHandler.process(
+          wsClient = client,
           server = server,
           request = createProxyRequest(
             requestMethod = Method.Get,
@@ -76,7 +76,6 @@ class GenericHandlerSpec extends BasePlaySpec {
       println(s"Done with request")
       //println(s"response: ${response.body}")
       println(s"BODY: " + toString(response.body.dataStream))
-*/
     }
   }
 
