@@ -9,7 +9,7 @@ import play.api.mvc.Result
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * Converts url form encodes into a JSON body, then
+  * Converts url form encoded into a JSON body, then
   * delegates processing to the application json handler
   */
 @Singleton

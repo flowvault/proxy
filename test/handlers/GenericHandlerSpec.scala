@@ -34,17 +34,19 @@ class GenericHandlerSpec extends BasePlaySpec {
       )
     )
   }
-/*
+
   "GET request" in {
-    mockStandaloneServer.withServer { (server, client) =>
+    mockStandaloneServer.withServer { (server, wsClient) =>
+      /*
       println(s"server: $server")
       val url = s"${server.host}/users/"
       println(s"URL - $url")
-      val u = await(client.url(url).get()).body
+      val u = await(wsClient.url(url).get()).body
       println(s"USER: $u")
-
-      val result = await(
+*/
+      val response = await(
         genericHandler.process(
+          wsClient = wsClient,
           server = server,
           request = createProxyRequest(
             requestMethod = "GET",
@@ -54,8 +56,12 @@ class GenericHandlerSpec extends BasePlaySpec {
           token = ResolvedToken(requestId = createTestId())
         )
       )
+
+      response.body.dataStream
+
+
+      println(s"response: ${response.body}")
     }
   }
-  */
 
 }
