@@ -11,7 +11,7 @@ class Config @Inject() (
   private[this] object Names {
     val JwtSalt = "jwt.salt"
     val VerboseLogPrefixes = "integration.path.prefixes"
-    val All = Seq(JwtSalt)
+    val Required = Seq(JwtSalt)
   }
 
   lazy val jwtSalt: String = requiredString(Names.JwtSalt)
@@ -32,7 +32,7 @@ class Config @Inject() (
   }
 
   def missing(): Seq[String] = {
-    Names.All.filter { optionalString(_).isEmpty }
+    Names.Required.filter { optionalString(_).isEmpty }
   }
 
   def isVerboseLogEnabled(path: String): Boolean = {

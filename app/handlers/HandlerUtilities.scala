@@ -1,6 +1,5 @@
 package handlers
 
-import io.apibuilder.spec.v0.models.ParameterLocation
 import io.apibuilder.validation.MultiService
 import lib._
 import play.api.Logger
@@ -11,8 +10,6 @@ import scala.util.{Failure, Success, Try}
 trait HandlerUtilities extends Errors {
 
   def config: Config
-
-  def flowAuth: FlowAuth
 
   def multiService: MultiService
 
@@ -60,7 +57,7 @@ trait HandlerUtilities extends Errors {
       val safeBody = body match {
         case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
         case _: JsObject => toLogValue(request, body, typ)
-        case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
+        case _ => "Body of type[${body.getClass.getName}] fully redacted"
       }
       Logger.info(s"[proxy $request] body type[${typ.getOrElse("unknown")}]: $safeBody")
     }
