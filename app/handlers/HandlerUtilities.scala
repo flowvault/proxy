@@ -69,9 +69,10 @@ trait HandlerUtilities extends Errors {
   }
 
   /**
-    * Returns the subset of query parameters that are documented as acceptable for this method
+    * For envelope requests, returns the subset of query parameters
+    * that are documented as acceptable for this method.
     */
-  def definedQueryParameters(
+  private[this] def definedQueryParameters(
     request: ProxyRequest,
     route: Route
   ): Seq[(String, String)] = {

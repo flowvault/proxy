@@ -28,41 +28,9 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    process(
-      request,
-      buildRequest(server, request, route, token),
-      request.body
-    )
-  }
+    val wsRequest = buildRequest(server, request, route, token)
 
-  private[handlers] def buildRequest(
-    server: Server,
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken
-  ): WSRequest = {
-    println(s"URL: ${server.host + request.path}")
-    wsClient.url(server.host + request.path)
-      .withFollowRedirects(false)
-      .withMethod(route.method)
-      .withRequestTimeout(server.requestTimeout)
-      .addQueryStringParameters(
-        definedQueryParameters(request, route): _*
-      )
-      .addHttpHeaders(
-        proxyHeaders(server, request, token).headers: _*
-      )
-  }
-
-  private[handlers] def process(
-    request: ProxyRequest,
-    wsRequest: WSRequest,
-    body: Option[ProxyRequestBody]
-  )(
-    implicit ec: ExecutionContext
-  ): Future[Result] = {
-
-    body match {
+    request.body match {
       case None => {
         processResponse(request, wsRequest.stream())
       }
@@ -95,6 +63,26 @@ class GenericHandler @Inject() (
         )
       }
     }
+
+  }
+
+  private[this] def buildRequest(
+    server: Server,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken
+  ): WSRequest = {
+    println(s"URL: ${server.host + request.path}")
+    wsClient.url(server.host + request.path)
+      .withFollowRedirects(false)
+      .withMethod(route.method)
+      .withRequestTimeout(server.requestTimeout)
+      .addQueryStringParameters(
+        definedQueryParameters(request, route): _*
+      )
+      .addHttpHeaders(
+        proxyHeaders(server, request, token).headers: _*
+      )
   }
 
   private[this] def processResponse(
@@ -110,15 +98,13 @@ class GenericHandler @Inject() (
         request.response(response.status, response.body, response.headers)
       } else {
         /**
-          * Returns the content type of the request. WS Client defaults to
-          * application/octet-stream. Given this proxy is for APIs only,
-          * assume application / JSON if no content type header is
-          * provided.
+          * Returns the content type of the response, defaulting to the
+          * request Content-Type
           */
         val contentType: String = response.headers.
           get("Content-Type").
           flatMap(_.headOption).
-          getOrElse(ContentType.ApplicationJson.toString)
+          getOrElse(request.contentType.toString)
 
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
@@ -172,6 +158,7 @@ class GenericHandler @Inject() (
   ): Headers = {
 
     val headersToAdd = Seq(
+      Constants.Headers.ContentType -> request.contentType.toString,
       Constants.Headers.FlowServer -> server.name,
       Constants.Headers.FlowRequestId -> request.requestId,
       Constants.Headers.Host -> server.hostHeaderValue,
@@ -185,11 +172,6 @@ class GenericHandler @Inject() (
 
       request.clientIp().map { ip =>
         Constants.Headers.FlowIp -> ip
-      },
-
-      request.headers.get("Content-Type") match {
-        case None => Some("Content-Type" -> request.contentType.toString)
-        case Some(_) => None
       }
     ).flatten
 

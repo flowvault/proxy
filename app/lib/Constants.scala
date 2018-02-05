@@ -10,6 +10,7 @@ object Constants {
     val FlowHost = "X-Flow-Host"
     val FlowIp = "X-Flow-Ip"
 
+    val ContentType = "Content-Type"
     val Host = "Host"
     val ForwardedHost = "X-Forwarded-Host"
     val ForwardedFor = "X-Forwarded-For"

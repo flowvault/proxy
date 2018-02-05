@@ -75,9 +75,12 @@ class ApplicationJsonHandler @Inject() (
 
       case Right(validatedBody) => {
         genericHandler.process(
-          request,
-          genericHandler.buildRequest(server, request, route, token),
-          Some(ProxyRequestBody.Json(validatedBody))
+          server,
+          request.copy(
+            body = Some(ProxyRequestBody.Json(validatedBody))
+          ),
+          route,
+          token
         )
       }
     }
