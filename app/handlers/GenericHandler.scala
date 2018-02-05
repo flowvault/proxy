@@ -6,7 +6,7 @@ import io.apibuilder.validation.MultiService
 import lib._
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
-import play.api.mvc.{Result, Results}
+import play.api.mvc.{Headers, Result, Results}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class GenericHandler @Inject() (
   override val config: Config,
   override val flowAuth: FlowAuth,
-  override val wsClient: WSClient,
+  wsClient: WSClient,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities  {
 
@@ -29,24 +29,38 @@ class GenericHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
     process(
-      server,
       request,
       buildRequest(server, request, route, token),
       request.body
     )
   }
 
-  private[handlers] def process(
+  private[handlers] def buildRequest(
     server: Server,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken
+  ): WSRequest = {
+    println(s"URL: ${server.host + request.path}")
+    wsClient.url(server.host + request.path)
+      .withFollowRedirects(false)
+      .withMethod(route.method)
+      .withRequestTimeout(server.requestTimeout)
+      .addQueryStringParameters(
+        definedQueryParameters(request, route): _*
+      )
+      .addHttpHeaders(
+        proxyHeaders(server, request, token).headers: _*
+      )
+  }
+
+  private[handlers] def process(
     request: ProxyRequest,
     wsRequest: WSRequest,
     body: Option[ProxyRequestBody]
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-
-    println(s"server: ${server}")
-    println(s"server: ${server}")
 
     body match {
       case None => {
@@ -146,4 +160,41 @@ class GenericHandler @Inject() (
     wsRequest.withHttpHeaders(headers: _*)
   }
 
+  /**
+    * Modifies headers by:
+    *   - removing X-Flow-* headers if they were set
+    *   - adding a default content-type
+    */
+  private[this] def proxyHeaders(
+    server: Server,
+    request: ProxyRequest,
+    token: ResolvedToken
+  ): Headers = {
+
+    val headersToAdd = Seq(
+      Constants.Headers.FlowServer -> server.name,
+      Constants.Headers.FlowRequestId -> request.requestId,
+      Constants.Headers.Host -> server.hostHeaderValue,
+      Constants.Headers.ForwardedHost -> request.headers.get(Constants.Headers.Host).getOrElse(""),
+      Constants.Headers.ForwardedOrigin -> request.headers.get(Constants.Headers.Origin).getOrElse(""),
+      Constants.Headers.ForwardedMethod -> request.originalMethod
+    ) ++ Seq(
+      Some(
+        Constants.Headers.FlowAuth -> flowAuth.jwt(token)
+      ),
+
+      request.clientIp().map { ip =>
+        Constants.Headers.FlowIp -> ip
+      },
+
+      request.headers.get("Content-Type") match {
+        case None => Some("Content-Type" -> request.contentType.toString)
+        case Some(_) => None
+      }
+    ).flatten
+
+    val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(request.headers) { case (h, n) => h.remove(n) }
+
+    headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
+  }
 }

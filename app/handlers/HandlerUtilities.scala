@@ -16,28 +16,7 @@ trait HandlerUtilities extends Errors {
 
   def flowAuth: FlowAuth
 
-  def wsClient: WSClient
-
   def multiService: MultiService
-
-  def buildRequest(
-    server: Server,
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken
-  ): WSRequest = {
-    println(s"URL: ${server.host + request.path}")
-    wsClient.url(server.host + request.path)
-      .withFollowRedirects(false)
-      .withMethod(route.method)
-      .withRequestTimeout(server.requestTimeout)
-      .addQueryStringParameters(
-        definedQueryParameters(request, route): _*
-      )
-      .addHttpHeaders(
-        proxyHeaders(server, request, token).headers: _*
-      )
-  }
 
   def log4xx(request: ProxyRequest, status: Int, body: String): Unit = {
     // GET too noisy due to bots
@@ -87,44 +66,6 @@ trait HandlerUtilities extends Errors {
       }
       Logger.info(s"[proxy $request] body type[${typ.getOrElse("unknown")}]: $safeBody")
     }
-  }
-
-  /**
-    * Modifies headers by:
-    *   - removing X-Flow-* headers if they were set
-    *   - adding a default content-type
-    */
-  private[this] def proxyHeaders(
-    server: Server,
-    request: ProxyRequest,
-    token: ResolvedToken
-  ): Headers = {
-
-    val headersToAdd = Seq(
-      Constants.Headers.FlowServer -> server.name,
-      Constants.Headers.FlowRequestId -> request.requestId,
-      Constants.Headers.Host -> server.hostHeaderValue,
-      Constants.Headers.ForwardedHost -> request.headers.get(Constants.Headers.Host).getOrElse(""),
-      Constants.Headers.ForwardedOrigin -> request.headers.get(Constants.Headers.Origin).getOrElse(""),
-      Constants.Headers.ForwardedMethod -> request.originalMethod
-    ) ++ Seq(
-      Some(
-        Constants.Headers.FlowAuth -> flowAuth.jwt(token)
-      ),
-
-      request.clientIp().map { ip =>
-        Constants.Headers.FlowIp -> ip
-      },
-
-      request.headers.get("Content-Type") match {
-        case None => Some("Content-Type" -> request.contentType.toString)
-        case Some(_) => None
-      }
-    ).flatten
-
-    val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(request.headers) { case (h, n) => h.remove(n) }
-
-    headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
   }
 
   /**
