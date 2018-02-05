@@ -143,11 +143,17 @@ class GenericHandler @Inject() (
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
           case Some(Seq(length)) =>
-            Results.Status(response.status).sendEntity(
-              HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
-            )
+            Results.Status(response.status).
+              sendEntity(
+                HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
+              ).
+              withHeaders(Util.toFlatSeq(response.headers): _*)
+
           case _ =>
-            Results.Status(response.status).chunked(response.bodyAsSource).as(contentType)
+            Results.Status(response.status).
+              chunked(response.bodyAsSource).as(contentType).
+              withHeaders(Util.toFlatSeq(response.headers): _*)
+
         }
       }
     }.recover {

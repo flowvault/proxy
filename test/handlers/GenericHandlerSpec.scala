@@ -62,6 +62,7 @@ class GenericHandlerSpec extends BasePlaySpec {
         )
       )
       response.header.status must equal(200)
+      response.header.headers.get("Content-Type") must equal(Some("application/json"))
       toString(response.body.dataStream) must equal("[{\"id\":1,\"name\":\"Joe Smith\"}]")
     }
   }
