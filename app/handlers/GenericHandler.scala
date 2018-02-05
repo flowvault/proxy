@@ -89,7 +89,6 @@ class GenericHandler @Inject() (
     route: Route,
     token: ResolvedToken
   ): WSRequest = {
-    println(s"URL: ${server.host + request.path}")
     wsClient.url(server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method.toString)
@@ -108,8 +107,6 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    println(s"request: ${request}")
-    println(s"pathWithQuery: ${request.pathWithQuery}")
     response.map { response =>
       if (request.responseEnvelope) {
         request.response(response.status, response.body, response.headers)
@@ -123,7 +120,6 @@ class GenericHandler @Inject() (
           flatMap(_.headOption).
           getOrElse(request.contentType.toString)
 
-        println(s"contentType: $contentType")
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
           case Some(Seq(length)) =>

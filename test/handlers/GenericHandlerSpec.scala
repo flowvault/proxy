@@ -1,15 +1,13 @@
 package handlers
 
-import akka.Done
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, Materializer}
-import akka.stream.scaladsl.{Sink, Source, StreamConverters}
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import helpers.{BasePlaySpec, MockStandaloneServer}
 import lib._
 import play.api.mvc.Headers
 
-import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 class GenericHandlerSpec extends BasePlaySpec {
@@ -51,16 +49,6 @@ class GenericHandlerSpec extends BasePlaySpec {
 
   "GET request" in {
     MockStandaloneServer.withServer { (server, client) =>
-      println(s"server: $server")
-      val url = s"${server.host}/users/"
-      println(s"URL - $url")
-      val u1 = await(client.url(url).get()).body
-      println(s"USER: $u1")
-
-      val u2 = toString(await(client.url(url).stream()).bodyAsSource)
-      println(s"USER: $u2")
-
-      println(s"Starting request")
       val response = await(
         genericHandler.process(
           wsClient = client,
@@ -73,9 +61,8 @@ class GenericHandlerSpec extends BasePlaySpec {
           token = ResolvedToken(requestId = createTestId())
         )
       )
-      println(s"Done with request")
-      //println(s"response: ${response.body}")
-      println(s"BODY: " + toString(response.body.dataStream))
+      response.header.status must equal(200)
+      toString(response.body.dataStream) must equal("[{\"id\":1,\"name\":\"Joe Smith\"}]")
     }
   }
 
