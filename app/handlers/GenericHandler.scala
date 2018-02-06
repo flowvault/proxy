@@ -148,7 +148,7 @@ class GenericHandler @Inject() (
       )
 
       if (request.responseEnvelope) {
-        request.response(response.status, response.body, response.headers)
+        request.response(response.status, response.body, responseHeaders)
       } else {
         contentLength match {
           case None => {
