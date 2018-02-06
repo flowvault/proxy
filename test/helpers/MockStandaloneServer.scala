@@ -1,6 +1,5 @@
 package helpers
 
-import play.api.http.Port
 import play.core.server.Server
 import play.api.routing.sird._
 import play.api.mvc._
@@ -10,22 +9,8 @@ import play.api.test.WsTestClient
 
 object MockStandaloneServer {
 
-  def withServer[T](
-    f: (lib.Server, WSClient) => T
-  ): T = {
-    withTestClient { (port, client) =>
-      f(
-        lib.Server(
-          name = "Test",
-          host = s"http://localhost:${port.value}"
-        ),
-        client
-      )
-    }
-  }
-
-  private[this] def withTestClient[T](
-    f: (Port, WSClient) => T
+  def withTestClient[T](
+    f: (WSClient, Int) => T
   ):T = {
     Server.withRouterFromComponents() { components =>
       import Results._
@@ -47,7 +32,7 @@ object MockStandaloneServer {
       }
     } { implicit port =>
       WsTestClient.withClient { client =>
-        f(port, client)
+        f(client, port.value)
       }
     }
   }

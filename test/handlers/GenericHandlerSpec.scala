@@ -17,6 +17,21 @@ class GenericHandlerSpec extends BasePlaySpec {
 
   private[this] def genericHandler = app.injector.instanceOf[GenericHandler]
 
+  private[this] case class SimulatedResponse(
+    server: Server,
+    request: ProxyRequest,
+    result: Result,
+    body: String
+  ) {
+
+    val status: Int = result.header.status
+
+    def header(name: String): Option[String] = {
+      result.header.headers.get(name)
+    }
+
+  }
+
   private[this] def createProxyRequest(
     requestMethod: Method,
     requestPath: String,
@@ -42,38 +57,60 @@ class GenericHandlerSpec extends BasePlaySpec {
   }
 
   private[this] def toString(source: Source[ByteString, _]): String = {
-    implicit val system: ActorSystem = ActorSystem("QuickStart")
+    implicit val system: ActorSystem = ActorSystem("toString")
     implicit val materializer: ActorMaterializer = ActorMaterializer()
     val is = source.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
     scala.io.Source.fromInputStream(is, "UTF-8").mkString
   }
 
-  private[this] def simulateResponse(
+  private[this] def simulate(
     method: Method,
-    path: String
-  ): (Result, String) = {
-    MockStandaloneServer.withServer { (server, client) =>
-      val response = await(
+    path: String,
+    serverName: String = "test"
+  ): SimulatedResponse = {
+    MockStandaloneServer.withTestClient { (client, port) =>
+      val server = Server(
+        name = serverName,
+        host = s"http://localhost:$port"
+      )
+
+      val proxyRequest = createProxyRequest(
+        requestMethod = method,
+        requestPath = path
+      )
+
+      val result = await(
         genericHandler.process(
           wsClient = client,
           server = server,
-          request = createProxyRequest(
-            requestMethod = method,
-            requestPath = path
-          ),
+          request = proxyRequest,
           route = Route(method, path),
           token = ResolvedToken(requestId = createTestId())
         )
       )
-      (response, toString(response.body.dataStream))
+
+      println(s"path: $path")
+      result.header.headers.foreach { case (k, v) =>
+        println(s" header[$k] = $v")
+      }
+
+      SimulatedResponse(
+        server = server,
+        request = proxyRequest,
+        result = result,
+        body = toString(result.body.dataStream)
+      )
     }
   }
 
+
   "GET application/json" in {
-    val (response, body) = simulateResponse(Method.Get, "/users/")
-    response.header.status must equal(200)
-    response.header.headers.get("Content-Type") must equal(Some("application/json"))
-    Json.parse(body) must equal(
+    val sim = simulate(Method.Get, "/users/")
+    sim.status must equal(200)
+    sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
+    sim.header(Constants.Headers.FlowServer) must equal(Some(sim.server.name))
+    sim.header(Constants.Headers.FlowRequestId) must equal(Some(sim.request.requestId))
+    Json.parse(sim.body) must equal(
       JsArray(
         Seq(
           Json.obj("id" -> 1)
@@ -83,11 +120,12 @@ class GenericHandlerSpec extends BasePlaySpec {
   }
 
   "GET redirect" in {
-    val (response, body) = simulateResponse(Method.Get, "/redirect/example")
-    response.header.status must equal(303)
-    response.header.headers.get("Location") must equal(Some("http://localhost/foo"))
-    response.header.headers.get("Content-Type") must equal(None)
-    body must equal("")
+    val sim = simulate(Method.Get, "/redirect/example")
+    sim.result.header.status must equal(303)
+    sim.header("Location") must equal(Some("http://localhost/foo"))
+    // TODO: What do we want content type to be for redirects?
+    sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
+    sim.body must equal("")
   }
 
 }

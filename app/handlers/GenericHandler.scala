@@ -136,37 +136,40 @@ class GenericHandler @Inject() (
           * request Content-Type
           */
         val contentType: String = response.headers.
-          get("Content-Type").
-          flatMap(_.headOption).
+          getOrElse("Content-Type", Nil).
+          headOption.
           getOrElse(request.contentType.toString)
 
-        println(s"response.status: ${response.status}")
-        println(s"contentType: $contentType")
-        println(s"content-length: " + response.headers.get("Content-Length"))
+        val contentLength: Option[String] = response.headers.getOrElse("Content-Length", Nil).headOption
+
         // we specify content type and length explicitly - do not include
         // in response headers below as they will be et twice generating
         // warnings in async http client
         val responseHeaders = Util.toFlatSeq(
           Util.removeKeys(
             response.headers,
-            Seq(Constants.Headers.ContentLength)
+            Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
+          ) ++ Map(
+            Constants.Headers.ContentType -> Seq(contentType),
+            Constants.Headers.FlowRequestId -> Seq(request.requestId),
+            Constants.Headers.FlowServer -> Seq(server.name)
           )
         )
 
-        // If there's a content length, send that, otherwise return the body chunked
-        response.headers.get("Content-Length") match {
-          case Some(Seq(length)) =>
+        contentLength match {
+          case None => {
+            Results.Status(response.status).
+              chunked(response.bodyAsSource).
+              withHeaders(responseHeaders: _*)
+          }
+
+          case Some(length) => {
             Results.Status(response.status).
               sendEntity(
                 HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
               ).
               withHeaders(responseHeaders: _*)
-
-          case _ =>
-            Results.Status(response.status).
-              chunked(response.bodyAsSource).
-              withHeaders(responseHeaders: _*)
-
+          }
         }
       }
     }.recover {
