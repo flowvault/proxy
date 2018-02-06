@@ -100,7 +100,7 @@ object Route {
 
   /**
     * Represents a dynamic route (e.g. /organizations/:id) with
-    * wildcards. We implement this be building a regular expression
+    * wildcards. We implement this by building a regular expression
     * that replaces any ":xxx" with a pattern of one or more
     * characters that are not a '/'
     */

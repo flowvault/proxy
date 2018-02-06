@@ -102,6 +102,7 @@ class GenericHandlerSpec extends BasePlaySpec {
   "defaults content type to application/json" in {
     val sim = simulate(Method.Get, "/users/1")
     sim.status must equal(200)
+    sim.header(Constants.Headers.ContentLength) must equal(Some(sim.body.length.toString))
     sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
     sim.header(Constants.Headers.FlowServer) must equal(Some(sim.server.name))
     sim.header(Constants.Headers.FlowRequestId) must equal(Some(sim.request.requestId))
@@ -113,6 +114,7 @@ class GenericHandlerSpec extends BasePlaySpec {
   "propagates redirect" in {
     val sim = simulate(Method.Get, "/redirect/example")
     sim.result.header.status must equal(303)
+    sim.header(Constants.Headers.ContentLength) must equal(Some("0"))
     sim.header("Location") must equal(Some("http://localhost/foo"))
     // TODO: What do we want content type to be for redirects?
     sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))

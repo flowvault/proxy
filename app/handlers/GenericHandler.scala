@@ -128,39 +128,33 @@ class GenericHandler @Inject() (
         userId = token.userId
       )
 
+      /**
+        * Returns the content type of the response, defaulting to the
+        * request Content-Type
+        */
+      val contentType: String = response.header(Constants.Headers.ContentType).getOrElse(
+        request.contentType.toString
+      )
+      val contentLength: Option[String] = response.header("Content-Length")
+
+      // Remove content type (to avoid adding twice) then add common Flow headers
+      val responseHeaders = Util.removeKey(
+        response.headers,
+        Constants.Headers.ContentType
+      ) ++ Map(
+        Constants.Headers.ContentType -> Seq(contentType),
+        Constants.Headers.FlowRequestId -> Seq(request.requestId),
+        Constants.Headers.FlowServer -> Seq(server.name)
+      )
+
       if (request.responseEnvelope) {
         request.response(response.status, response.body, response.headers)
       } else {
-        /**
-          * Returns the content type of the response, defaulting to the
-          * request Content-Type
-          */
-        val contentType: String = response.headers.
-          getOrElse("Content-Type", Nil).
-          headOption.
-          getOrElse(request.contentType.toString)
-
-        val contentLength: Option[String] = response.headers.getOrElse("Content-Length", Nil).headOption
-
-        // we specify content type and length explicitly - do not include
-        // in response headers below as they will be et twice generating
-        // warnings in async http client
-        val responseHeaders = Util.toFlatSeq(
-          Util.removeKeys(
-            response.headers,
-            Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
-          ) ++ Map(
-            Constants.Headers.ContentType -> Seq(contentType),
-            Constants.Headers.FlowRequestId -> Seq(request.requestId),
-            Constants.Headers.FlowServer -> Seq(server.name)
-          )
-        )
-
         contentLength match {
           case None => {
             Results.Status(response.status).
               chunked(response.bodyAsSource).
-              withHeaders(responseHeaders: _*)
+              withHeaders(Util.toFlatSeq(responseHeaders): _*)
           }
 
           case Some(length) => {
@@ -168,7 +162,7 @@ class GenericHandler @Inject() (
               sendEntity(
                 HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
               ).
-              withHeaders(responseHeaders: _*)
+              withHeaders(Util.toFlatSeq(responseHeaders): _*)
           }
         }
       }
