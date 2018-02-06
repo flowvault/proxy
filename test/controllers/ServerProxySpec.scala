@@ -1,7 +1,8 @@
 package controllers
 
 import helpers.BasePlaySpec
-import org.scalatestplus.play._
+import org.scalatestplus.play.PlaySpec
+import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 
 class ServerProxySpec extends BasePlaySpec {
 

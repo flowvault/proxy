@@ -1,9 +1,9 @@
 package lib
 
-import org.scalatestplus.play._
+import helpers.BasePlaySpec
 import play.api.libs.json._
 
-class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
+class LoggingUtilSpec extends BasePlaySpec {
 
   private[this] val logger = JsonSafeLogger(
     JsonSafeLoggerConfig(

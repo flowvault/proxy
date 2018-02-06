@@ -1,10 +1,10 @@
 package lib
 
-import org.scalatestplus.play._
+import helpers.BasePlaySpec
 
-class ConfigSpec extends PlaySpec with OneServerPerSuite {
+class ConfigSpec extends BasePlaySpec {
 
-  private[this] lazy val config = play.api.Play.current.injector.instanceOf[Config]
+  private[this] lazy val config = app.injector.instanceOf[Config]
 
   "isVerboseLogEnabled" in {
     config.isVerboseLogEnabled("/foo") must be(true)

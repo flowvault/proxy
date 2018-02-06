@@ -1,10 +1,11 @@
 package lib
 
 import java.util.UUID
-import org.joda.time.format.ISODateTimeFormat.dateTime
-import org.scalatestplus.play._
 
-class ResolvedTokenSpec extends PlaySpec with OneServerPerSuite {
+import helpers.BasePlaySpec
+import org.joda.time.format.ISODateTimeFormat.dateTime
+
+class ResolvedTokenSpec extends BasePlaySpec {
 
   private[this] val requestId = UUID.randomUUID.toString
 

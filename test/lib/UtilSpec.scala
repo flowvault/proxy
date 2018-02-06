@@ -1,8 +1,8 @@
 package lib
 
-import org.scalatestplus.play._
+import helpers.BasePlaySpec
 
-class UtilSpec extends PlaySpec with OneServerPerSuite {
+class UtilSpec extends BasePlaySpec {
 
   "toFlatSeq" in {
     Util.toFlatSeq(Map[String, Seq[String]]()) must be(Nil)
