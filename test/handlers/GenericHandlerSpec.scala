@@ -99,7 +99,7 @@ class GenericHandlerSpec extends BasePlaySpec {
   }
 
 
-  "GET application/json" in {
+  "defaults content type to application/json" in {
     val sim = simulate(Method.Get, "/users/1")
     sim.status must equal(200)
     sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
@@ -110,7 +110,7 @@ class GenericHandlerSpec extends BasePlaySpec {
     )
   }
 
-  "GET redirect" in {
+  "propagates redirect" in {
     val sim = simulate(Method.Get, "/redirect/example")
     sim.result.header.status must equal(303)
     sim.header("Location") must equal(Some("http://localhost/foo"))
@@ -119,13 +119,13 @@ class GenericHandlerSpec extends BasePlaySpec {
     sim.body must equal("")
   }
 
-  "GET respects provided content type" in {
+  "respects provided content type" in {
     val sim = simulate(Method.Get, "/file.pdf")
     sim.result.header.status must equal(200)
     sim.header(Constants.Headers.ContentType) must equal(Some("application/pdf"))
   }
 
-  "GET propagates 404" in {
+  "propagates 404" in {
     val sim = simulate(Method.Get, "/non-existent-path")
     sim.result.header.status must equal(404)
   }
