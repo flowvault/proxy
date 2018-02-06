@@ -6,7 +6,8 @@ import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import helpers.{BasePlaySpec, MockStandaloneServer}
 import lib._
-import play.api.mvc.Headers
+import play.api.libs.json.{JsArray, Json}
+import play.api.mvc.{Headers, Result}
 
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
@@ -16,7 +17,7 @@ class GenericHandlerSpec extends BasePlaySpec {
 
   private[this] def genericHandler = app.injector.instanceOf[GenericHandler]
 
-  def createProxyRequest(
+  private[this] def createProxyRequest(
     requestMethod: Method,
     requestPath: String,
     body: Option[ProxyRequestBody] = None,
@@ -47,24 +48,46 @@ class GenericHandlerSpec extends BasePlaySpec {
     scala.io.Source.fromInputStream(is, "UTF-8").mkString
   }
 
-  "GET request" in {
+  private[this] def simulateResponse(
+    method: Method,
+    path: String
+  ): (Result, String) = {
     MockStandaloneServer.withServer { (server, client) =>
       val response = await(
         genericHandler.process(
           wsClient = client,
           server = server,
           request = createProxyRequest(
-            requestMethod = Method.Get,
-            requestPath = "/users/"
+            requestMethod = method,
+            requestPath = path
           ),
-          route = Route(Method.Get, "/users/"),
+          route = Route(method, path),
           token = ResolvedToken(requestId = createTestId())
         )
       )
-      response.header.status must equal(200)
-      response.header.headers.get("Content-Type") must equal(Some("application/json"))
-      toString(response.body.dataStream) must equal("[{\"id\":1,\"name\":\"Joe Smith\"}]")
+      (response, toString(response.body.dataStream))
     }
+  }
+
+  "GET application/json" in {
+    val (response, body) = simulateResponse(Method.Get, "/users/")
+    response.header.status must equal(200)
+    response.header.headers.get("Content-Type") must equal(Some("application/json"))
+    Json.parse(body) must equal(
+      JsArray(
+        Seq(
+          Json.obj("id" -> 1)
+        )
+      )
+    )
+  }
+
+  "GET redirect" in {
+    val (response, body) = simulateResponse(Method.Get, "/redirect/example")
+    response.header.status must equal(303)
+    response.header.headers.get("Location") must equal(Some("http://localhost/foo"))
+    response.header.headers.get("Content-Type") must equal(None)
+    body must equal("")
   }
 
 }

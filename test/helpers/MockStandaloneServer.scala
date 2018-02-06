@@ -35,11 +35,14 @@ object MockStandaloneServer {
           Ok(
             Json.arr(
               Json.obj(
-                "id" -> 1,
-                "name" -> "Joe Smith"
+                "id" -> 1
               )
             )
           )
+        }
+
+        case GET(p"/redirect/example") => Action {
+          Redirect("http://localhost/foo")
         }
       }
     } { implicit port =>

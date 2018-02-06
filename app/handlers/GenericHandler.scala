@@ -140,14 +140,16 @@ class GenericHandler @Inject() (
           flatMap(_.headOption).
           getOrElse(request.contentType.toString)
 
+        println(s"response.status: ${response.status}")
+        println(s"contentType: $contentType")
+        println(s"content-length: " + response.headers.get("Content-Length"))
         // we specify content type and length explicitly - do not include
         // in response headers below as they will be et twice generating
         // warnings in async http client
         val responseHeaders = Util.toFlatSeq(
           Util.removeKeys(
             response.headers,
-            Seq(Constants.Headers.ContentLength
-            )
+            Seq(Constants.Headers.ContentLength)
           )
         )
 
