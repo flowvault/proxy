@@ -252,7 +252,19 @@ case class ProxyRequest(
     headers: Map[String,Seq[String]] = Map()
   ): Result = {
     if (responseEnvelope) {
-      Ok(wrappedResponseBody(status, body, headers)).as("application/javascript; charset=utf-8")
+      val wrappedBody = wrappedResponseBody(status, body, headers)
+
+      // Adjust content length as we added to the body.
+      // Explicitly set content-type to javascript
+      val responseHeaders = Util.removeKeys(
+        headers,
+        Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
+        ) ++ Map(
+        Constants.Headers.ContentLength -> Seq(wrappedBody.length.toString),
+        Constants.Headers.ContentType -> Seq("application/javascript; charset=utf-8")
+      )
+
+      Ok(wrappedBody).withHeaders(Util.toFlatSeq(responseHeaders): _*)
     } else {
       Status(status)(body).withHeaders(Util.toFlatSeq(headers): _*)
     }

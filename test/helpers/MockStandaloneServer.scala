@@ -24,6 +24,14 @@ object MockStandaloneServer {
           )
         }
 
+        case POST(p"/users") => Action {
+          Created(
+            Json.obj(
+              "id" -> 1
+            )
+          )
+        }
+
         case GET(p"/redirect/example") => Action {
           Redirect("http://localhost/foo")
         }
@@ -31,6 +39,7 @@ object MockStandaloneServer {
         case GET(p"/file.pdf") => Action {
           Ok("file.pdf").as("application/pdf")
         }
+
       }
     } { implicit port =>
       WsTestClient.withClient { client =>

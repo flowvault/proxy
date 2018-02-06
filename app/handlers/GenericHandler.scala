@@ -116,17 +116,7 @@ class GenericHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
     response.map { response =>
-      metricActor ! MetricActor.Messages.Send(
-        server = server.name,
-        requestId = request.requestId,
-        method = request.method.toString,
-        path = request.pathWithQuery,
-        ms = System.currentTimeMillis() - request.createdAtMillis,
-        response = response.status,
-        organizationId = token.organizationId,
-        partnerId = token.partnerId,
-        userId = token.userId
-      )
+      metricActor ! toMetricMessage(server, request, response.status, token)
 
       /**
         * Returns the content type of the response, defaulting to the
@@ -170,6 +160,26 @@ class GenericHandler @Inject() (
       case ex: Throwable => throw new Exception(ex)
     }
   }
+
+  private[this] def toMetricMessage(
+    server: Server,
+    request: ProxyRequest,
+    responseStatus: Int,
+    token: ResolvedToken
+  ): MetricActor.Messages.Send = {
+    MetricActor.Messages.Send(
+      server = server.name,
+      requestId = request.requestId,
+      method = request.method.toString,
+      path = request.pathWithQuery,
+      ms = System.currentTimeMillis() - request.createdAtMillis,
+      response = responseStatus,
+      organizationId = token.organizationId,
+      partnerId = token.partnerId,
+      userId = token.userId
+    )
+  }
+
 
   /**
     * Modifies headers by:

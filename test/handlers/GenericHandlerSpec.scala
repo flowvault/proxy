@@ -132,4 +132,23 @@ class GenericHandlerSpec extends BasePlaySpec {
     sim.result.header.status must equal(404)
   }
 
+  "supports jsonp" in {
+    val sim = simulate(Method.Post, "/users")
+    sim.status must equal(201)
+    sim.header(Constants.Headers.ContentLength) must equal(Some(sim.body.length.toString))
+    sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
+    Json.parse(sim.body) must equal(
+      Json.obj("id" -> 1)
+    )
+
+    val jsonp = simulate(Method.Post, "/users?jsonp_callback=foo")
+    jsonp.status must equal(200)
+    jsonp.header(Constants.Headers.ContentLength) must equal(Some(jsonp.body.length.toString))
+    jsonp.header(Constants.Headers.ContentType) must equal(Some("application/javascript; charset=utf-8"))
+    jsonp.body must equal(
+      """
+        |foo({"id": 1})
+      """.stripMargin
+    )
+  }
 }
