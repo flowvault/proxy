@@ -167,8 +167,6 @@ class GenericHandlerSpec extends BasePlaySpec {
     envelope.header(Constants.Headers.ContentLength) must equal(Some(envelope.body.length.toString))
     envelope.header(Constants.Headers.ContentType) must equal(Some("application/javascript; charset=utf-8"))
     val js = Json.parse(envelope.body)
-    println(js)
-    println(js \ "headers")
     (js \ "status").as[JsNumber].value.intValue() must equal(201)
     (js \ "body").as[JsObject] must equal(Json.obj("id" -> 1))
     (js \ "headers").as[JsObject].value.keys.toSeq.sorted must equal(
