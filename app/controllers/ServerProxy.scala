@@ -138,8 +138,6 @@ class ServerProxyImpl @Inject()(
     organization: Option[String] = None,
     partner: Option[String] = None
   ): Future[Result] = {
-    Logger.info(s"[proxy $request] to [${server.name}] ${route.method} ${server.host}${request.path}")
-
     if (request.jsonpCallback.isDefined) {
       jsonpHandler.process(server, request, route, token)
     } else {
