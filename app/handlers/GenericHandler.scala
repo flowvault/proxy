@@ -128,23 +128,23 @@ class GenericHandler @Inject() (
       val contentLength: Option[String] = response.header("Content-Length")
 
       // Remove content type (to avoid adding twice) then add common Flow headers
-      val responseHeaders = Util.removeKey(
+      val responseHeaders = Util.removeKeys(
         response.headers,
-        Constants.Headers.ContentType
+        Seq(Constants.Headers.ContentType, Constants.Headers.ContentLength)
       ) ++ Map(
-        Constants.Headers.ContentType -> Seq(contentType),
         Constants.Headers.FlowRequestId -> Seq(request.requestId),
         Constants.Headers.FlowServer -> Seq(server.name)
       )
 
       if (request.responseEnvelope) {
-        request.response(response.status, response.body, responseHeaders)
+        request.response(response.status, response.body, responseHeaders).as(contentType)
       } else {
         contentLength match {
           case None => {
             Results.Status(response.status).
               chunked(response.bodyAsSource).
-              withHeaders(Util.toFlatSeq(responseHeaders): _*)
+              withHeaders(Util.toFlatSeq(responseHeaders): _*).
+              as(contentType)
           }
 
           case Some(length) => {
@@ -152,7 +152,8 @@ class GenericHandler @Inject() (
               sendEntity(
                 HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
               ).
-              withHeaders(Util.toFlatSeq(responseHeaders): _*)
+              withHeaders(Util.toFlatSeq(responseHeaders): _*).
+              as(contentType)
           }
         }
       }

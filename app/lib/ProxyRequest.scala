@@ -259,14 +259,20 @@ case class ProxyRequest(
       val responseHeaders = Util.removeKeys(
         headers,
         Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
-        ) ++ Map(
-        Constants.Headers.ContentLength -> Seq(wrappedBody.length.toString),
-        Constants.Headers.ContentType -> Seq("application/javascript; charset=utf-8")
       )
 
-      Ok(wrappedBody).withHeaders(Util.toFlatSeq(responseHeaders): _*)
+      Ok(wrappedBody).
+        withHeaders(Util.toFlatSeq(responseHeaders): _*).
+        as(
+        "application/javascript; charset=utf-8"
+      )
     } else {
-      Status(status)(body).withHeaders(Util.toFlatSeq(headers): _*)
+      val contentType = headers.getOrElse(
+        Constants.Headers.ContentType, Nil
+      ).headOption.getOrElse(ContentType.ApplicationJson.toString)
+      Status(status)(body).
+        withHeaders(Util.toFlatSeq(headers): _*).
+        as(contentType)
     }
   }
 
