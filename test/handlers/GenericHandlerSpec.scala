@@ -151,4 +151,20 @@ class GenericHandlerSpec extends BasePlaySpec {
       """.stripMargin
     )
   }
+
+  "supports response envelope" in {
+    val sim = simulate(Method.Post, "/users")
+    sim.status must equal(201)
+
+    val jsonp = simulate(Method.Post, "/users?envelope=response")
+    jsonp.status must equal(200)
+    jsonp.header(Constants.Headers.ContentLength) must equal(Some(jsonp.body.length.toString))
+    jsonp.header(Constants.Headers.ContentType) must equal(Some("application/json"))
+    jsonp.body must equal(
+      Json.obj(
+        "status" -> 201,
+        "body" -> Json.obj("id" -> 1)
+      )
+    )
+  }
 }
