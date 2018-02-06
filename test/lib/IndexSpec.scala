@@ -92,7 +92,7 @@ class IndexSpec extends BasePlaySpec {
   }
 
   // We leave this here as a simple way to evaluate impact
-  // on peformance of changes in the path resolution libraries
+  // on performance of changes in the path resolution libraries
   "performance measurement" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     //val uri = "file:///tmp/api-proxy.development.config"
