@@ -6,7 +6,7 @@ import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import helpers.{BasePlaySpec, MockStandaloneServer}
 import lib._
-import play.api.libs.json.{JsArray, Json}
+import play.api.libs.json._
 import play.api.mvc.{Headers, Result}
 
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
@@ -66,7 +66,8 @@ class GenericHandlerSpec extends BasePlaySpec {
   private[this] def simulate(
     method: Method,
     path: String,
-    serverName: String = "test"
+    serverName: String = "test",
+    queryParameters: Map[String, Seq[String]] = Map.empty
   ): SimulatedResponse = {
     MockStandaloneServer.withTestClient { (client, port) =>
       val server = Server(
@@ -76,7 +77,8 @@ class GenericHandlerSpec extends BasePlaySpec {
 
       val proxyRequest = createProxyRequest(
         requestMethod = method,
-        requestPath = path
+        requestPath = path,
+        queryParameters = queryParameters
       )
 
       val result = await(
@@ -141,30 +143,36 @@ class GenericHandlerSpec extends BasePlaySpec {
       Json.obj("id" -> 1)
     )
 
-    val jsonp = simulate(Method.Post, "/users?jsonp_callback=foo")
+    val jsonp = simulate(
+      Method.Post,
+      "/users",
+      queryParameters = Map("callback" -> Seq("foo"))
+    )
     jsonp.status must equal(200)
     jsonp.header(Constants.Headers.ContentLength) must equal(Some(jsonp.body.length.toString))
     jsonp.header(Constants.Headers.ContentType) must equal(Some("application/javascript; charset=utf-8"))
-    jsonp.body must equal(
-      """
-        |foo({"id": 1})
-      """.stripMargin
-    )
+    jsonp.body.startsWith("/**/foo({") must equal(true)
   }
 
   "supports response envelope" in {
     val sim = simulate(Method.Post, "/users")
     sim.status must equal(201)
 
-    val jsonp = simulate(Method.Post, "/users?envelope=response")
-    jsonp.status must equal(200)
-    jsonp.header(Constants.Headers.ContentLength) must equal(Some(jsonp.body.length.toString))
-    jsonp.header(Constants.Headers.ContentType) must equal(Some("application/json"))
-    jsonp.body must equal(
-      Json.obj(
-        "status" -> 201,
-        "body" -> Json.obj("id" -> 1)
-      )
+    val envelope = simulate(
+      Method.Post,
+      "/users",
+      queryParameters = Map("envelope" -> Seq("response"))
+    )
+    envelope.status must equal(200)
+    envelope.header(Constants.Headers.ContentLength) must equal(Some(envelope.body.length.toString))
+    envelope.header(Constants.Headers.ContentType) must equal(Some("application/javascript; charset=utf-8"))
+    val js = Json.parse(envelope.body)
+    println(js)
+    println(js \ "headers")
+    (js \ "status").as[JsNumber].value.intValue() must equal(201)
+    (js \ "body").as[JsObject] must equal(Json.obj("id" -> 1))
+    (js \ "headers").as[JsObject].value.keys.toSeq.sorted must equal(
+      Seq("Content-Length", "Content-Type", "Date", "X-Flow-Request-Id", "X-Flow-Server")
     )
   }
 }
