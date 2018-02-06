@@ -89,11 +89,6 @@ class GenericHandlerSpec extends BasePlaySpec {
         )
       )
 
-      println(s"path: $path")
-      result.header.headers.foreach { case (k, v) =>
-        println(s" header[$k] = $v")
-      }
-
       SimulatedResponse(
         server = server,
         request = proxyRequest,
@@ -105,17 +100,13 @@ class GenericHandlerSpec extends BasePlaySpec {
 
 
   "GET application/json" in {
-    val sim = simulate(Method.Get, "/users/")
+    val sim = simulate(Method.Get, "/users/1")
     sim.status must equal(200)
     sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
     sim.header(Constants.Headers.FlowServer) must equal(Some(sim.server.name))
     sim.header(Constants.Headers.FlowRequestId) must equal(Some(sim.request.requestId))
     Json.parse(sim.body) must equal(
-      JsArray(
-        Seq(
-          Json.obj("id" -> 1)
-        )
-      )
+      Json.obj("id" -> 1)
     )
   }
 
@@ -126,6 +117,17 @@ class GenericHandlerSpec extends BasePlaySpec {
     // TODO: What do we want content type to be for redirects?
     sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
     sim.body must equal("")
+  }
+
+  "GET respects provided content type" in {
+    val sim = simulate(Method.Get, "/file.pdf")
+    sim.result.header.status must equal(200)
+    sim.header(Constants.Headers.ContentType) must equal(Some("application/pdf"))
+  }
+
+  "GET propagates 404" in {
+    val sim = simulate(Method.Get, "/non-existent-path")
+    sim.result.header.status must equal(404)
   }
 
 }

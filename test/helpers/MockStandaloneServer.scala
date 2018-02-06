@@ -16,18 +16,20 @@ object MockStandaloneServer {
       import Results._
       import components.{defaultActionBuilder => Action}
       {
-        case GET(p"/users/") => Action {
+        case GET(p"/users/1") => Action {
           Ok(
-            Json.arr(
-              Json.obj(
-                "id" -> 1
-              )
+            Json.obj(
+              "id" -> 1
             )
           )
         }
 
         case GET(p"/redirect/example") => Action {
           Redirect("http://localhost/foo")
+        }
+
+        case GET(p"/file.pdf") => Action {
+          Ok("file.pdf").as("application/pdf")
         }
       }
     } { implicit port =>
