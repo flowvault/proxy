@@ -65,6 +65,10 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 org = response.json
 
+# Assume application/json if body is json
+response = helpers.json_request("POST", "/token-validations", { :token => IO.read(api_key_file).strip }).execute()
+assert_status(200, response)
+
 # We convert application/octet-stream to application/json
 response = helpers.json_request("POST", "/sessions/organizations/demo", {}).with_content_type("application/octet-stream").execute()
 assert_status(201, response)

@@ -4,9 +4,11 @@ import javax.inject.{Inject, Singleton}
 
 import io.apibuilder.validation.FormData
 import lib.{ProxyRequest, ResolvedToken, Route, Server}
+import play.api.libs.json.Json
 import play.api.mvc.Result
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 /**
   * Converts url form encoded into a JSON body, then
@@ -33,12 +35,26 @@ class UrlFormEncodedHandler @Inject() (
       )
 
       case Some(body) => {
+        val js = Try {
+          if (body.trim.isEmpty) {
+            // e.g. PUT/DELETE with empty body
+            Json.obj()
+          } else {
+            Json.parse(body)
+          }
+        } match {
+          case Failure(_) => FormData.parseEncodedToJsObject(body)
+          case Success(value) => value
+        }
+
         applicationJsonHandler.processJson(
           server,
-          request,
+          request.copy(
+
+          ),
           route,
           token,
-          FormData.parseEncodedToJsObject(body)
+          js
         )
       }
     }

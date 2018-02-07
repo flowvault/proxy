@@ -63,6 +63,7 @@ class ApplicationJsonHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
+    println(s"JS: $js")
     apiBuilderServicesFetcher.multiService.upcast(route.method.toString, route.path, js) match {
       case Left(errors) => {
         Future.successful(
