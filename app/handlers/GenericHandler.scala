@@ -46,13 +46,10 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    val msg = request.body match {
-      case Some(ProxyRequestBody.Json(json)) => {
-        safeBody(request, json).map { safe =>
-          s"body:$safe"
-        }
-      }
-      case _ => None
+    val msg = request.body.map {
+      case ProxyRequestBody.Json(json) => s"body:${safeBody(request, json)}"
+      case ProxyRequestBody.Bytes(_) => "body:bytes"
+      case ProxyRequestBody.File(_) => "body:file"
     }
     log(request, server, "start", msg)
 
@@ -207,7 +204,7 @@ class GenericHandler @Inject() (
   ): Headers = {
 
     val headersToAdd = Seq(
-      Constants.Headers.ContentType -> request.contentType.toString,
+      Constants.Headers.ContentType -> request.contentType.toStringWithEncoding,
       Constants.Headers.FlowServer -> server.name,
       Constants.Headers.FlowRequestId -> request.requestId,
       Constants.Headers.Host -> server.hostHeaderValue,
@@ -224,9 +221,12 @@ class GenericHandler @Inject() (
       }
     ).flatten
 
-    val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(request.headers) { case (h, n) => h.remove(n) }
+    val cleanHeaders = Util.removeKeys(
+      request.headers.toMap,
+      Constants.Headers.namesToRemove
+    )
 
-    headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
+    headersToAdd.foldLeft(new Headers(Util.toFlatSeq(cleanHeaders))) { case (h, addl) => h.add(addl) }
   }
 
   /**
@@ -271,7 +271,14 @@ class GenericHandler @Inject() (
   ): Unit = {
     val extra = response.status match {
       case 415 => {
-        " request.headers:" + request.headers.headers.map { case (k, v) => s"$k=$v" }.sorted.mkString(", ")
+        " request.headers:" + request.headers.headers.
+          map { case (k, v) =>
+            if (k.toLowerCase == "authorization") {
+              s"$k=redacted"
+            } else {
+              s"$k=$v"
+            }
+          }.sorted.mkString(", ")
       }
 
       case 422 => {
@@ -297,24 +304,18 @@ class GenericHandler @Inject() (
       case None => ""
       case Some(msg) => s" $msg"
     }
-    Logger.info(s"[proxy $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery}$m")
+    Logger.info(s"[proxy $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery} request.contentType:${request.contentType.toStringWithEncoding}$m")
   }
 
   private[this] def safeBody(
     request: ProxyRequest,
     body: JsValue
-  ): Option[String] = {
-    if (request.method != Method.Get) {
-      val typ = multiService.bodyTypeFromPath(request.method.toString, request.path)
-      Some(
-        body match {
-          case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
-          case _: JsObject => toLogValue(request, body, typ).toString
-          case _ => "Body of type[${body.getClass.getName}] fully redacted"
-        }
-      )
-    } else {
-      None
+  ): String = {
+    val typ = multiService.bodyTypeFromPath(request.method.toString, request.path)
+    body match {
+      case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
+      case _: JsObject => toLogValue(request, body, typ).toString
+      case _ => "Body of type[${body.getClass.getName}] fully redacted"
     }
   }
 }

@@ -26,6 +26,8 @@ object Constants {
     val CfVisitor = "CF-Visitor"
 
     val namesToRemove = Seq(
+      ContentType,
+      ContentLength,
       FlowAuth,
       FlowRequestId,
       FlowServer,

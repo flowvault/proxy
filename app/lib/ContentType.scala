@@ -31,7 +31,14 @@ object ContentType {
   private[this]
   val byName = all.map(x => x.toString.toLowerCase -> x).toMap
 
-  def apply(value: String): ContentType = fromString(value).getOrElse(Other(value))
+  def apply(value: String): ContentType = {
+    fromString(value).getOrElse {
+      value.trim.toLowerCase match {
+        case "none/none" | "application/octet-stream" => ContentType.ApplicationJson
+        case _ => ContentType.Other(value)
+      }
+    }
+  }
 
   @tailrec
   def fromString(value: String): Option[ContentType] = {
