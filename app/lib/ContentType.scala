@@ -3,7 +3,7 @@ package lib
 import scala.annotation.tailrec
 
 sealed trait ContentType extends Product with Serializable {
-  val utf8String: String = toString + " charset=utf-8"
+  val toStringWithEncoding: String = s"$toString; charset=utf-8"
 }
 
 object ContentType {
@@ -11,7 +11,19 @@ object ContentType {
   case object ApplicationJavascript extends ContentType { override def toString = "application/javascript" }
   case object ApplicationJson extends ContentType { override def toString = "application/json" }
   case object UrlFormEncoded extends ContentType { override def toString = "application/x-www-form-urlencoded" }
-  case class Other(name: String) extends ContentType { override def toString: String = name }
+  case class Other(name: String) extends ContentType {
+    override def toString: String = name
+
+    override val toStringWithEncoding: String = {
+      val index = name.indexOf(";")
+      if (index < 0) {
+        s"$toString; charset=utf-8"
+      } else {
+        // don't append another ;
+        name
+      }
+    }
+  }
 
   val all = Seq(ApplicationJavascript, ApplicationJson, UrlFormEncoded)
 

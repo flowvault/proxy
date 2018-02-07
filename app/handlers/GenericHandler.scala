@@ -130,8 +130,8 @@ class GenericHandler @Inject() (
         * Returns the content type of the response, defaulting to the
         * request Content-Type
         */
-      val contentType: String = response.header(Constants.Headers.ContentType).getOrElse(
-        request.contentType.toString
+      val contentType: ContentType = response.header(Constants.Headers.ContentType).map(ContentType.apply).getOrElse(
+        request.contentType
       )
       val contentLength: Option[String] = response.header("Content-Length")
 
@@ -146,23 +146,22 @@ class GenericHandler @Inject() (
 
       println(s"request.responseEnvelope: ${request.responseEnvelope}")
       if (request.responseEnvelope) {
-        request.response(response.status, response.body, responseHeaders).as(contentType)
+        request.response(response.status, response.body, contentType, responseHeaders)
       } else {
         contentLength match {
           case None => {
             Results.Status(response.status).
               chunked(response.bodyAsSource).
               withHeaders(Util.toFlatSeq(responseHeaders): _*).
-              as(contentType)
+              as(contentType.toStringWithEncoding)
           }
 
           case Some(length) => {
             Results.Status(response.status).
               sendEntity(
-                HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
+                HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType.toStringWithEncoding))
               ).
-              withHeaders(Util.toFlatSeq(responseHeaders): _*).
-              as(contentType)
+              withHeaders(Util.toFlatSeq(responseHeaders): _*)
           }
         }
       }

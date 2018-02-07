@@ -107,7 +107,7 @@ class GenericHandlerSpec extends BasePlaySpec {
     val sim = simulate(Method.Get, "/users/1")
     sim.status must equal(200)
     sim.contentLength must equal(Some(sim.body.length))
-    sim.contentType must equal(Some("application/json"))
+    sim.contentType must equal(Some("application/json; charset=utf-8"))
     sim.header(Constants.Headers.FlowServer) must equal(Some(sim.server.name))
     sim.header(Constants.Headers.FlowRequestId) must equal(Some(sim.request.requestId))
     Json.parse(sim.body) must equal(
@@ -121,14 +121,14 @@ class GenericHandlerSpec extends BasePlaySpec {
     sim.contentLength must equal(Some(0))
     sim.header("Location") must equal(Some("http://localhost/foo"))
     // TODO: What do we want content type to be for redirects?
-    sim.contentType must equal(Some("application/json"))
+    sim.contentType must equal(Some("application/json; charset=utf-8"))
     sim.body must equal("")
   }
 
   "respects provided content type" in {
     val sim = simulate(Method.Get, "/file.pdf")
     sim.result.header.status must equal(200)
-    sim.contentType must equal(Some("application/pdf"))
+    sim.contentType must equal(Some("application/pdf; charset=utf-8"))
   }
 
   "propagates 404" in {
@@ -140,7 +140,7 @@ class GenericHandlerSpec extends BasePlaySpec {
     val sim = simulate(Method.Post, "/users")
     sim.status must equal(201)
     sim.contentLength must equal(Some(sim.body.length))
-    sim.contentType must equal(Some("application/json"))
+    sim.contentType must equal(Some("application/json; charset=utf-8"))
     Json.parse(sim.body) must equal(
       Json.obj("id" -> 1)
     )
@@ -172,7 +172,7 @@ class GenericHandlerSpec extends BasePlaySpec {
     (js \ "status").as[JsNumber].value.intValue() must equal(201)
     (js \ "body").as[JsObject] must equal(Json.obj("id" -> 1))
     (js \ "headers").as[JsObject].value.keys.toSeq.sorted must equal(
-      Seq("Content-Length", "Content-Type", "Date", "X-Flow-Request-Id", "X-Flow-Server")
+      Seq("Date", "X-Flow-Request-Id", "X-Flow-Server")
     )
   }
 }

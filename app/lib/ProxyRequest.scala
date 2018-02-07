@@ -244,11 +244,12 @@ case class ProxyRequest(
   }
 
   /**
-    * Returns a valid play result, taking into account any requests for response envelopes
-    */
+  * Returns a valid play result, taking into account any requests for response envelopes
+  */
   def response(
     status: Int,
     body: String,
+    contentType: ContentType,
     headers: Map[String,Seq[String]] = Map()
   ): Result = {
     if (responseEnvelope) {
@@ -262,10 +263,8 @@ case class ProxyRequest(
       internalResponse(
         status,
         body,
-        headers.getOrElse(Constants.Headers.ContentType, Nil).headOption.map(ContentType.apply).getOrElse(
-          ContentType.ApplicationJson
-        ),
-        headers
+        contentType,
+          headers
       )
     }
   }
@@ -280,12 +279,10 @@ case class ProxyRequest(
       headers,
       Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
     )
-    println(s"internal response: status:$status ${contentType.utf8String}")
-    println(s"body: $body")
 
     Status(status)(body).
       withHeaders(Util.toFlatSeq(responseHeaders): _*).
-      as(contentType.utf8String)
+      as(contentType.toStringWithEncoding)
   }
 
   def responseUnauthorized(
@@ -312,6 +309,7 @@ case class ProxyRequest(
     response(
       status = status,
       body = genericError(message).toString,
+      ContentType.ApplicationJson,
       headers = headers
     )
   }
