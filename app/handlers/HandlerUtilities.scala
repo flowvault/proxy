@@ -29,7 +29,7 @@ trait HandlerUtilities extends Errors {
 
   def log4xx(request: ProxyRequest, status: Int, js: JsValue, errors: Seq[String]): Unit = {
     // GET too noisy due to bots
-    if (request.method != "GET" && status >= 400 && status < 500) {
+    if (request.method != Method.Get && status >= 400 && status < 500) {
       // TODO: PARSE TYPE
       val finalBody = toLogValue(request, js, typ = None)
       Logger.info(s"[proxy $request] responded with status:$status Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
@@ -48,18 +48,4 @@ trait HandlerUtilities extends Errors {
     }
   }
 
-  def logFormData(
-    request: ProxyRequest,
-    body: JsValue)
-  : Unit = {
-    if (request.method != Method.Get) {
-      val typ = multiService.bodyTypeFromPath(request.method.toString, request.path)
-      val safeBody = body match {
-        case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
-        case _: JsObject => toLogValue(request, body, typ)
-        case _ => "Body of type[${body.getClass.getName}] fully redacted"
-      }
-      Logger.info(s"[proxy $request] body type[${typ.getOrElse("unknown")}]: $safeBody")
-    }
-  }
 }

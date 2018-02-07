@@ -252,28 +252,40 @@ case class ProxyRequest(
     headers: Map[String,Seq[String]] = Map()
   ): Result = {
     if (responseEnvelope) {
-      val wrappedBody = wrappedResponseBody(status, body, headers)
-
-      // Adjust content length as we added to the body.
-      // Explicitly set content-type to javascript
-      val responseHeaders = Util.removeKeys(
-        headers,
-        Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
-      )
-
-      Ok(wrappedBody).
-        withHeaders(Util.toFlatSeq(responseHeaders): _*).
-        as(
-        "application/javascript; charset=utf-8"
+      internalResponse(
+        200,
+        wrappedResponseBody(status, body, headers),
+        contentType = ContentType.ApplicationJavascript,
+        headers
       )
     } else {
-      val contentType = headers.getOrElse(
-        Constants.Headers.ContentType, Nil
-      ).headOption.getOrElse(ContentType.ApplicationJson.toString)
-      Status(status)(body).
-        withHeaders(Util.toFlatSeq(headers): _*).
-        as(contentType)
+      internalResponse(
+        status,
+        body,
+        headers.getOrElse(Constants.Headers.ContentType, Nil).headOption.map(ContentType.apply).getOrElse(
+          ContentType.ApplicationJson
+        ),
+        headers
+      )
     }
+  }
+
+  private[this] def internalResponse(
+    status: Int,
+    body: String,
+    contentType: ContentType,
+    headers: Map[String,Seq[String]] = Map()
+  ): Result = {
+    val responseHeaders = Util.removeKeys(
+      headers,
+      Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
+    )
+    println(s"internal response: status:$status ${contentType.utf8String}")
+    println(s"body: $body")
+
+    Status(status)(body).
+      withHeaders(Util.toFlatSeq(responseHeaders): _*).
+      as(contentType.utf8String)
   }
 
   def responseUnauthorized(

@@ -9,6 +9,7 @@ import io.apibuilder.validation.MultiService
 import lib._
 import play.api.Logger
 import play.api.http.HttpEntity
+import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Headers, Result, Results}
 
@@ -47,7 +48,7 @@ class GenericHandler @Inject() (
   ): Future[Result] = {
     val msg = request.body match {
       case Some(ProxyRequestBody.Json(json)) => {
-        Some(s"body:$json")
+        Some(s"body:${safeBody(request, json)}")
       }
       case _ => None
     }
@@ -134,7 +135,7 @@ class GenericHandler @Inject() (
       )
       val contentLength: Option[String] = response.header("Content-Length")
 
-      // Remove content type (to avoid adding twice) then add common Flow headers
+      // Remove content type (to avoid adding twice below) then add common Flow headers
       val responseHeaders = Util.removeKeys(
         response.headers,
         Seq(Constants.Headers.ContentType, Constants.Headers.ContentLength)
@@ -143,6 +144,7 @@ class GenericHandler @Inject() (
         Constants.Headers.FlowServer -> Seq(server.name)
       )
 
+      println(s"request.responseEnvelope: ${request.responseEnvelope}")
       if (request.responseEnvelope) {
         request.response(response.status, response.body, responseHeaders).as(contentType)
       } else {
@@ -269,5 +271,23 @@ class GenericHandler @Inject() (
       case Some(msg) => s" $msg"
     }
     Logger.info(s"[proxy $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery}$m")
+  }
+
+  private[this] def safeBody(
+    request: ProxyRequest,
+    body: JsValue
+  ): Option[String] = {
+    if (request.method != Method.Get) {
+      val typ = multiService.bodyTypeFromPath(request.method.toString, request.path)
+      Some(
+        body match {
+          case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
+          case _: JsObject => toLogValue(request, body, typ).toString
+          case _ => "Body of type[${body.getClass.getName}] fully redacted"
+        }
+      )
+    } else {
+      None
+    }
   }
 }

@@ -25,6 +25,8 @@ class GenericHandlerSpec extends BasePlaySpec {
   ) {
 
     val status: Int = result.header.status
+    val contentType: Option[String] = result.body.contentType
+    val contentLength: Option[Long] = result.body.contentLength
 
     def header(name: String): Option[String] = {
       result.header.headers.get(name)
@@ -104,8 +106,8 @@ class GenericHandlerSpec extends BasePlaySpec {
   "defaults content type to application/json" in {
     val sim = simulate(Method.Get, "/users/1")
     sim.status must equal(200)
-    sim.header(Constants.Headers.ContentLength) must equal(Some(sim.body.length.toString))
-    sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
+    sim.contentLength must equal(Some(sim.body.length))
+    sim.contentType must equal(Some("application/json"))
     sim.header(Constants.Headers.FlowServer) must equal(Some(sim.server.name))
     sim.header(Constants.Headers.FlowRequestId) must equal(Some(sim.request.requestId))
     Json.parse(sim.body) must equal(
@@ -116,17 +118,17 @@ class GenericHandlerSpec extends BasePlaySpec {
   "propagates redirect" in {
     val sim = simulate(Method.Get, "/redirect/example")
     sim.result.header.status must equal(303)
-    sim.header(Constants.Headers.ContentLength) must equal(Some("0"))
+    sim.contentLength must equal(Some(0))
     sim.header("Location") must equal(Some("http://localhost/foo"))
     // TODO: What do we want content type to be for redirects?
-    sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
+    sim.contentType must equal(Some("application/json"))
     sim.body must equal("")
   }
 
   "respects provided content type" in {
     val sim = simulate(Method.Get, "/file.pdf")
     sim.result.header.status must equal(200)
-    sim.header(Constants.Headers.ContentType) must equal(Some("application/pdf"))
+    sim.contentType must equal(Some("application/pdf"))
   }
 
   "propagates 404" in {
@@ -137,8 +139,8 @@ class GenericHandlerSpec extends BasePlaySpec {
   "supports jsonp" in {
     val sim = simulate(Method.Post, "/users")
     sim.status must equal(201)
-    sim.header(Constants.Headers.ContentLength) must equal(Some(sim.body.length.toString))
-    sim.header(Constants.Headers.ContentType) must equal(Some("application/json"))
+    sim.contentLength must equal(Some(sim.body.length))
+    sim.contentType must equal(Some("application/json"))
     Json.parse(sim.body) must equal(
       Json.obj("id" -> 1)
     )
@@ -149,9 +151,9 @@ class GenericHandlerSpec extends BasePlaySpec {
       queryParameters = Map("callback" -> Seq("foo"))
     )
     jsonp.status must equal(200)
-    jsonp.header(Constants.Headers.ContentLength) must equal(Some(jsonp.body.length.toString))
-    jsonp.header(Constants.Headers.ContentType) must equal(Some("application/javascript; charset=utf-8"))
     jsonp.body.startsWith("/**/foo({") must equal(true)
+    jsonp.contentLength must equal(Some(jsonp.body.length))
+    jsonp.contentType must equal(Some("application/javascript; charset=utf-8"))
   }
 
   "supports response envelope" in {
@@ -164,8 +166,8 @@ class GenericHandlerSpec extends BasePlaySpec {
       queryParameters = Map("envelope" -> Seq("response"))
     )
     envelope.status must equal(200)
-    envelope.header(Constants.Headers.ContentLength) must equal(Some(envelope.body.length.toString))
-    envelope.header(Constants.Headers.ContentType) must equal(Some("application/javascript; charset=utf-8"))
+    envelope.contentLength must equal(Some(envelope.body.length))
+    envelope.contentType must equal(Some("application/javascript; charset=utf-8"))
     val js = Json.parse(envelope.body)
     (js \ "status").as[JsNumber].value.intValue() must equal(201)
     (js \ "body").as[JsObject] must equal(Json.obj("id" -> 1))
