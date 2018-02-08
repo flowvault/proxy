@@ -3,7 +3,7 @@ package handlers
 import javax.inject.{Inject, Singleton}
 
 import io.apibuilder.validation.FormData
-import lib.{ProxyRequest, ResolvedToken, Route, Server}
+import lib._
 import play.api.libs.ws.WSClient
 import play.api.mvc.Result
 
@@ -56,26 +56,30 @@ class UrlFormEncodedHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
     val map = body match {
-      case None => {
-        Map.empty[String, Seq[String]]
-      }
-
-      case Some(b) => {
-        val data = FormData.parseEncoded(b)
-        if (data.size == 1) {
-          println(s"data.values: ${data.values}")
-        }
-        data
-      }
+      case None => Map.empty[String, Seq[String]]
+      case Some(b) => FormData.parseEncoded(b)
     }
 
-    applicationJsonHandler.processJson(
-      wsClient,
-      server,
-      request,
-      route,
-      token,
-      FormData.toJson(map)
-    )
+    if (isJson(map)) {
+      Future.successful(
+        request.responseUnprocessableEntity(
+          s"The content type you specified '${ContentType.UrlFormEncoded.toString}' does not match the body. " +
+          s"Please specify 'Content-type: ${ContentType.ApplicationJson.toString}' when providing a JSON Body."
+        )
+      )
+    } else {
+      applicationJsonHandler.processJson(
+        wsClient,
+        server,
+        request,
+        route,
+        token,
+        FormData.toJson(map)
+      )
+    }
+  }
+
+  private[this] def isJson(data: Map[String, Seq[String]]) = {
+    data.size == 1 && data.values.toSeq.flatMap(_.map(Option.apply)).flatten.isEmpty
   }
 }

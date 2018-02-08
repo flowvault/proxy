@@ -1,7 +1,7 @@
 package handlers
 
 import helpers.HandlerBasePlaySpec
-import lib.Method
+import lib.{ContentType, Method}
 import play.api.libs.json.Json
 
 class UrlFormEncodedHandlerSpec extends HandlerBasePlaySpec {
@@ -56,7 +56,10 @@ class UrlFormEncodedHandlerSpec extends HandlerBasePlaySpec {
     )
     response.status must equal(422)
     (response.bodyAsJson \ "messages").as[Seq[String]] must equal(
-      Seq("todo")
+      Seq(
+        s"The content type you specified '${ContentType.UrlFormEncoded.toString}' does not match the body. " +
+        "Please specify 'Content-type: application/json' when providing a JSON Body."
+      )
     )
   }
 }
