@@ -65,9 +65,9 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 org = response.json
 
-# Assume application/json if body is json
+# Return error on invalid content type - curl assumes url form encoded
 response = helpers.json_request("POST", "/token-validations", { :token => IO.read(api_key_file).strip }).execute()
-assert_status(200, response)
+assert_generic_error(response, "The content type you specified 'application/x-www-form-urlencoded' does not match the body. Please specify 'Content-type: application/json' when providing a JSON Body.")
 
 # We convert application/octet-stream to application/json
 response = helpers.json_request("POST", "/sessions/organizations/demo", {}).with_content_type("application/octet-stream").execute()
