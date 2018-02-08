@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 @Singleton
 class JsonpHandler @Inject() (
-  applicationJsonHandler: ApplicationJsonHandler
+  urlFormEncodedHandler: UrlFormEncodedHandler
 ) extends Handler {
 
   override def process(
@@ -26,12 +26,13 @@ class JsonpHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    applicationJsonHandler.processJson(
+    println(s"request.rawQueryString: ${request.rawQueryString}")
+    urlFormEncodedHandler.processUrlFormEncoded(
       server,
       request,
       route,
       token,
-      FormData.toJson(request.queryParameters)
+      request.rawQueryString
     )
   }
 

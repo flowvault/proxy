@@ -85,6 +85,16 @@ object ProxyRequest {
       }
     }
 
+    /**
+      * Returns the content type of the request. WS Client defaults to
+      * application/octet-stream. Given this proxy is for APIs only,
+      * assume application / JSON if no content type header is
+      * provided.
+      */
+    val contentType: ContentType = headers.get("Content-Type").
+      map(ContentType.apply).
+      getOrElse(ContentType.ApplicationJson)
+
     methodErrors ++ envelopeErrors ++ jsonpCallbackErrors match {
       case Nil => Right(
         ProxyRequest(
@@ -92,6 +102,7 @@ object ProxyRequest {
           originalMethod = requestMethod,
           method = method.get,
           pathWithQuery = requestPath,
+          contentType = contentType,
           body = body,
           queryParameters = queryParameters.filter { case (k, _) => !ReservedQueryParameters.contains(k) },
           envelopes = envelopes,
@@ -121,6 +132,7 @@ case class ProxyRequest(
   originalMethod: String,
   method: Method,
   pathWithQuery: String,
+  contentType: ContentType,
   body: Option[ProxyRequestBody] = None,
   jsonpCallback: Option[String] = None,
   envelopes: Seq[Envelope] = Nil,
@@ -150,22 +162,25 @@ case class ProxyRequest(
   }
 
   /**
+    * rawQueryString is everything after the ? - will return None
+    * if empty
+    */
+  val rawQueryString: Option[String] = {
+    val i = pathWithQuery.indexOf('?')
+    if (i < 0) {
+      None
+    } else {
+      Some(pathWithQuery.substring(i))
+    }
+  }
+
+  /**
     * responseEnvelope is true for all requests with a jsonp callback as well
     * as requests that explicitly request an envelope
     */
   val responseEnvelope: Boolean = jsonpCallback.isDefined || envelopes.contains(Envelope.Response)
 
   val requestEnvelope: Boolean = envelopes.contains(Envelope.Request)
-
-  /**
-    * Returns the content type of the request. WS Client defaults to
-    * application/octet-stream. Given this proxy is for APIs only,
-    * assume application / JSON if no content type header is
-    * provided.
-    */
-  val contentType: ContentType = headers.get("Content-Type").
-    map(ContentType.apply).
-    getOrElse(ContentType.ApplicationJson)
 
   /**
     * Assumes the body is a byte array, returning the string value as a UTF-8

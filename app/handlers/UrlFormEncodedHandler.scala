@@ -35,29 +35,46 @@ class UrlFormEncodedHandler @Inject() (
       )
 
       case Some(body) => {
-        val js = Try {
-          if (body.trim.isEmpty) {
-            // e.g. PUT/DELETE with empty body
-            Json.obj()
-          } else {
-            Json.parse(body)
-          }
-        } match {
-          case Failure(_) => FormData.parseEncodedToJsObject(body)
-          case Success(value) => value
-        }
-
-        applicationJsonHandler.processJson(
-          server,
-          request.copy(
-
-          ),
-          route,
-          token,
-          js
-        )
+        processUrlFormEncoded(server, request, route, token, Some(body))
       }
     }
   }
 
+  /**
+    * This method handles bodies that are both
+    * application/json and url form encoded
+    * transparently.
+    */
+  private[handlers] def processUrlFormEncoded(
+    server: Server,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken,
+    body: Option[String]
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Result] = {
+    val js = body.getOrElse("").trim match {
+      case "" => {
+        // e.g. PUT/DELETE with empty body
+        Json.obj()
+      }
+      case v => {
+        Try {
+          Json.parse(v)
+        } match {
+          case Failure(_) => FormData.parseEncodedToJsObject(v)
+          case Success(value) => value
+        }
+      }
+    }
+
+    applicationJsonHandler.processJson(
+      server,
+      request,
+      route,
+      token,
+      js
+    )
+  }
 }
