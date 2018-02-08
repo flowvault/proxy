@@ -17,7 +17,7 @@ class GenericHandlerSpec extends HandlerBasePlaySpec {
     sim.contentType must equal(Some("application/json; charset=utf-8"))
     sim.header(Constants.Headers.FlowServer) must equal(Some(sim.server.name))
     sim.header(Constants.Headers.FlowRequestId) must equal(Some(sim.request.requestId))
-    Json.parse(sim.body) must equal(
+    sim.bodyAsJson must equal(
       Json.obj("id" -> 1)
     )
   }
@@ -47,7 +47,7 @@ class GenericHandlerSpec extends HandlerBasePlaySpec {
     sim.status must equal(201)
     sim.contentLength must equal(Some(sim.body.length))
     sim.contentType must equal(Some("application/json; charset=utf-8"))
-    Json.parse(sim.body) must equal(
+    sim.bodyAsJson must equal(
       Json.obj("id" -> 1)
     )
 
@@ -74,7 +74,7 @@ class GenericHandlerSpec extends HandlerBasePlaySpec {
     envelope.status must equal(200)
     envelope.contentLength must equal(Some(envelope.body.length))
     envelope.contentType must equal(Some("application/javascript; charset=utf-8"))
-    val js = Json.parse(envelope.body)
+    val js = envelope.bodyAsJson
     (js \ "status").as[JsNumber].value.intValue() must equal(201)
     (js \ "body").as[JsObject] must equal(Json.obj("id" -> 1))
     (js \ "headers").as[JsObject].value.keys.toSeq.sorted must equal(

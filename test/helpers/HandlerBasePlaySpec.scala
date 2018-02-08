@@ -6,6 +6,7 @@ import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import handlers.Handler
 import lib._
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Headers, Result}
 
 import scala.concurrent.ExecutionContext
@@ -28,12 +29,16 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
       result.header.headers.get(name)
     }
 
+    def bodyAsJson: JsValue = {
+      Json.parse(body)
+    }
+
   }
 
   def createProxyRequest(
     requestMethod: Method,
     requestPath: String,
-    body: Option[ProxyRequestBody] = None,
+    body: Option[String] = None,
     queryParameters: Map[String, Seq[String]] = Map.empty,
     headers: Map[String, Seq[String]] = Map.empty
   ): ProxyRequest = {
@@ -41,7 +46,11 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
       ProxyRequest.validate(
         requestMethod = requestMethod.toString,
         requestPath = requestPath,
-        body = body,
+        body = body.map { b =>
+          ProxyRequestBody.Bytes(
+            ByteString(b.getBytes("UTF-8"))
+          )
+        },
         queryParameters = queryParameters,
         headers = Headers(
           headers.flatMap { case (k, values) =>
@@ -66,7 +75,8 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
     method: Method,
     path: String,
     serverName: String = "test",
-    queryParameters: Map[String, Seq[String]] = Map.empty
+    queryParameters: Map[String, Seq[String]] = Map.empty,
+    body: Option[String] = None
   )(
    implicit ec: ExecutionContext
   ): SimulatedResponse = {
@@ -79,7 +89,8 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
       val proxyRequest = createProxyRequest(
         requestMethod = method,
         requestPath = path,
-        queryParameters = queryParameters
+        queryParameters = queryParameters,
+        body = body
       )
 
       val result = await(
