@@ -26,7 +26,6 @@ class JsonpHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    println(s"request.rawQueryString: ${request.rawQueryString}")
     urlFormEncodedHandler.processUrlFormEncoded(
       server,
       request,
