@@ -4,6 +4,7 @@ import javax.inject.{Inject, Singleton}
 
 import lib._
 import play.api.libs.json.{JsValue, Json}
+import play.api.libs.ws.WSClient
 import play.api.mvc.Result
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,6 +17,7 @@ class ApplicationJsonHandler @Inject() (
 ) extends Handler {
 
   override def process(
+    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
@@ -44,6 +46,7 @@ class ApplicationJsonHandler @Inject() (
 
       case Success(js) => {
         processJson(
+          wsClient,
           server,
           request,
           route,
@@ -55,6 +58,7 @@ class ApplicationJsonHandler @Inject() (
   }
 
   private[handlers] def processJson(
+    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
@@ -75,6 +79,7 @@ class ApplicationJsonHandler @Inject() (
 
       case Right(validatedBody) => {
         genericHandler.process(
+          wsClient,
           server,
           request.copy(
             contentType = ContentType.ApplicationJson,

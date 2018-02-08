@@ -4,11 +4,10 @@ import javax.inject.{Inject, Singleton}
 
 import io.apibuilder.validation.FormData
 import lib.{ProxyRequest, ResolvedToken, Route, Server}
-import play.api.libs.json.Json
+import play.api.libs.ws.WSClient
 import play.api.mvc.Result
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
 
 /**
   * Converts url form encoded into a JSON body, then
@@ -20,6 +19,7 @@ class UrlFormEncodedHandler @Inject() (
 ) extends Handler {
 
   override def process(
+    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
@@ -35,7 +35,7 @@ class UrlFormEncodedHandler @Inject() (
       )
 
       case Some(body) => {
-        processUrlFormEncoded(server, request, route, token, Some(body))
+        processUrlFormEncoded(wsClient, server, request, route, token, Some(body))
       }
     }
   }
@@ -46,6 +46,7 @@ class UrlFormEncodedHandler @Inject() (
     * transparently.
     */
   private[handlers] def processUrlFormEncoded(
+    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
@@ -54,27 +55,27 @@ class UrlFormEncodedHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    val js = body.getOrElse("").trim match {
-      case "" => {
-        // e.g. PUT/DELETE with empty body
-        Json.obj()
+    val map = body match {
+      case None => {
+        Map.empty[String, Seq[String]]
       }
-      case v => {
-        Try {
-          Json.parse(v)
-        } match {
-          case Failure(_) => FormData.parseEncodedToJsObject(v)
-          case Success(value) => value
+
+      case Some(b) => {
+        val data = FormData.parseEncoded(b)
+        if (data.size == 1) {
+          println(s"data.values: ${data.values}")
         }
+        data
       }
     }
 
     applicationJsonHandler.processJson(
+      wsClient,
       server,
       request,
       route,
       token,
-      js
+      FormData.toJson(map)
     )
   }
 }

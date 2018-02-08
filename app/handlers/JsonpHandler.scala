@@ -4,6 +4,7 @@ import javax.inject.{Inject, Singleton}
 
 import io.apibuilder.validation.FormData
 import lib.{ProxyRequest, ResolvedToken, Route, Server}
+import play.api.libs.ws.WSClient
 import play.api.mvc.Result
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,6 +20,7 @@ class JsonpHandler @Inject() (
 ) extends Handler {
 
   override def process(
+    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
@@ -27,6 +29,7 @@ class JsonpHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
     urlFormEncodedHandler.processUrlFormEncoded(
+      wsClient,
       server,
       request,
       route,

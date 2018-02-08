@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
-import java.net.URI
 import javax.inject.Inject
 
 import akka.stream.ActorMaterializer
@@ -14,9 +13,9 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import lib._
+import play.api.libs.ws.WSClient
 
 import scala.annotation.tailrec
-import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 /**
   * Server Proxy is responsible for proxying all requests to a given
@@ -91,6 +90,7 @@ class ServerProxyModule extends AbstractModule {
 class ServerProxyImpl @Inject()(
   @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
   implicit val system: ActorSystem,
+  wsClient: WSClient,
   urlFormEncodedHandler: handlers.UrlFormEncodedHandler,
   applicationJsonHandler: handlers.ApplicationJsonHandler,
   jsonpHandler: handlers.JsonpHandler,
@@ -139,19 +139,19 @@ class ServerProxyImpl @Inject()(
     partner: Option[String] = None
   ): Future[Result] = {
     if (request.jsonpCallback.isDefined) {
-      jsonpHandler.process(server, request, route, token)
+      jsonpHandler.process(wsClient, server, request, route, token)
     } else {
       request.contentType match {
         case ContentType.UrlFormEncoded => {
-          urlFormEncodedHandler.process(server, request, route, token)
+          urlFormEncodedHandler.process(wsClient, server, request, route, token)
         }
 
         case ContentType.ApplicationJson => {
-          applicationJsonHandler.process(server, request, route, token)
+          applicationJsonHandler.process(wsClient, server, request, route, token)
         }
 
         case _ => {
-          genericHandler.process(server, request, route, token)
+          genericHandler.process(wsClient, server, request, route, token)
         }
       }
     }

@@ -20,24 +20,12 @@ class GenericHandler @Inject() (
   @Named("metric-actor") val metricActor: ActorRef,
   override val config: Config,
   flowAuth: FlowAuth,
-  wsClient: WSClient,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities {
 
   override def multiService: MultiService = apiBuilderServicesFetcher.multiService
 
   override def process(
-    server: Server,
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken
-  )(
-    implicit ec: ExecutionContext
-  ): Future[Result] = {
-    process(wsClient, server, request, route, token)
-  }
-
-  private[handlers] def process(
     wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
