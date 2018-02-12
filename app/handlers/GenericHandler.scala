@@ -1,15 +1,18 @@
 package handlers
 
-import akka.actor.ActorRef
 import javax.inject.{Inject, Named, Singleton}
 
 import actors.MetricActor
+import akka.actor.ActorRef
+import akka.stream.Materializer
+import akka.util.ByteString
 import io.apibuilder.spec.v0.models.ParameterLocation
 import io.apibuilder.validation.MultiService
 import lib._
 import play.api.Logger
 import play.api.http.HttpEntity
 import play.api.libs.json.{JsObject, JsValue}
+import play.api.libs.ws.ahc.StandaloneAhcWSClient
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Headers, Result, Results}
 
@@ -21,7 +24,7 @@ class GenericHandler @Inject() (
   override val config: Config,
   flowAuth: FlowAuth,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
-) extends Handler with HandlerUtilities {
+)(implicit val mat: Materializer) extends Handler with HandlerUtilities {
 
   override def multiService: MultiService = apiBuilderServicesFetcher.multiService
 
@@ -256,10 +259,10 @@ class GenericHandler @Inject() (
     server: Server,
     response: WSResponse,
     duration: Long
-  ): Unit = {
+  )(implicit executionContext: ExecutionContext): Unit = {
     val extra = response.status match {
       case 415 => {
-        " request.headers:" + request.headers.headers.
+        val message = " request.headers:" + request.headers.headers.
           map { case (k, v) =>
             if (k.toLowerCase == "authorization") {
               s"$k=redacted"
@@ -267,19 +270,24 @@ class GenericHandler @Inject() (
               s"$k=$v"
             }
           }.sorted.mkString(", ")
+        Future.successful(message)
       }
 
       case 422 => {
-        // common validation error - TODO: Show body
-        " body:" + response.body
+        // common validation error
+        // use .bodyAsSource as the response may be streamed. Calling .body directly leads to blocking and waiting.
+        response
+          .bodyAsSource
+          // cap body size in case it is too big to be logged
+          .limit(StandaloneAhcWSClient.elementLimit)
+          .runFold(ByteString.createBuilder) { (acc, bs) => acc.append(bs) }
+          .map(bs => " body:" + bs.result().utf8String)
       }
 
-      case _ => {
-        ""
-      }
+      case _ => Future.successful("")
     }
 
-    log(request, server, "done", Some(s"status:${response.status} timeToFirstByteMs:$duration$extra"))
+    extra.foreach(e => log(request, server, "done", Some(s"status:${response.status} timeToFirstByteMs:$duration$e")))
   }
 
   private[this] def log(
