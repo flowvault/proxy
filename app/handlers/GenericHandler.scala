@@ -13,6 +13,7 @@ import play.api.http.HttpEntity
 import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Headers, Result, Results}
+import WSReponseUtil._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -136,7 +137,7 @@ class GenericHandler @Inject() (
       )
 
       if (request.responseEnvelope || response.status == 422) {
-        request.response(response.status, response.body, contentType, responseHeaders)
+        request.response(response.status, response.safeBody, contentType, responseHeaders)
       } else {
         contentLength match {
           case None => {
@@ -272,7 +273,7 @@ class GenericHandler @Inject() (
 
       case 422 => {
         // common validation error - TODO: Show body
-        " body:" + response.body
+        " body:" + response.safeBody
       }
 
       case _ => {
