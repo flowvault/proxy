@@ -37,24 +37,10 @@ object LoggingUtil {
   *        list of fields to allow in the output
   */
 case class JsonSafeLoggerConfig(
-  blacklistFields: Set[String] = Set(),
-  blacklistModels: Set[String] = Set(),
-  whitelistModelFields: Map[String, Set[String]] = Map()
+  blacklistFields: Set[String],
+  blacklistModels: Set[String],
+  whitelistModelFields: Map[String, Set[String]]
 )
-
-/**
-  * Helpers to use a default logger configuration
-  */
-object JsonSafeLogger {
-
-  val DefaultConfig = JsonSafeLoggerConfig(
-    blacklistFields = Set("cvv", "password", "email", "token", "credit_card_number"),
-    blacklistModels = Set("password_form", "cipher_form")
-  )
-
-  val default = JsonSafeLogger(DefaultConfig)
-
-}
 
 /**
   * Configures the white lists and black lists that are used to determine
