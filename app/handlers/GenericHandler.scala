@@ -260,7 +260,7 @@ class GenericHandler @Inject() (
     duration: Long
   ): Unit = {
     val extra = response.status match {
-      case 415 => {
+      case Results.UnsupportedMediaType => {
         " request.headers:" + request.headers.headers.
           map { case (k, v) =>
             if (k.toLowerCase == "authorization") {
@@ -271,7 +271,7 @@ class GenericHandler @Inject() (
           }.sorted.mkString(", ")
       }
 
-      case 422 => {
+      case Results.UnprocessableEntity => {
         // common validation error - TODO: Show body
         " body:" + response.safeBody
       }
