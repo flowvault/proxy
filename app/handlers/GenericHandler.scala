@@ -10,6 +10,7 @@ import lib._
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.http.HttpEntity
+import play.api.http.Status.{UNPROCESSABLE_ENTITY, UNSUPPORTED_MEDIA_TYPE}
 import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Headers, Result, Results}
@@ -260,7 +261,7 @@ class GenericHandler @Inject() (
     duration: Long
   ): Unit = {
     val extra = response.status match {
-      case Results.UnsupportedMediaType => {
+      case UNSUPPORTED_MEDIA_TYPE => {
         " request.headers:" + request.headers.headers.
           map { case (k, v) =>
             if (k.toLowerCase == "authorization") {
@@ -271,8 +272,7 @@ class GenericHandler @Inject() (
           }.sorted.mkString(", ")
       }
 
-      case Results.UnprocessableEntity => {
-        // common validation error - TODO: Show body
+      case UNPROCESSABLE_ENTITY => {
         " body:" + response.safeBody
       }
 
