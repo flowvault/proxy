@@ -1,9 +1,7 @@
 package handlers
 
-import akka.actor.ActorRef
-import javax.inject.{Inject, Named, Singleton}
+import javax.inject.{Inject, Singleton}
 
-import actors.MetricActor
 import io.apibuilder.spec.v0.models.ParameterLocation
 import io.apibuilder.validation.MultiService
 import lib._
@@ -20,7 +18,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class GenericHandler @Inject() (
-  @Named("metric-actor") val metricActor: ActorRef,
   override val config: Config,
   flowAuth: FlowAuth,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
@@ -113,7 +110,6 @@ class GenericHandler @Inject() (
   ): Future[Result] = {
     response.map { response =>
       val duration = System.currentTimeMillis() - request.createdAtMillis
-      metricActor ! toMetricMessage(server, request, response.status, token, duration)
       logResponse(request, server, response, duration)
 
       /**
@@ -160,26 +156,6 @@ class GenericHandler @Inject() (
     }.recover {
       case ex: Throwable => throw new Exception(ex)
     }
-  }
-
-  private[this] def toMetricMessage(
-    server: Server,
-    request: ProxyRequest,
-    responseStatus: Int,
-    token: ResolvedToken,
-    duration: Long
-  ): MetricActor.Messages.Send = {
-    MetricActor.Messages.Send(
-      server = server.name,
-      requestId = request.requestId,
-      method = request.method.toString,
-      path = request.pathWithQuery,
-      ms = duration,
-      response = responseStatus,
-      organizationId = token.organizationId,
-      partnerId = token.partnerId,
-      userId = token.userId
-    )
   }
 
 

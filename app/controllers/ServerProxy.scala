@@ -88,7 +88,6 @@ class ServerProxyModule extends AbstractModule {
 }
 
 class ServerProxyImpl @Inject()(
-  @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
   implicit val system: ActorSystem,
   wsClient: WSClient,
   urlFormEncodedHandler: handlers.UrlFormEncodedHandler,
