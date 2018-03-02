@@ -1,9 +1,9 @@
-FROM flowdocker/play_builder:0.0.85 as builder
+FROM flowdocker/play_builder:0.0.86 as builder
 ADD . /opt/play
 WORKDIR /opt/play
 RUN sbt clean stage
 
-FROM flowdocker/play:0.0.85
+FROM flowdocker/play:0.0.86
 COPY --from=builder /opt/play /opt/play
 WORKDIR /opt/play/target/universal/stage
 ENTRYPOINT ["java", "-jar", "/root/environment-provider.jar", "--service", "play", "proxy", "bin/proxy"]
