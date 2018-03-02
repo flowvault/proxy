@@ -15,10 +15,10 @@ lazy val root = project
       guice,
       ws,
       "commons-codec" % "commons-codec" % "1.11",
-      "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.284",
+      "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.289",
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
       "io.flow" %% "apibuilder-validation" % "0.1.18",
-      "org.yaml" % "snakeyaml" % "1.19",
+      "org.yaml" % "snakeyaml" % "1.20",
       "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % "test"
     )
   )
