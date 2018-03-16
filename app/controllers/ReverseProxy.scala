@@ -413,11 +413,25 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def invalidOrgMessage(organization: String): String = {
-    s"Not authorized to access organization '$organization' or the organization does not exist"
+    organization.trim.toLowerCase match {
+      case ":organization" => {
+        s"Please replace ':organization' with your organization id"
+      }
+      case _ => {
+        s"Not authorized to access organization '$organization' or the organization does not exist"
+      }
+    }
   }
 
   private[this] def invalidPartnerMessage(partner: String): String = {
-    s"Not authorized to access partner '$partner' or the partner does not exist"
+    partner.trim.toLowerCase match {
+      case ":partner" => {
+        s"Please replace ':partner' with your partner id"
+      }
+      case _ => {
+        s"Not authorized to access partner '$partner' or the partner does not exist"
+      }
+    }
   }
 
 }
