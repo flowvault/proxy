@@ -79,7 +79,7 @@ case class InternalProxyConfig(
         }
       }
     }
-    
+
     (errors ++ uriErrors ++ versionErrors ++ additionalErrors).toList match {
       case Nil => Right(
         ProxyConfig(
@@ -106,7 +106,7 @@ case class Server(
 
   // TODO: Move to proxy configuration file
   val requestTimeout: FiniteDuration = name match {
-    case "payment" | "payment-internal" | "partner" | "label" | "label-internal" => FiniteDuration(60, SECONDS)
+    case "payment" | "payment-internal" | "partner" | "label" | "label-internal" | "return" => FiniteDuration(60, SECONDS)
     case "session" => FiniteDuration(10, SECONDS)
     case "token" | "organization" => FiniteDuration(5, SECONDS)
     case _ => FiniteDuration(30, SECONDS) // TODO: Figure out what the optimal value should be for this
@@ -181,7 +181,7 @@ case class InternalOperation(
   * specified by the configuration parameter named
   * proxy.config.uris. Exposes an API to refresh the configuration
   * periodically.
-  * 
+  *
   * When downloading the configuration, we load it into an instance of
   * the Index class to pre-build the data needed to resolve paths.
   */
@@ -229,7 +229,7 @@ class ProxyConfigFetcher @Inject() (
       }
     }
   }
-  
+
   private[this] def load(uri: String): Either[Seq[String], ProxyConfig] = {
     Logger.info(s"ProxyConfigFetcher: fetching configuration from uri[$uri]")
     val contents = Source.fromURL(uri).mkString
