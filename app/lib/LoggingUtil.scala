@@ -85,7 +85,7 @@ case class JsonSafeLogger(config: JsonSafeLoggerConfig) {
   }
 
   private[this] def isTypeBlacklisted(typ: String): Boolean = {
-    config.blacklistModels.contains(typ.toLowerCase.trim)
+    config.blacklistModels.map(_.toLowerCase.trim).exists(typ.toLowerCase.trim.contains)
   }
 
   private[this] def isFieldBlacklisted(field: String, typ: Option[String]): Boolean = {
@@ -93,7 +93,8 @@ case class JsonSafeLogger(config: JsonSafeLoggerConfig) {
       case None => Set.empty[String]
       case Some(t) => config.whitelistModelFields.getOrElse(t, Set.empty[String])
     }
-    config.blacklistFields.diff(whiteList).contains(field)
+
+    config.blacklistFields.map(_.toLowerCase.trim).diff(whiteList.map(_.toLowerCase.trim)).contains(field)
   }
 
   private[this] def redact(value: JsValue): JsValue = {

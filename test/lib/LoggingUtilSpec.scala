@@ -28,24 +28,25 @@ class LoggingUtilSpec extends BasePlaySpec {
       Json.obj("foo" -> "bar", "cvv" -> "xxx", "number" -> "xxx")
     )
 
-    logger.safeJson(
-      JsArray(
-        Seq(
-          Json.obj("foo" -> "bar"),
-          Json.obj("cvv" -> "123"),
-          Json.obj("number" -> "1234567890")
+    Seq("cvv", "CVV", "Cvv") foreach { cvv =>
+      logger.safeJson(
+        JsArray(
+          Seq(
+            Json.obj("foo" -> "bar"),
+            Json.obj("cvv" -> cvv),
+            Json.obj("number" -> "1234567890")
+          )
+        )
+      ) must equal(
+        JsArray(
+          Seq(
+            Json.obj("foo" -> "bar"),
+            Json.obj("cvv" -> "xxx"),
+            Json.obj("number" -> "xxx")
+          )
         )
       )
-    ) must equal(
-      JsArray(
-        Seq(
-          Json.obj("foo" -> "bar"),
-          Json.obj("cvv" -> "xxx"),
-          Json.obj("number" -> "xxx")
-        )
-      )
-
-    )
+    }
   }
 
   "safeJson with nested types" in {
@@ -77,18 +78,25 @@ class LoggingUtilSpec extends BasePlaySpec {
   }
 
   "safeJson with blacklisted model" in {
-    logger.safeJson(
-      Json.obj(
-        "current" -> "foo",
-        "new" -> "bar"
-      ),
-      Some("password_change_form")
-    ) must equal(
-      Json.obj(
-        "current" -> "xxx",
-        "new" -> "xxx"
+    Seq(
+      "password_change_form",
+      "Password_CHANGE_forM",
+      "io.flow.user.v0.models.password_change_form",
+      "iO.flOw.User.V0.mOdels.PasSword_CHANGE_forM"
+    ) foreach { typ =>
+      logger.safeJson(
+        Json.obj(
+          "current" -> "foo",
+          "new" -> "bar"
+        ),
+        Some(typ)
+      ) must equal(
+        Json.obj(
+          "current" -> "xxx",
+          "new" -> "xxx"
+        )
       )
-    )
+    }
   }
 
   "safeJson with nested blacklisted model" in {
