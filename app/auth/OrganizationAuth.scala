@@ -46,7 +46,6 @@ trait OrganizationAuth {
     authFuture.map { orgAuth =>
       Some(
         token.copy(
-          organizationId = Some(organization),
           environment = Some(orgAuth.environment.toString),
           role = Some(orgAuth.role.toString)
         )
