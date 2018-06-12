@@ -10,9 +10,9 @@ object LoggingUtil {
       blacklistFields = Set(
         "cvv", "number", "token", "email", "email_address",
         "password", "name", "first_name", "last_name", "streets", "phone", "phone_number",
-        "account_owner_name", "account_number", "routing_number"
+        "account_owner_name", "account_number", "routing_number", "secret_key"
       ),
-      blacklistModels = Set("password_change_form", "cipher_form", "ach_authorization_form"),
+      blacklistModels = Set("password_change_form", "cipher_form", "ach_authorization_form", "stripe_authentication_data_form"),
       whitelistModelFields = Map(
         "customer" -> Set("number"),
         "harmonized_item_form" -> Set("number"),
