@@ -9,7 +9,10 @@ object LoggingUtil {
     JsonSafeLoggerConfig(
       blacklistFields = Set(
         "cvv", "number", "token", "email", "email_address",
-        "password", "name", "first_name", "last_name", "streets", "line1", "line2", "line3", "phone", "phone_number",
+        "password", "name", "first_name", "last_name", "streets",
+        "address1", "address2", "address3",
+        "line1", "line2", "line3",
+        "phone", "phone_number",
         "account_owner_name", "account_number", "routing_number", "secret_key"
       ),
       blacklistModels = Set("password_change_form", "cipher_form", "ach_authorization_form", "stripe_authentication_data_form"),
