@@ -13,7 +13,7 @@ object LoggingUtil {
         "address1", "address2", "address3",
         "line1", "line2", "line3",
         "phone", "phone_number",
-        "account_owner_name", "account_number", "routing_number", "secret_key"
+        "account_owner_name", "account_number", "routing_number", "secret_key", "client_secret", "fingerprint"
       ),
       blacklistModels = Set("password_change_form", "cipher_form", "ach_authorization_form", "stripe_authentication_data_form"),
       whitelistModelFields = Map(
