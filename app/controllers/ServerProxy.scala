@@ -79,7 +79,7 @@ object ServerProxy {
 }
 
 class ServerProxyModule extends AbstractModule {
-  def configure(): Unit = {
+  override def configure(): Unit = {
     install(new FactoryModuleBuilder()
       .implement(classOf[ServerProxy], classOf[ServerProxyImpl])
       .build(classOf[ServerProxy.Factory])
