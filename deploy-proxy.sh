@@ -16,7 +16,7 @@ fi
 
 set -x #echo on
 
-sudo docker stop `docker ps -q`;
-sudo docker rmi -f `docker images -q`;
-sudo docker rm $(docker ps -qa --no-trunc --filter "status=exited")
-sudo docker run -d -p 7000:9000 flowvault/proxy:$1 production;
+docker stop `docker ps -q`;
+docker rmi -f `docker images -q`;
+docker rm $(docker ps -qa --no-trunc --filter "status=exited")
+docker run -d -p 7000:9000 flowvault/proxy:$1 production;
