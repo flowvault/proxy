@@ -237,19 +237,31 @@ case class ProxyRequest(
 
         val body = (js \ "body").asOpt[JsValue].map(ProxyRequestBody.Json)
 
-        val headers: Map[String, Seq[String]] = (js \ "headers").getOrElse(Json.obj()).as[Map[String, Seq[String]]]
+        /**
+          * Read the headers from either:
+          *   a. the json envelope if specified
+          *   b. the original request headers
+          */
+        val envHeaders = (js \ "headers").asOpt[JsObject] match {
+          case None => headers.headers
+          case Some(headersJson) => {
+            Util.toFlatSeq(headersJson.as[Map[String, Seq[String]]])
+          }
+        }
 
         methodErrors match {
-          case Nil => ProxyRequest.validate(
-            requestMethod = originalMethod,
-            requestPath = path,
-            body = body,
-            queryParameters = queryParameters ++ Map(
-              "method" -> Seq(method),
-              Constants.Headers.FlowRequestId -> Seq(requestId)
-            ),
-            headers = Headers(Util.toFlatSeq(headers): _*)
-          )
+          case Nil => {
+            ProxyRequest.validate(
+              requestMethod = originalMethod,
+              requestPath = path,
+              body = body,
+              queryParameters = queryParameters ++ Map(
+                "method" -> Seq(method),
+                Constants.Headers.FlowRequestId -> Seq(requestId)
+              ),
+              headers = Headers(envHeaders: _*)
+            )
+          }
           case errors => Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
         }
       }

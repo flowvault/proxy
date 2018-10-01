@@ -76,8 +76,8 @@ class ReverseProxy @Inject () (
             case Left(errors) => Future.successful {
               UnprocessableEntity(genericErrors(errors))
             }
-            case Right(enveloperProxyRequest) => {
-              internalHandle(enveloperProxyRequest)
+            case Right(envelopeProxyRequest) => {
+              internalHandle(envelopeProxyRequest)
             }
           }
         } else {
