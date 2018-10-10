@@ -1,9 +1,11 @@
 package lib
 
 import javax.inject.{Inject, Singleton}
-
 import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
 import org.apache.commons.codec.binary.{Base64, StringUtils}
+import play.api.Logger
+
+import scala.util.Try
 
 sealed trait Authorization
 
@@ -121,7 +123,16 @@ class AuthorizationParser @Inject() (
     }
   }
 
-  private[this] def jwtIsValid(token: String): Boolean = JsonWebToken.validate(token, config.jwtSalt)
+  private[this] def jwtIsValid(token: String): Boolean =
+    Try {
+      JsonWebToken.validate(token, config.jwtSalt)
+    } match {
+      case scala.util.Success(validated) => validated
+      case scala.util.Failure(ex) => {
+        Logger.error(s"[FlowProxyJWTError] Failed to validate JWT token. Error was [${ex.getMessage}]")
+        false
+      }
+    }
 
   private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization = {
     claimsSet.asSimpleMap.toOption match {
