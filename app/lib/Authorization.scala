@@ -126,10 +126,7 @@ class AuthorizationParser @Inject() (
   private[this] def jwtIsValid(token: String): Boolean =
     Try {
       JsonWebToken.validate(token, config.jwtSalt)
-    }.getOrElse {
-      Logger.error(s"[FlowProxyJWTError] Failed to validate JWT token.")
-      false
-    }
+    }.getOrElse(false)
 
   private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization = {
     claimsSet.asSimpleMap.toOption match {
