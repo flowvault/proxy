@@ -79,7 +79,7 @@ class AuthorizationParser @Inject() (
   /**
     * Parses the value fro the authorization header, handling case
     * where no authorization was present
-   */
+    */
   def parse(value: Option[String]): Authorization = {
     value match {
       case None => Authorization.NoCredentials
@@ -91,7 +91,7 @@ class AuthorizationParser @Inject() (
     * Parses the actual authorization header value. Acceptable types are:
     * - Basic - the API Token for the user
     * - Bearer - the JWT Token for the user with that contains an id field representing the user id in the database
-   */
+    */
   def parse(headerValue: String): Authorization = {
     headerValue.split(" ").toList match {
       case prefix :: value :: Nil => {
@@ -126,12 +126,9 @@ class AuthorizationParser @Inject() (
   private[this] def jwtIsValid(token: String): Boolean =
     Try {
       JsonWebToken.validate(token, config.jwtSalt)
-    } match {
-      case scala.util.Success(validated) => validated
-      case scala.util.Failure(ex) => {
-        Logger.error(s"[FlowProxyJWTError] Failed to validate JWT token. Error was [${ex.getMessage}]")
-        false
-      }
+    }.getOrElse {
+      Logger.error(s"[FlowProxyJWTError] Failed to validate JWT token.")
+      false
     }
 
   private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization = {
