@@ -1,9 +1,8 @@
 package lib
 
-import javax.inject.{Inject, Singleton}
 import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
+import javax.inject.{Inject, Singleton}
 import org.apache.commons.codec.binary.{Base64, StringUtils}
-import play.api.Logger
 
 import scala.util.Try
 
