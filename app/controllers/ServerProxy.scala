@@ -112,7 +112,10 @@ class ServerProxyImpl @Inject()(
       system.dispatchers.lookup(contextName)
     } match {
       case Success(context) => {
-        server.logger.withKeyValue("context_name", contextName).info("Using execution context with this name")
+        server.logger.
+          withKeyValue("server", server.name).
+          withKeyValue("context_name", contextName).
+          info("Using execution context with this name")
         (context, name)
       }
 
