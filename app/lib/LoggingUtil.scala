@@ -1,12 +1,13 @@
 package lib
 
-import play.api.Logger
+import io.flow.log.RollbarLogger
 import play.api.libs.json._
 
-object LoggingUtil {
+case class LoggingUtil(rollbar: RollbarLogger) {
 
   val logger = JsonSafeLogger(
-    JsonSafeLoggerConfig(
+    rollbar = rollbar,
+    config = JsonSafeLoggerConfig(
       blacklistFields = Set(
         "cvv", "number", "token", "email", "email_address",
         "password", "name", "first_name", "last_name", "streets",
@@ -50,7 +51,7 @@ case class JsonSafeLoggerConfig(
   * Configures the white lists and black lists that are used to determine
   * exactly which field values are redacted in the log output
   */
-case class JsonSafeLogger(config: JsonSafeLoggerConfig) {
+case class JsonSafeLogger(config: JsonSafeLoggerConfig, rollbar: RollbarLogger) {
 
   /**
     * Accepts a JsValue, redacting any fields that may contain sensitive data
@@ -110,7 +111,9 @@ case class JsonSafeLogger(config: JsonSafeLoggerConfig) {
       case ar: JsArray => JsArray(ar.value.map(redact))
       case o: JsObject => JsObject(o.value.map { case (k, v) => k -> redact(v) })
       case _ => {
-        Logger.warn(s"Do not know how to redact values for json type[${value.getClass.getName}] - Returning {}")
+        rollbar.
+          withKeyValue("type", value.getClass.getName).
+          warn("Do not know how to redact values for json type - Returning {}")
         Json.obj()
       }
     }

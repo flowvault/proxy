@@ -5,7 +5,7 @@ import play.api.libs.ws.WSResponse
 
 import scala.util.{Failure, Success, Try}
 
-object WSReponseUtil {
+object WSResponseUtil {
 
   private def EmptyBody = ""
 

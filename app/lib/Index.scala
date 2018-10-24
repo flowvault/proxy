@@ -1,7 +1,5 @@
 package lib
 
-import play.api.Logger
-
 /**
   * Given a particular configuration for a proxy, builds an in memory
   * index of the routes to make for efficient lookup of the route (and
@@ -60,8 +58,6 @@ case class Index(config: ProxyConfig) {
         routeKey(op.route.method, op.route.path) -> op
       }: _*
     )
-
-    Logger.info(s"Index: staticRoutes[${staticRouteMap.size}] dynamicRoutes[${dynamicRoutes.size}]")
 
     (staticRouteMap, dynamicRouteMap.toMap)
   }

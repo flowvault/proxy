@@ -192,7 +192,7 @@ case class InternalOperation(
 class ProxyConfigFetcher @Inject() (
   config: Config,
   configParser: ConfigParser,
-  proxyLogger: RollbarLogger
+  logger: RollbarLogger
 ) {
 
   private[this] lazy val Uris: Seq[String] = config.requiredString("proxy.config.uris").split(",").map(_.trim)
@@ -236,7 +236,7 @@ class ProxyConfigFetcher @Inject() (
   }
 
   private[this] def load(uri: String): Either[Seq[String], ProxyConfig] = {
-    proxyLogger.withKeyValue("uri", uri).info("Fetching configuration")
+    logger.withKeyValue("uri", uri).info("Fetching configuration")
     val contents = Source.fromURL(uri).mkString
     configParser.parse(uri, contents).validate()
   }
@@ -244,7 +244,7 @@ class ProxyConfigFetcher @Inject() (
   private[this] def refresh(): Option[Index] = {
     load(Uris) match {
       case Left(errors) => {
-        proxyLogger.
+        logger.
           withKeyValue("uris", Uris.mkString(", ")).
           withKeyValue("errors", errors.mkString(", ")).
           error("Failed to load proxy configuration")

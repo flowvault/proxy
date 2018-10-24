@@ -1,24 +1,24 @@
 package handlers
 
 import javax.inject.{Inject, Singleton}
-
 import io.apibuilder.spec.v0.models.ParameterLocation
 import io.apibuilder.validation.MultiService
 import lib._
 import org.joda.time.DateTime
-import play.api.Logger
 import play.api.http.HttpEntity
 import play.api.http.Status.{UNPROCESSABLE_ENTITY, UNSUPPORTED_MEDIA_TYPE}
 import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Headers, Result, Results}
-import WSReponseUtil._
+import WSResponseUtil._
+import io.flow.log.RollbarLogger
 
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class GenericHandler @Inject() (
   override val config: Config,
+  val logger: RollbarLogger,
   flowAuth: FlowAuth,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities {
@@ -219,7 +219,10 @@ class GenericHandler @Inject() (
           allQueryParameters.filter { case (key, _) =>
             val isDefined = definedNames.contains(key)
             if (!isDefined) {
-              Logger.info(s"[proxy $request] GenericHandler Filtering out query parameter[$key] as it is not defined as part of the spec")
+              logger.
+                requestId(request.requestId).
+                withKeyValue("parameter", key).
+                info("GenericHandler Filtering out query parameter as it is not defined as part of the spec")
             }
             isDefined
           }
@@ -270,7 +273,7 @@ class GenericHandler @Inject() (
       case None => ""
       case Some(msg) => s" $msg"
     }
-    Logger.info(s"[proxy ${org.joda.time.format.ISODateTimeFormat.dateTime.print(DateTime.now)} $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery} request.contentType:${request.contentType.toStringWithEncoding}$m")
+    logger.info(s"[proxy ${org.joda.time.format.ISODateTimeFormat.dateTime.print(DateTime.now)} $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery} request.contentType:${request.contentType.toStringWithEncoding}$m")
   }
 
   private[this] def safeBody(

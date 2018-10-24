@@ -1,8 +1,8 @@
 package lib
 
 import io.apibuilder.validation.MultiService
+import io.flow.log.RollbarLogger
 import javax.inject.{Inject, Singleton}
-import play.api.Logger
 
 /**
   * Responsible for downloading the API Builder service specifications
@@ -11,7 +11,8 @@ import play.api.Logger
   */
 @Singleton
 class ApiBuilderServicesFetcher @Inject() (
-  config: Config
+  config: Config,
+  logger: RollbarLogger
 ) {
 
   private[this] case object Lock
@@ -25,7 +26,9 @@ class ApiBuilderServicesFetcher @Inject() (
         case Some(ms) => ms
         case None => {
           multiServiceCache.getOrElse {
-            Logger.info(s"ApiBuilderServicesFetcher: fetching configuration from uris[${Uris.mkString(", ")}]")
+            logger.
+              withKeyValue("uris", Uris.mkString(", ")).
+              info("ApiBuilderServicesFetcher: fetching configuration")
             val ms = MultiService.fromUrls(urls)
             multiServiceCache = Some(ms)
             ms

@@ -1,6 +1,7 @@
 package handlers
 
 import io.apibuilder.validation.MultiService
+import io.flow.log.RollbarLogger
 import lib._
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
@@ -10,6 +11,7 @@ import scala.util.{Failure, Success, Try}
 trait HandlerUtilities extends Errors {
 
   def config: Config
+  def logger: RollbarLogger
 
   def multiService: MultiService
 
@@ -46,7 +48,7 @@ trait HandlerUtilities extends Errors {
     } else {
       typ match {
         case None => Json.obj("redacted" -> "object type not known. cannot log")
-        case Some(_) => LoggingUtil.logger.safeJson(js, typ = typ)
+        case Some(_) => LoggingUtil(logger).logger.safeJson(js, typ = typ)
       }
     }
   }
