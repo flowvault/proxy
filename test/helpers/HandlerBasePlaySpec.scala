@@ -5,6 +5,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import handlers.Handler
+import io.flow.log.RollbarLogger
 import lib._
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Headers, Result}
@@ -13,6 +14,8 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 trait HandlerBasePlaySpec extends BasePlaySpec {
+
+  def logger: RollbarLogger
 
   case class SimulatedResponse(
     server: Server,
@@ -83,7 +86,8 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
     MockStandaloneServer.withTestClient { (client, port) =>
       val server = Server(
         name = serverName,
-        host = s"http://localhost:$port"
+        host = s"http://localhost:$port",
+        logger = logger
       )
 
       val proxyRequest = createProxyRequest(

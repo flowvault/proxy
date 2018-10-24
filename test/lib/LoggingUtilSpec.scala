@@ -5,8 +5,9 @@ import play.api.libs.json._
 
 class LoggingUtilSpec extends BasePlaySpec {
 
-  private[this] val logger = JsonSafeLogger(
-    JsonSafeLoggerConfig(
+  private[this] val jsonSafeLogger = JsonSafeLogger(
+    rollbar = logger,
+    config = JsonSafeLoggerConfig(
       blacklistFields = Set("cvv", "number", "token", "email", "password"),
       blacklistModels = Set("password_change_form"),
       whitelistModelFields = Map(
@@ -19,17 +20,17 @@ class LoggingUtilSpec extends BasePlaySpec {
   )
 
   "safeJson when type is not known respects blacklistFields" in {
-    logger.safeJson(JsNull) must equal(JsNull)
-    logger.safeJson(JsString("a")) must equal(JsString("a"))
+    jsonSafeLogger.safeJson(JsNull) must equal(JsNull)
+    jsonSafeLogger.safeJson(JsString("a")) must equal(JsString("a"))
 
-    logger.safeJson(Json.obj("foo" -> "bar")) must equal(Json.obj("foo" -> "bar"))
+    jsonSafeLogger.safeJson(Json.obj("foo" -> "bar")) must equal(Json.obj("foo" -> "bar"))
 
-    logger.safeJson(Json.obj("foo" -> "bar", "cvv" -> "123", "number" -> "1234567890")) must equal(
+    jsonSafeLogger.safeJson(Json.obj("foo" -> "bar", "cvv" -> "123", "number" -> "1234567890")) must equal(
       Json.obj("foo" -> "bar", "cvv" -> "xxx", "number" -> "xxx")
     )
 
     Seq("cvv", "CVV", "Cvv") foreach { cvv =>
-      logger.safeJson(
+      jsonSafeLogger.safeJson(
         JsArray(
           Seq(
             Json.obj("foo" -> "bar"),
@@ -50,7 +51,7 @@ class LoggingUtilSpec extends BasePlaySpec {
   }
 
   "safeJson with nested types" in {
-    logger.safeJson(
+    jsonSafeLogger.safeJson(
       Json.obj(
         "items" -> Json.obj("number" -> "1234567890")
       )
@@ -62,11 +63,11 @@ class LoggingUtilSpec extends BasePlaySpec {
   }
 
   "safeJson with type whitelist" in {
-    logger.safeJson(Json.obj("number" -> "1234567890"), typ = Some("order_form")) must equal(
+    jsonSafeLogger.safeJson(Json.obj("number" -> "1234567890"), typ = Some("order_form")) must equal(
       Json.obj("number" -> "1234567890")
     )
 
-    logger.safeJson(
+    jsonSafeLogger.safeJson(
       Json.obj(
         "order_form" -> Json.obj("number" -> "1234567890")
       )
@@ -86,7 +87,7 @@ class LoggingUtilSpec extends BasePlaySpec {
       "io.flow.user.v0.models.password_change_form",
       "iO.flOw.User.V0.mOdels.PasSword_CHANGE_forM"
     ) foreach { typ =>
-      logger.safeJson(
+      jsonSafeLogger.safeJson(
         Json.obj(
           "current" -> "foo",
           "new" -> "bar"
@@ -102,7 +103,7 @@ class LoggingUtilSpec extends BasePlaySpec {
   }
 
   "safeJson with nested blacklisted model" in {
-    logger.safeJson(
+    jsonSafeLogger.safeJson(
       Json.obj(
         "password_change_form" -> Json.obj(
           "current" -> "foo",

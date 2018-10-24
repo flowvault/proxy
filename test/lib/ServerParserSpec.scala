@@ -5,6 +5,8 @@ import scala.io.Source
 
 class ServerParserSpec extends BasePlaySpec {
 
+  def configParser: ConfigParser = app.injector.instanceOf[ConfigParser]
+
   val uri = "file:///test"
 
   val source = ProxyConfigSource(
@@ -13,14 +15,14 @@ class ServerParserSpec extends BasePlaySpec {
   )
 
   "empty" in {
-    ConfigParser.parse(uri, "   ").validate() must be(
+    configParser.parse(uri, "   ").validate() must be(
       Left(Seq("Missing uri", "Missing version"))
     )
   }
 
   "hostHeaderValue" in {
     Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
-      Server("user", host).hostHeaderValue must be(
+      Server("user", host, logger).hostHeaderValue must be(
         "user.api.flow.io"
       )
     }
@@ -34,12 +36,12 @@ servers:
   - name: test
     host: https://test.api.flow.io
 """
-    ConfigParser.parse(uri, spec).validate() must be(
+    configParser.parse(uri, spec).validate() must be(
       Right(
         ProxyConfig(
           sources = Seq(source),
           servers = Seq(
-            Server("test", "https://test.api.flow.io")
+            Server("test", "https://test.api.flow.io", logger)
           ),
           operations = Nil
         )
@@ -68,11 +70,12 @@ operations:
 """
     val user = Server(
       "user",
-      "https://user.api.flow.io"
+      "https://user.api.flow.io",
+      logger = logger
     )
 
     val cfg = rightOrErrors(
-      ConfigParser.parse(uri, spec).validate()
+      configParser.parse(uri, spec).validate()
     )
     cfg.sources must be(Seq(source.copy(version = "1.2.3")))
     cfg.servers must be(Seq(user))
@@ -88,7 +91,7 @@ operations:
   "latest production config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
     val contents = Source.fromURL(uri).mkString
-    val config = rightOrErrors(ConfigParser.parse(uri, contents).validate())
+    val config = rightOrErrors(configParser.parse(uri, contents).validate())
     Seq("user", "organization", "catalog").foreach { name =>
       val server = config.servers.find(_.name == name).getOrElse {
         sys.error(s"Failed to find server[$name]")
@@ -114,7 +117,7 @@ operations:
   "latest development config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     val contents = Source.fromURL(uri).mkString
-    val config = rightOrErrors(ConfigParser.parse(uri, contents).validate())
+    val config = rightOrErrors(configParser.parse(uri, contents).validate())
     Map(
       "user" -> "http://localhost:6021",
       "organization" -> "http://localhost:6081",

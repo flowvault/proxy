@@ -5,6 +5,8 @@ import scala.io.Source
 
 class IndexSpec extends BasePlaySpec {
 
+  def configParser: ConfigParser = app.injector.instanceOf[ConfigParser]
+
   val source = ProxyConfigSource(
     uri = "file:///test",
     version = "0.0.1"
@@ -13,11 +15,13 @@ class IndexSpec extends BasePlaySpec {
   "resolves route" in {
     val org = Server(
       "organization",
-      "https://organization.api.flow.io"
+      "https://organization.api.flow.io",
+      logger = logger
     )
     val user = Server(
       "user",
-      "https://user.api.flow.io"
+      "https://user.api.flow.io",
+      logger = logger
     )
     val servers = Seq(org, user)
 
@@ -61,11 +65,13 @@ class IndexSpec extends BasePlaySpec {
   "internal routes that match :org routes" in {
     val public = Server(
       "currency",
-      "https://currency.api.flow.io"
+      "https://currency.api.flow.io",
+      logger = logger
     )
     val internal = Server(
       "currency-internal",
-      "https://currency.api.flow.io"
+      "https://currency.api.flow.io",
+      logger = logger
     )
     val servers = Seq(public, internal)
 
@@ -97,7 +103,7 @@ class IndexSpec extends BasePlaySpec {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     //val uri = "file:///tmp/api-proxy.development.config"
     val contents = Source.fromURL(uri).mkString
-    val config = ConfigParser.parse(source.uri, contents).validate().right.get
+    val config = configParser.parse(source.uri, contents).validate().right.get
     val index = Index(config)
 
     val ms = time(1000) { () =>

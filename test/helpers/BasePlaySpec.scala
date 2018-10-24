@@ -2,6 +2,7 @@ package helpers
 
 import java.util.UUID
 
+import io.flow.log.RollbarLogger
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.libs.ws.WSClient
@@ -13,6 +14,7 @@ abstract class BasePlaySpec extends PlaySpec
   with DefaultAwaitTimeout {
 
   def wsClient: WSClient = app.injector.instanceOf[WSClient]
+  def logger: RollbarLogger = app.injector.instanceOf[RollbarLogger]
 
   def rightOrErrors[K, V](result: Either[K, V]): V = {
     result match {

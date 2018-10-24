@@ -5,16 +5,18 @@ import java.util.UUID
 import helpers.BasePlaySpec
 import io.flow.token.v0.mock
 import io.flow.common.v0.models.{Environment, OrganizationReference, UserReference}
+import io.flow.log.RollbarLogger
 import io.flow.token.v0.models._
 import lib.ResolvedToken
 
 object TokenMockClient extends mock.Client
 
-object TokenTestAuth extends TokenAuth with mock.Client {
-  override def tokenClient = TokenMockClient
-}
-
 class TokenAuthSpec extends BasePlaySpec {
+
+  private[this] val tokenTestAuth = new TokenAuth with mock.Client {
+    override def tokenClient = TokenMockClient
+    override def logger: RollbarLogger = logger
+  }
 
   private[this] val requestId = UUID.randomUUID.toString
 
@@ -26,7 +28,7 @@ class TokenAuthSpec extends BasePlaySpec {
       user = UserReference("5")
     )
 
-    TokenTestAuth.fromTokenReference(requestId, token) must equal(
+    tokenTestAuth.fromTokenReference(requestId, token) must equal(
       Some(
         ResolvedToken(
           requestId = requestId,
@@ -48,7 +50,7 @@ class TokenAuthSpec extends BasePlaySpec {
       user = UserReference("5")
     )
 
-    TokenTestAuth.fromTokenReference(requestId, token) must equal(
+    tokenTestAuth.fromTokenReference(requestId, token) must equal(
       Some(
         ResolvedToken(
           requestId = requestId,
