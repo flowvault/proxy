@@ -1,9 +1,9 @@
 package lib
 
 import java.net.URI
-import javax.inject.{Inject, Singleton}
 
-import play.api.Logger
+import io.flow.log.RollbarLogger
+import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 import scala.io.Source
@@ -101,7 +101,8 @@ case class InternalProxyConfig(
 
 case class Server(
   name: String,
-  host: String
+  host: String,
+  logger: RollbarLogger
 ) {
 
   // TODO: Move to proxy configuration file
@@ -126,7 +127,8 @@ case class Operation(
 
 case class InternalServer(
   name: String,
-  host: String
+  host: String,
+  logger: RollbarLogger
 ) {
 
   def validate: Either[Seq[String], Server] = {
@@ -136,7 +138,8 @@ case class InternalServer(
       Right(
         Server(
           name = name,
-          host = host
+          host = host,
+          logger
         )
       )
     }
@@ -187,7 +190,9 @@ case class InternalOperation(
   */
 @Singleton
 class ProxyConfigFetcher @Inject() (
-  config: Config
+  config: Config,
+  configParser: ConfigParser,
+  proxyLogger: RollbarLogger
 ) {
 
   private[this] lazy val Uris: Seq[String] = config.requiredString("proxy.config.uris").split(",").map(_.trim)
@@ -231,15 +236,18 @@ class ProxyConfigFetcher @Inject() (
   }
 
   private[this] def load(uri: String): Either[Seq[String], ProxyConfig] = {
-    Logger.info(s"ProxyConfigFetcher: fetching configuration from uri[$uri]")
+    proxyLogger.withKeyValue("uri", uri).info("Fetching configuration")
     val contents = Source.fromURL(uri).mkString
-    ConfigParser.parse(uri, contents).validate()
+    configParser.parse(uri, contents).validate()
   }
 
   private[this] def refresh(): Option[Index] = {
     load(Uris) match {
       case Left(errors) => {
-        Logger.error(s"Failed to load proxy configuration from Uris[$Uris]: ${errors.mkString(", ")}")
+        proxyLogger.
+          withKeyValue("uris", Uris.mkString(", ")).
+          withKeyValue("errors", errors.mkString(", ")).
+          error("Failed to load proxy configuration")
         None
       }
       case Right(cfg) => {

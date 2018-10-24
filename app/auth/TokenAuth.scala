@@ -1,9 +1,9 @@
 package auth
 
+import io.flow.log.RollbarLogger
 import io.flow.token.v0.interfaces.Client
 import io.flow.token.v0.models._
 import lib.{FlowAuth, ResolvedToken}
-import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -14,6 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 trait TokenAuth {
 
   def tokenClient: Client
+  def logger: RollbarLogger
 
   def resolveToken(
     requestId: String,
@@ -33,7 +34,11 @@ trait TokenAuth {
       }
 
       case ex: Throwable => {
-        sys.error(s"Could not communicate with token server at[${tokenClient.baseUrl}]: $ex")
+        val msg = "Could not communicate with token server"
+        logger.
+          requestId(requestId).
+          error(msg, ex)
+        throw new RuntimeException(msg, ex)
       }
     }
   }
@@ -59,7 +64,11 @@ trait TokenAuth {
       )
 
       case TokenReferenceUndefinedType(other) => {
-        Logger.warn(s"[proxy] TokenReferenceUndefinedType($other) - proceeding as unauthenticated")
+        val msg = "Could not communicate with token server"
+        logger.
+          requestId(requestId).
+          withKeyValue("type", other).
+          warn("TokenReferenceUndefinedType")
         None
       }
     }

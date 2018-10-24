@@ -1,13 +1,19 @@
 package lib
 
+import io.flow.log.RollbarLogger
+import javax.inject.Inject
 import org.yaml.snakeyaml.Yaml
+
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 /**
   * Parses the contents of the configuration file from a URI
   */
-object ConfigParser {
+class ConfigParser @Inject() (
+  config: Config,
+  logger: RollbarLogger
+) {
 
   private[this] val EmptyProxyConfig = InternalProxyConfig(
     uri = "",
@@ -39,7 +45,8 @@ object ConfigParser {
             val obj = toMap(objJs)
             InternalServer(
               name = getString(obj, "name"),
-              host = getString(obj, "host")
+              host = getString(obj, "host"),
+              logger = logger // TODO: this will use the global proxy logger. not sure that is best
             )
           }
 

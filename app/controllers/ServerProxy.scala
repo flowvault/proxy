@@ -5,9 +5,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
 import javax.inject.Inject
-
 import akka.stream.ActorMaterializer
-import play.api.Logger
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -114,7 +112,7 @@ class ServerProxyImpl @Inject()(
       system.dispatchers.lookup(contextName)
     } match {
       case Success(context) => {
-        Logger.info(s"ServerProxy[${server.name}] using configured execution context[$contextName]")
+        server.logger.withKeyValue("context_name", contextName).info("Using execution context with this name")
         (context, name)
       }
 
@@ -123,7 +121,7 @@ class ServerProxyImpl @Inject()(
         if (i > 0) {
           resolveContextName(name.substring(0, i))
         } else {
-          Logger.warn(s"ServerProxy[${server.name}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
+          server.logger.withKeyValue("context_name", name).warn("Execution context not found. Using default execution context")
           (system.dispatchers.lookup(ServerProxy.DefaultContextName), ServerProxy.DefaultContextName)
         }
       }

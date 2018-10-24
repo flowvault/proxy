@@ -1,13 +1,12 @@
 package controllers
 
 import akka.actor.ActorSystem
+import io.flow.log.RollbarLogger
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.session.v0.{Client => SessionClient}
 import javax.inject.{Inject, Singleton}
-
 import lib._
-import play.api.Logger
 import play.api.mvc._
 
 import scala.concurrent.Future
@@ -18,6 +17,7 @@ class ReverseProxy @Inject () (
   authorizationParser: AuthorizationParser,
   config: Config,
   val flowAuth: FlowAuth,
+  val logger: RollbarLogger,
   proxyConfigFetcher: ProxyConfigFetcher,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   serverProxyFactory: ServerProxy.Factory,
@@ -36,27 +36,33 @@ class ReverseProxy @Inject () (
 
   override val organizationClient: OrganizationClient = {
     val server = mustFindServerByName("organization")
-    Logger.info(s"Creating OrganizationClient w/ baseUrl[${server.host}]")
+    logger.withKeyValue("base_url", server.host).info("Creating OrganizationClient")
     new OrganizationClient(ws, baseUrl = server.host)
   }
 
   override val sessionClient: SessionClient = {
     val server = mustFindServerByName("session")
-    Logger.info(s"Creating SessionClient w/ baseUrl[${server.host}]")
+    logger.withKeyValue("base_url", server.host).info("Creating SessionClient")
     new SessionClient(ws, baseUrl = server.host)
   }
 
   override val tokenClient: TokenClient = {
     val server = mustFindServerByName("token")
-    Logger.info(s"Creating TokenClient w/ baseUrl[${server.host}]")
+    logger.withKeyValue("base_url", server.host).info("Creating TokenClient")
     new TokenClient(ws, baseUrl = server.host)
   }
 
   private[this] val proxies: Map[String, ServerProxy] = {
-    Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
+    logger.
+      withKeyValue("sources", index.config.sources.map(_.uri).mkString(", ")).
+      info("ReverseProxy loading config")
+
     val all = scala.collection.mutable.Map[String, ServerProxy]()
     index.config.servers.map { s =>
       if (all.isDefinedAt(s.name)) {
+        logger.
+          withKeyValue("name", s.name).
+          error("Duplicate server")
         sys.error(s"Duplicate server with name[${s.name}]")
       } else {
         all += (s.name -> serverProxyFactory(s))
@@ -309,13 +315,22 @@ class ReverseProxy @Inject () (
           case None => {
             apiBuilderServicesFetcher.multiService.validate(request.method.toString, path) match {
               case Left(errors) => {
-                Logger.info(s"[proxy $request] status:422 apibuilder validation error: ${errors.mkString(", ")}")
+                logger.
+                  requestId(request.requestId).
+                  withKeyValue("validation_errors", errors.mkString(", ")).
+                  info("apibuilder validation error - returning 422")
+
                 Left(
                   request.responseUnprocessableEntity(errors.mkString(", "))
                 )
               }
               case Right(_) => {
-                Logger.info(s"Unrecognized URL ${request.method} $path - returning 404")
+                logger.
+                  requestId(request.requestId).
+                  withKeyValue("method", request.method.toString).
+                  withKeyValue("path", path).
+                  info("Unrecognized URL")
+
                 Left(NotFound)
               }
             }
@@ -352,7 +367,7 @@ class ReverseProxy @Inject () (
                           method = request.method,
                           path = path
                         ),
-                        server = Server(name = "override", host = host)
+                        server = Server(name = "override", host = host, logger = logger)
                       )
                     )
                   } else {

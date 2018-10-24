@@ -1,10 +1,10 @@
 package auth
 
 import io.flow.common.v0.models.Environment
+import io.flow.log.RollbarLogger
 import io.flow.organization.v0.interfaces.Client
 import io.flow.organization.v0.models.OrganizationAuthorizationForm
 import lib.{FlowAuth, ResolvedToken}
-import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -16,6 +16,7 @@ trait OrganizationAuth {
 
   def organizationClient: Client
   def flowAuth: FlowAuth
+  def logger: RollbarLogger
 
   def authorizeOrganization(
     token: ResolvedToken,
@@ -53,12 +54,23 @@ trait OrganizationAuth {
       )
     }.recover {
       case io.flow.organization.v0.errors.UnitResponse(code) => {
-        Logger.warn(s"HTTP $code during token authorization for organization[$organization]")
+        logger.
+          requestId(token.requestId).
+          withKeyValue("source", "proxy").
+          organization(organization).
+          withKeyValue("http_status_code", code).
+          warn("Unexpected HTTP Status Code during token authorization - request will NOT be authorized")
         None
       }
 
       case ex: Throwable => {
-        sys.error(s"Error communicating with organization server at[${organizationClient.baseUrl}]: ${ex.getMessage}")
+        logger.
+          requestId(token.requestId).
+          withKeyValue("source", "proxy").
+          organization(organization).
+          withKeyValue("url", organizationClient.baseUrl).
+          warn("Error communicating with organization server", ex)
+        sys.error("Error communicating with organization server")
       }
     }
   }
