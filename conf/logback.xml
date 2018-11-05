@@ -34,6 +34,10 @@
     <logger name="play" level="INFO" />
     <logger name="application" level="DEBUG" />
 
+    <logger name="io.flow.token.v0.Client" level="WARN" />
+    <logger name="io.flow.organization.v0.Client" level="WARN" />
+    <logger name="io.flow.session.v0.Client" level="WARN" />
+
     <!-- Off these ones as they are annoying, and anyway we manage configuration ourselves -->
     <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF" />
     <logger name="com.avaje.ebeaninternal.server.core.XmlConfigLoader" level="OFF" />
