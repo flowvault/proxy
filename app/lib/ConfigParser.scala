@@ -43,10 +43,20 @@ class ConfigParser @Inject() (
 
           val servers: Seq[InternalServer] = getArray(all, "servers").map { objJs =>
             val obj = toMap(objJs)
+
+            /**
+              * Currently uses global proxy logger.
+              * TODO:
+              * - Figure best way to use logger for the server actually fulfilling the request
+              * - This probably happens in some logger service that reads from a config
+              * - Or maybe have this in registry?
+              */
+            val serverLogger = logger
+
             InternalServer(
               name = getString(obj, "name"),
               host = getString(obj, "host"),
-              logger = logger // TODO: this will use the global proxy logger. not sure that is best
+              logger = serverLogger
             )
           }
 
