@@ -16,28 +16,28 @@ class ErrorHandler @Inject() (
 
   lazy val index: Index = proxyConfigFetcher.current()
 
-  private[this] case class Foo(errorId: String, logger: RollbarLogger)
+  private[this] case class ErrorLogger(errorId: String, logger: RollbarLogger)
 
   def onClientError(request: RequestHeader, statusCode: Int, message: String): Future[Result] = {
-    val foo = rollbarLogger(request)
-    foo.logger.
+    val errorLogger = rollbarLogger(request)
+    errorLogger.logger.
       withKeyValue("http_status_code", statusCode).
       withKeyValue("message", message).
       warn("Client error")
 
-    val r = Status(statusCode)(clientErrors(Seq(s"Invalid request (err #${foo.errorId})")))
+    val r = Status(statusCode)(clientErrors(Seq(s"Invalid request (err #${errorLogger.errorId})")))
     Future.successful(r)
   }
 
   def onServerError(request: RequestHeader, ex: Throwable): Future[Result] = {
-    val foo = rollbarLogger(request)
-    foo.logger.error("FlowError", ex)
+    val errorLogger = rollbarLogger(request)
+    errorLogger.logger.error("FlowError", ex)
 
-    val r = InternalServerError(serverErrors(Seq(s"A server error occurred (err #${foo.errorId})")))
+    val r = InternalServerError(serverErrors(Seq(s"A server error occurred (err #${errorLogger.errorId})")))
     Future.successful(r)
   }
 
-  private[this] def rollbarLogger(request: RequestHeader): Foo = {
+  private[this] def rollbarLogger(request: RequestHeader): ErrorLogger = {
     val operation = index.resolve(Method(request.method), request.uri)
     val errorId = generateErrorId()
     val baseLogger = operation.map(_.server.logger).getOrElse(defaultLogger)
@@ -46,7 +46,7 @@ class ErrorHandler @Inject() (
     val headersToRemove = Constants.Headers.namesToRemove ++ Seq("Authorization")
     val headers = Util.removeKeys(request.headers.toMap, headersToRemove)
 
-    Foo(
+    ErrorLogger(
       errorId,
       baseLogger.
         withKeyValue("error_id", errorId).
