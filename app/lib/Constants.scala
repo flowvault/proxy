@@ -43,6 +43,26 @@ object Constants {
       CfIpCountry,
       CfVisitor
     )
+
+    val namesToWhitelist = Seq(
+      // cloudflare headers
+      CfRay,
+      CfConnectingIp,
+      CfTrueClientIp,
+      CfIpCountry,
+      CfVisitor,
+
+      // safe flow headers
+      FlowRequestId,
+      FlowServer,
+      FlowHost,
+
+      // standard stuff
+      Host,
+      Origin,
+      ForwardedOrigin,
+      ForwardedMethod
+    )
   }
 
   /**

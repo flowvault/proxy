@@ -43,8 +43,8 @@ class ErrorHandler @Inject() (
     val baseLogger = operation.map(_.server.logger).getOrElse(defaultLogger)
 
     // add Authorization as header to remove
-    val headersToRemove = Constants.Headers.namesToRemove ++ Seq("Authorization")
-    val headers = Util.removeKeys(request.headers.toMap, headersToRemove)
+    val headerKeys = request.headers.keys.toSeq
+    val headers = Util.filterKeys(request.headers.toMap, Constants.Headers.namesToWhitelist)
 
     ErrorLogger(
       errorId,
@@ -56,6 +56,7 @@ class ErrorHandler @Inject() (
         withKeyValue("route_path", operation.map(_.route.path)).
         withKeyValue("route_server_name", operation.map(_.server.name)).
         withKeyValue("route_server_host", operation.map(_.server.host)).
+        withKeyValue("header_keys", headerKeys). // show all keys to figure out what we may be missing or want to add
         withKeyValue("headers", headers)
     )
   }

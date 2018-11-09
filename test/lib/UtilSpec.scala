@@ -40,6 +40,17 @@ class UtilSpec extends BasePlaySpec {
     parts.keys.toSeq must equal(Seq("foo"))
   }
 
+  "filterKeys" in {
+    val parts = Util.filterKeys(
+      Map[String, Seq[String]](
+        "foo" -> Seq("bar"),
+        "foo2" -> Seq("baz")
+      ),
+      Seq("a", "foo2")
+    )
+    parts.keys.toSeq must equal(Seq("foo2"))
+  }
+
   "query with multiple values" in {
     val parts = Util.toFlatSeq(
       Map[String, Seq[String]](
