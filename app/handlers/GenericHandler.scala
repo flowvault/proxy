@@ -10,15 +10,15 @@ import play.api.http.Status.{UNPROCESSABLE_ENTITY, UNSUPPORTED_MEDIA_TYPE}
 import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Headers, Result, Results}
-import WSResponseUtil._
 import io.flow.log.RollbarLogger
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 @Singleton
 class GenericHandler @Inject() (
   override val config: Config,
-  val logger: RollbarLogger,
+  override val logger: RollbarLogger,
   flowAuth: FlowAuth,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities {
@@ -134,7 +134,7 @@ class GenericHandler @Inject() (
       )
 
       if (request.responseEnvelope || response.status == 422) {
-        request.response(response.status, response.safeBody, contentType, responseHeaders)
+        request.response(response.status, safeBody(request, response).getOrElse(""), contentType, responseHeaders)
       } else {
         contentLength match {
           case None => {
@@ -252,7 +252,7 @@ class GenericHandler @Inject() (
       }
 
       case UNPROCESSABLE_ENTITY => {
-        " body:" + response.safeBody
+        " body:" + safeBody(request, response).getOrElse("")
       }
 
       case _ => {
@@ -285,6 +285,17 @@ class GenericHandler @Inject() (
       case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
       case _: JsObject => toLogValue(request, body, typ).toString
       case _ => s"Body of type[${body.getClass.getName}] fully redacted"
+    }
+  }
+
+  private[this] def safeBody(request: ProxyRequest, response: WSResponse): Option[String] = {
+    Try(response.body) match {
+      case Success(b) => Some(b)
+      case Failure(e) =>
+        logger.
+          requestId(request.requestId).
+          warn("Error while retrieving response body. Returning empty body.", e)
+        None
     }
   }
 }

@@ -3,7 +3,6 @@ package handlers
 import io.apibuilder.validation.MultiService
 import io.flow.log.RollbarLogger
 import lib._
-import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 
 import scala.util.{Failure, Success, Try}
@@ -25,7 +24,10 @@ trait HandlerUtilities extends Errors {
         case Failure(_) => body
       }
 
-      Logger.info(s"[proxy $request] responded with status:$status: $finalBody")
+      request.logger(logger).
+        withKeyValue("status", status).
+        withKeyValue("body", finalBody.toString).
+        info("[proxy $request] responded with status:$status")
     }
   }
 
@@ -34,7 +36,7 @@ trait HandlerUtilities extends Errors {
     if (request.method != Method.Get && status >= 400 && status < 500) {
       // TODO: PARSE TYPE
       val finalBody = toLogValue(request, js, typ = None)
-      Logger.info(s"[proxy $request] responded with status:$status Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
+      logger.info(s"[proxy $request] responded with status:$status Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
     }
   }
 

@@ -2,20 +2,25 @@ package filters
 
 import javax.inject.Inject
 import akka.stream.Materializer
+import io.flow.log.RollbarLogger
 import play.api.http.HttpFilters
-import play.api.Logger
 import play.api.mvc._
 import play.filters.cors.CORSFilter
+
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Taken from lib-play to avoid pulling in lib-play as a dependency
   */
 class CorsWithLoggingFilter @javax.inject.Inject() (corsFilter: CORSFilter, loggingFilter: LoggingFilter) extends HttpFilters {
-  def filters = Seq(corsFilter, loggingFilter)
+  def filters: Seq[EssentialFilter] = Seq(corsFilter, loggingFilter)
 }
 
-class LoggingFilter @Inject() (implicit val mat: Materializer, ec: ExecutionContext) extends Filter {
+class LoggingFilter @Inject() (
+  logger: RollbarLogger
+) (
+  implicit val mat: Materializer, ec: ExecutionContext
+) extends Filter {
 
   def apply(nextFilter: RequestHeader => Future[Result])
            (requestHeader: RequestHeader): Future[Result] = {
@@ -40,7 +45,7 @@ class LoggingFilter @Inject() (implicit val mat: Materializer, ec: ExecutionCont
         ).mkString(",")
       ).mkString(" ")
 
-      Logger.info(line)
+      logger.info(line)
 
       result.withHeaders("Request-Time" -> requestTime.toString)
     }

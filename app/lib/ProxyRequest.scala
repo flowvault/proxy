@@ -2,7 +2,7 @@ package lib
 
 import java.util.UUID
 
-import play.api.Logger
+import io.flow.log.RollbarLogger
 import play.api.libs.json._
 import play.api.mvc._
 
@@ -10,9 +10,9 @@ import scala.util.{Failure, Success, Try}
 
 object ProxyRequest {
 
-  val ReservedQueryParameters = Seq("method", "callback", "envelope")
+  val ReservedQueryParameters: Set[String] = Set("method", "callback", "envelope")
 
-  def validate(request: Request[RawBuffer]): Either[Seq[String], ProxyRequest] = {
+  def validate(request: Request[RawBuffer])(implicit logger: RollbarLogger): Either[Seq[String], ProxyRequest] = {
     validate(
       requestMethod = request.method,
       requestPath = request.path,
@@ -33,7 +33,7 @@ object ProxyRequest {
     body: Option[ProxyRequestBody],
     queryParameters: Map[String, Seq[String]],
     headers: Headers
-  ): Either[Seq[String], ProxyRequest] = {
+  )(implicit logger: RollbarLogger): Either[Seq[String], ProxyRequest] = {
     val (method, methodErrors) = queryParameters.getOrElse("method", Nil).toList match {
       case Nil => (Some(Method(requestMethod)), Nil)
 
@@ -137,7 +137,7 @@ case class ProxyRequest(
   jsonpCallback: Option[String] = None,
   envelopes: Seq[Envelope] = Nil,
   queryParameters: Map[String, Seq[String]] = Map()
-) extends Results with Errors {
+)(implicit logger: RollbarLogger) extends Results with Errors {
   assert(
     ProxyRequest.ReservedQueryParameters.filter { queryParameters.isDefinedAt } == Nil,
     "Cannot provide query reserved parameters"
@@ -213,6 +213,13 @@ case class ProxyRequest(
         }
       }
     }
+  }
+
+  def log: RollbarLogger = {
+    logger.
+      requestId(requestId).
+      withKeyValue("method", method.toString).
+      withKeyValue("path_with_query", pathWithQuery)
   }
 
   override def toString: String = {
@@ -333,7 +340,9 @@ case class ProxyRequest(
     message: String,
     headers: Map[String,Seq[String]] = Map()
   ): Result = {
-    Logger.info(s"[proxy $toString] status:$status request.contentType:${contentType.toStringWithEncoding} $message")
+    log.
+      fingerprint("ProxyResponseError").
+      info(s"[proxy $toString] status:$status request.contentType:${contentType.toStringWithEncoding} $message")
 
     response(
       status = status,
