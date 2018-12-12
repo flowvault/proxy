@@ -10,7 +10,7 @@ import scala.util.{Failure, Success, Try}
 
 object ProxyRequest {
 
-  val ReservedQueryParameters: Set[String] = Set("method", "callback", "envelope")
+  val ReservedQueryParameters: Seq[String] = Seq("method", "callback", "envelope")
 
   def validate(request: Request[RawBuffer])(implicit logger: RollbarLogger): Either[Seq[String], ProxyRequest] = {
     validate(

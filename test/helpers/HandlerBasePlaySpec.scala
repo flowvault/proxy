@@ -62,7 +62,7 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
             }
           }.toSeq: _*
         )
-      )
+      )(logger)
     )
   }
 

@@ -2,10 +2,12 @@ package lib
 
 import akka.util.ByteString
 import helpers.BasePlaySpec
+import io.flow.log.RollbarLogger
 import play.api.mvc.Headers
 
 class ProxyRequestSpec extends BasePlaySpec {
 
+  private[this] implicit val rollbarLogger = app.injector.instanceOf[RollbarLogger]
   private[this] val testBody = Some(ProxyRequestBody.Bytes(ByteString("test".getBytes())))
 
   "parses ContentType" in {

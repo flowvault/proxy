@@ -72,7 +72,7 @@ class ReverseProxy @Inject () (
   }
 
   def handle: Action[RawBuffer] = Action.async(parse.raw) { request =>
-    ProxyRequest.validate(request) match {
+    ProxyRequest.validate(request)(logger) match {
       case Left(errors) => Future.successful {
         UnprocessableEntity(genericErrors(errors))
       }

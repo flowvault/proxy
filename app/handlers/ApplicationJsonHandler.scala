@@ -1,7 +1,7 @@
 package handlers
 
+import io.flow.log.RollbarLogger
 import javax.inject.{Inject, Singleton}
-
 import lib._
 import play.api.libs.json.{JsValue, Json}
 import play.api.libs.ws.WSClient
@@ -12,6 +12,7 @@ import scala.util.{Failure, Success, Try}
 
 @Singleton
 class ApplicationJsonHandler @Inject() (
+  logger: RollbarLogger,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   genericHandler: GenericHandler
 ) extends Handler {
@@ -84,7 +85,7 @@ class ApplicationJsonHandler @Inject() (
           request.copy(
             contentType = ContentType.ApplicationJson,
             body = Some(ProxyRequestBody.Json(validatedBody))
-          ),
+          )(logger),
           route,
           token
         )

@@ -15,7 +15,7 @@ class TokenAuthSpec extends BasePlaySpec {
 
   private[this] val tokenTestAuth = new TokenAuth with mock.Client {
     override def tokenClient = TokenMockClient
-    override def logger: RollbarLogger = logger
+    override def logger: RollbarLogger = app.injector.instanceOf[RollbarLogger]
   }
 
   private[this] val requestId = UUID.randomUUID.toString

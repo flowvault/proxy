@@ -24,7 +24,8 @@ trait HandlerUtilities extends Errors {
         case Failure(_) => body
       }
 
-      request.logger(logger).
+      request.log.
+        fingerprint("Proxy4xx").
         withKeyValue("status", status).
         withKeyValue("body", finalBody.toString).
         info("[proxy $request] responded with status:$status")
