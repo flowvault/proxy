@@ -17,6 +17,10 @@ code:
       version: latest
       generators:
         play_2_6_client: app/generated
+    permission:
+      version: latest
+      generators:
+        play_2_6_client: app/generated
     session:
       version: latest
       generators:
