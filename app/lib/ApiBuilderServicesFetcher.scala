@@ -27,7 +27,7 @@ class ApiBuilderServicesFetcher @Inject() (
         case None => {
           multiServiceCache.getOrElse {
             logger.
-              withKeyValue("uris", Uris.mkString(", ")).
+              withKeyValues("uri", Uris).
               info("ApiBuilderServicesFetcher: fetching configuration")
             val ms = MultiService.fromUrls(urls)
             multiServiceCache = Some(ms)
