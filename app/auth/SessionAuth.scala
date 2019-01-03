@@ -1,6 +1,5 @@
 package auth
 
-import io.flow.log.RollbarLogger
 import io.flow.organization.v0.interfaces.{Client => OrganizationClient}
 import io.flow.session.v0.{Client => SessionClient}
 import io.flow.session.v0.models._
@@ -12,11 +11,10 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries organization server to authorize this user for this
   * organization and also pulls the organization's environment.
   */
-trait SessionAuth {
+trait SessionAuth extends LoggingHelper {
 
   def organizationClient: OrganizationClient
   def sessionClient: SessionClient
-  def logger: RollbarLogger
 
   private[this] val Undefined = "undefined"
 
@@ -49,8 +47,7 @@ trait SessionAuth {
         }
 
         case SessionAuthorizationUndefinedType(other) => {
-          logger.
-            requestId(requestId).
+          log(requestId).
             withKeyValue("session_id", sessionId).
             withKeyValue("type", other).
             warn("SessionAuthorizationUndefinedType")
@@ -58,8 +55,7 @@ trait SessionAuth {
         }
       }.recover {
         case io.flow.organization.v0.errors.UnitResponse(code) => {
-          logger.
-            requestId(requestId).
+          log(requestId).
             withKeyValue("http_status_code", code).
             withKeyValue("session_id", sessionId).
             warn("Unexpected HTTP Status Code - request will not be authorized")
@@ -69,12 +65,11 @@ trait SessionAuth {
         case e: io.flow.session.v0.errors.GenericErrorResponse => {
           e.genericError.messages.mkString(", ") match {
             case "Session does not exist" => // expected - don't log
-            case msg => {
-              logger.
-                requestId(requestId).
+            case _ => {
+              log(requestId).
                 withKeyValue("http_status_code", "422").
                 withKeyValue("session_id", sessionId).
-                withKeyValue("messages", msg).
+                withKeyValues("message", e.genericError.messages).
                 warn("422 authorizing session")
             }
           }
@@ -84,8 +79,7 @@ trait SessionAuth {
 
         case ex: Throwable => {
           val msg = "Error communication with session service"
-          logger.
-            requestId(requestId).
+          log(requestId).
             withKeyValue("session_id", sessionId).
             error(msg, ex)
           throw new RuntimeException(msg, ex)

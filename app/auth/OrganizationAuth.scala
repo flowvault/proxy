@@ -1,7 +1,5 @@
 package auth
 
-import io.flow.common.v0.models.Environment
-import io.flow.log.RollbarLogger
 import io.flow.organization.v0.interfaces.Client
 import io.flow.organization.v0.models.OrganizationAuthorizationForm
 import lib.{FlowAuth, ResolvedToken}
@@ -12,11 +10,10 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries organization server to authorize this user for this
   * organization and also pulls the organization's environment.
   */
-trait OrganizationAuth {
+trait OrganizationAuth extends LoggingHelper {
 
   def organizationClient: Client
   def flowAuth: FlowAuth
-  def logger: RollbarLogger
 
   def authorizeOrganization(
     token: ResolvedToken,
@@ -56,9 +53,7 @@ trait OrganizationAuth {
       case io.flow.organization.v0.errors.UnitResponse(code) if code == 401 => None
 
       case io.flow.organization.v0.errors.UnitResponse(code) => {
-        logger.
-          requestId(token.requestId).
-          withKeyValue("source", "proxy").
+        log(token.requestId).
           organization(organization).
           withKeyValue("http_status_code", code).
           warn("Unexpected HTTP Status Code during organization token authorization - request will NOT be authorized")
@@ -66,9 +61,7 @@ trait OrganizationAuth {
       }
 
       case ex: Throwable => {
-        logger.
-          requestId(token.requestId).
-          withKeyValue("source", "proxy").
+        log(token.requestId).
           organization(organization).
           withKeyValue("url", organizationClient.baseUrl).
           warn("Error communicating with organization server", ex)

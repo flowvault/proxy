@@ -1,6 +1,5 @@
 package auth
 
-import io.flow.log.RollbarLogger
 import io.flow.token.v0.interfaces.Client
 import io.flow.token.v0.models._
 import lib.{FlowAuth, ResolvedToken}
@@ -11,14 +10,9 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries token server to check if the specified token is a known
   * valid token.
   */
-trait TokenAuth {
+trait TokenAuth extends LoggingHelper {
 
   def tokenClient: Client
-  def logger: RollbarLogger
-
-  private[this] def log(requestId: String): RollbarLogger = logger.
-    fingerprint(getClass.getName).
-    requestId(requestId)
 
   def resolveToken(
     requestId: String,
