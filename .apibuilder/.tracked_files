@@ -2,23 +2,23 @@
 flow:
   common:
     play_2_x_json:
-    - "/Users/mbryzek/flowvault/proxy/app/generated/FlowCommonV0Models.scala"
+    - app/generated/FlowCommonV0Models.scala
     play_2_6_mock_client:
-    - "/Users/mbryzek/flowvault/proxy/test/generated/FlowCommonV0MockClient.scala"
+    - test/generated/FlowCommonV0MockClient.scala
   error:
     play_2_x_json:
-    - "/Users/mbryzek/flowvault/proxy/app/generated/FlowErrorV0Models.scala"
+    - app/generated/FlowErrorV0Models.scala
   reference:
     play_2_x_json:
-    - "/Users/mbryzek/flowvault/proxy/app/generated/FlowReferenceV0Models.scala"
+    - app/generated/FlowReferenceV0Models.scala
   organization:
     play_2_6_client:
-    - "/Users/mbryzek/flowvault/proxy/app/generated/FlowOrganizationV0Client.scala"
+    - app/generated/FlowOrganizationV0Client.scala
   session:
     play_2_6_client:
-    - "/Users/mbryzek/flowvault/proxy/app/generated/FlowSessionV0Client.scala"
+    - app/generated/FlowSessionV0Client.scala
   token:
     play_2_6_client:
-    - "/Users/mbryzek/flowvault/proxy/app/generated/FlowTokenV0Client.scala"
+    - app/generated/FlowTokenV0Client.scala
     play_2_6_mock_client:
-    - "/Users/mbryzek/flowvault/proxy/test/generated/FlowTokenV0MockClient.scala"
+    - test/generated/FlowTokenV0MockClient.scala
