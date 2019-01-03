@@ -21,13 +21,6 @@ case class Index(config: ProxyConfig) {
   private[this] val (staticRouteMap, dynamicRoutes) = {
     val all: Seq[Operation] = config.operations
 
-    val dynamicRoutes = all.flatMap { op =>
-      op.route match {
-        case _: Route.Dynamic => Some(op)
-        case _: Route.Static => None
-      }
-    }
-
     // Map from method name to list of internal routes
     var dynamicRouteMap = scala.collection.mutable.Map[Method, Seq[Operation]]()
     all.foreach { op =>
