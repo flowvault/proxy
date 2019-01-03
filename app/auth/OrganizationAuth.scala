@@ -30,7 +30,7 @@ trait OrganizationAuth {
         organizationClient.organizationAuthorizations.post(
           OrganizationAuthorizationForm(
             organization = organization,
-            environment = Environment(env)
+            environment = env
           ),
           requestHeaders = flowAuth.headers(token)
         )
@@ -48,8 +48,8 @@ trait OrganizationAuth {
       Some(
         token.copy(
           organizationId = Some(organization),
-          environment = Some(orgAuth.environment.toString),
-          role = Some(orgAuth.role.toString)
+          environment = Some(orgAuth.environment),
+          role = orgAuth.role
         )
       )
     }.recover {

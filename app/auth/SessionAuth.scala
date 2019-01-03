@@ -39,7 +39,7 @@ trait SessionAuth {
             ResolvedToken(
               requestId = requestId,
               userId = None,
-              environment = Some(auth.environment.toString),
+              environment = Some(auth.environment),
               organizationId = Some(auth.organization.id),
               partnerId = None,
               role = None,

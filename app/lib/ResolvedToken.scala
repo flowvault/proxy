@@ -1,18 +1,18 @@
 package lib
 
+import io.flow.common.v0.models.{Environment, Role}
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat.dateTime
 
 case class ResolvedToken(
   requestId: String,
   userId: Option[String] = None,
-  environment: Option[String] = None,
+  environment: Option[Environment] = None,
   organizationId: Option[String] = None,
   partnerId: Option[String] = None,
-  role: Option[String] = None,
+  role: Option[Role] = None,
   sessionId: Option[String] = None
 ) {
-
   private[lib] val createdAt = DateTime.now
 
   def toMap: Map[String, String] = {
@@ -23,8 +23,8 @@ case class ResolvedToken(
       "session" -> sessionId,
       "organization" -> organizationId,
       "partner" -> partnerId,
-      "role" -> role,
-      "environment" -> environment
+      "role" -> role.map(_.toString),
+      "environment" -> environment.map(_.toString)
     ).flatMap { case (key, value) => value.map { v => key -> v } }
   }
   

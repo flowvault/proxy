@@ -16,6 +16,10 @@ trait TokenAuth {
   def tokenClient: Client
   def logger: RollbarLogger
 
+  private[this] def log(requestId: String): RollbarLogger = logger.
+    fingerprint(getClass.getName).
+    requestId(requestId)
+
   def resolveToken(
     requestId: String,
     token: String
@@ -35,9 +39,7 @@ trait TokenAuth {
 
       case ex: Throwable => {
         val msg = "Could not communicate with token server"
-        logger.
-          requestId(requestId).
-          error(msg, ex)
+        log(requestId).error(msg, ex)
         throw new RuntimeException(msg, ex)
       }
     }
@@ -49,7 +51,7 @@ trait TokenAuth {
         ResolvedToken(
           requestId = requestId,
           userId = Some(t.user.id),
-          environment = Some(t.environment.toString),
+          environment = Some(t.environment),
           organizationId = Some(t.organization.id)
         )
       )
@@ -58,17 +60,13 @@ trait TokenAuth {
         ResolvedToken(
           requestId = requestId,
           userId = Some(t.user.id),
-          environment = Some(t.environment.toString),
+          environment = Some(t.environment),
           partnerId = Some(t.partner.id)
         )
       )
 
       case TokenReferenceUndefinedType(other) => {
-        val msg = "Could not communicate with token server"
-        logger.
-          requestId(requestId).
-          withKeyValue("type", other).
-          warn("TokenReferenceUndefinedType")
+        log(requestId).withKeyValue("type", other).warn("TokenReferenceUndefinedType")
         None
       }
     }
