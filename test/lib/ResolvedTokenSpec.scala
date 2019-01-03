@@ -3,6 +3,7 @@ package lib
 import java.util.UUID
 
 import helpers.BasePlaySpec
+import io.flow.common.v0.models.{Environment, Role}
 import org.joda.time.format.ISODateTimeFormat.dateTime
 
 class ResolvedTokenSpec extends BasePlaySpec {
@@ -45,7 +46,7 @@ class ResolvedTokenSpec extends BasePlaySpec {
       userId = Some("5"),
       organizationId = Some("flow"),
       partnerId = None,
-      role = Some("member"),
+      role = Some(Role.Member),
       environment = None
     )
 
@@ -64,8 +65,8 @@ class ResolvedTokenSpec extends BasePlaySpec {
       userId = Some("5"),
       organizationId = Some("flow"),
       partnerId = None,
-      role = Some("member"),
-      environment = Some("production")
+      role = Some(Role.Member),
+      environment = Some(Environment.Production)
     )
 
     d5.toMap must equal(

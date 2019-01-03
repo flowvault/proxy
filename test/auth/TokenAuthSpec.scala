@@ -36,7 +36,7 @@ class TokenAuthSpec extends BasePlaySpec {
           organizationId = Some("tst"),
           partnerId = None,
           role = None,
-          environment = Some("production")
+          environment = Some(Environment.Production)
         )
       )
     )
@@ -58,7 +58,7 @@ class TokenAuthSpec extends BasePlaySpec {
           organizationId = None,
           partnerId = Some("foo"),
           role = None,
-          environment = Some("production")
+          environment = Some(Environment.Production)
         )
       )
     )
