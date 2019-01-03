@@ -54,7 +54,7 @@ class ReverseProxy @Inject () (
 
   private[this] val proxies: Map[String, ServerProxy] = {
     logger.
-      withKeyValue("sources", index.config.sources.map(_.uri).mkString(", ")).
+      withKeyValues("source", index.config.sources.map(_.uri)).
       info("ReverseProxy loading config")
 
     val all = scala.collection.mutable.Map[String, ServerProxy]()
