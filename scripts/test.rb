@@ -9,9 +9,10 @@ load 'assert.rb'
 PARENT_ORGANIZATION_ID = "flow"
 TEST_ORG_PREFIX = "proxy-test"
 
-api_key_file = File.expand_path("~/.flow/%s-sandboxes" % PARENT_ORGANIZATION_ID)
+pretty_path = "~/.flow/%s-sandboxes" % PARENT_ORGANIZATION_ID
+api_key_file = File.expand_path(pretty_path)
 if !File.exists?(api_key_file)
-  puts "ERROR: Missing api key file: %s" % api_key_file
+  puts "ERROR: Missing api key file: %s" % pretty_path
   exit(1)
 end
 
@@ -59,6 +60,18 @@ end
 
 helpers = Helpers.new(uri, api_key_file)
 
+# One deploy had an error where these endpoints began returning 401 - test for that now.
+response = helpers.get("/demo/catalog/subcatalogs").with_api_key.execute
+subcatalog_id = response.json.first['id']
+assert_not_nil(subcatalog_id)
+
+assert_status(200, helpers.get("/demo/catalog/subcatalogs/#{subcatalog_id}/queries").with_api_key.execute)
+assert_status(200, helpers.get("/demo/catalog/subcatalogs/#{subcatalog_id}/statistics").with_api_key.execute)
+
+response = helpers.json_post("/demo/experiences/query/builders", { :discriminator => "query", :q => "test" }).with_api_key.execute
+assert_status(201, response)
+
+# Create a org for remainder of tests
 id = "%s-%s" % [TEST_ORG_PREFIX, ProxyGlobal.random_string(8)]
 response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent_id => 'flow', "id" => id }).with_api_key.execute
 assert_status(201, response)
