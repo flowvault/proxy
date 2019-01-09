@@ -94,6 +94,24 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def internalHandle(request: ProxyRequest): Future[Result] = {
+    apiBuilderServicesFetcher.multiService.validate(request.method.toString, request.path) match {
+      case Left(errors) => {
+        logger.
+          requestId(request.requestId).
+          withKeyValue("validation_errors", errors.mkString(", ")).
+          info("apibuilder method and path are not defined - returning 422")
+
+        Future.successful(
+          request.responseUnprocessableEntity(errors.mkString(", "))
+        )
+      }
+      case Right(operation) => {
+        internalHandle(request, operation)
+      }
+    }
+  }
+
+  private[this] def internalHandle(request: ProxyRequest, operation: io.apibuilder.spec.v0.models.Operation) = {
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
         proxyPostAuth(request, token = ResolvedToken(requestId = request.requestId))
@@ -313,27 +331,13 @@ class ReverseProxy @Inject () (
       Future.successful(
         index.resolve(request.method, path) match {
           case None => {
-            apiBuilderServicesFetcher.multiService.validate(request.method.toString, path) match {
-              case Left(errors) => {
-                logger.
-                  requestId(request.requestId).
-                  withKeyValue("validation_errors", errors.mkString(", ")).
-                  info("apibuilder validation error - returning 422")
+            logger.
+              requestId(request.requestId).
+              withKeyValue("method", request.method.toString).
+              withKeyValue("path", path).
+              warn("Unrecognized URL")  // by this point the url should have been able to be resolved
 
-                Left(
-                  request.responseUnprocessableEntity(errors.mkString(", "))
-                )
-              }
-              case Right(_) => {
-                logger.
-                  requestId(request.requestId).
-                  withKeyValue("method", request.method.toString).
-                  withKeyValue("path", path).
-                  info("Unrecognized URL")
-
-                Left(NotFound)
-              }
-            }
+            Left(NotFound)
           }
 
           case Some(operation) => {
