@@ -71,7 +71,7 @@ assert_status(200, helpers.get("/demo/catalog/subcatalogs/#{subcatalog_id}/stati
 response = helpers.json_post("/demo/experiences/query/builders", { :discriminator => "query", :q => "test" }).with_api_key.execute
 assert_status(201, response)
 
-# tests that we verify URL is valid before we authenticate the key
+# tests that we validate that the URL is known before we attempt to validate the auth headers
 invalid_key_file = "/tmp/proxy-test-invalid-api-key.txt"
 File.open(invalid_key_file, "w") { |o| o << "invalid" }
 invalid_helpers = Helpers.new(uri, invalid_key_file)
