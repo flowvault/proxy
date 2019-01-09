@@ -2,7 +2,7 @@ package auth
 
 import io.flow.token.v0.interfaces.Client
 import io.flow.token.v0.models._
-import lib.{FlowAuth, ResolvedToken}
+import lib.{Constants, FlowAuth, ResolvedToken}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -15,6 +15,23 @@ trait TokenAuth extends LoggingHelper {
   def tokenClient: Client
 
   def resolveToken(
+    requestId: String,
+    token: String
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Option[ResolvedToken]] = {
+    if (Constants.StopWords.contains(token)) {
+      // javascript sending in 'undefined' or 'null' as session id
+      Future.successful(None)
+    } else {
+      doResolveToken(
+        requestId = requestId,
+        token = token
+      )
+    }
+  }
+
+  private[this] def doResolveToken(
     requestId: String,
     token: String
   )(

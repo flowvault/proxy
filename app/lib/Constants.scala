@@ -2,6 +2,8 @@ package lib
 
 object Constants {
 
+  val StopWords = Set("undefined", "null")
+
   object Headers {
 
     val FlowAuth = "X-Flow-Auth"

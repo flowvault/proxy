@@ -2,7 +2,7 @@ package auth
 
 import io.flow.organization.v0.interfaces.Client
 import io.flow.organization.v0.models.OrganizationAuthorizationForm
-import lib.{FlowAuth, ResolvedToken}
+import lib.{Constants, FlowAuth, ResolvedToken}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -21,8 +21,24 @@ trait OrganizationAuth extends LoggingHelper {
   )(
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
-    val authFuture = (token.environment, token.organizationId) match {
+    if (Constants.StopWords.contains(organization)) {
+      // javascript sending in 'undefined' or 'null' as session id
+      Future.successful(None)
+    } else {
+      doAuthorizeOrganization(
+        token = token,
+        organization = organization
+      )
+    }
+  }
 
+  private[this] def doAuthorizeOrganization(
+    token: ResolvedToken,
+    organization: String
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Option[ResolvedToken]] = {
+    val authFuture = (token.environment, token.organizationId) match {
       case (Some(env), Some(_)) => {
         organizationClient.organizationAuthorizations.post(
           OrganizationAuthorizationForm(
