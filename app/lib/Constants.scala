@@ -4,6 +4,10 @@ object Constants {
 
   val StopWords = Set("undefined", "null")
 
+  val canonicalUrlsToRemoveBodyInLog = Seq(
+    "/:organization/catalog/items/:number"
+  )
+
   object Headers {
 
     val FlowAuth = "X-Flow-Auth"
