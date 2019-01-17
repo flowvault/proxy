@@ -4,9 +4,13 @@ object Constants {
 
   val StopWords = Set("undefined", "null")
 
-  val canonicalUrlsToRemoveBodyInLog = Seq(
+  private[this] val DoNotLogSanitizedBodyURls = Set(
     "/:organization/catalog/items/:number"
   )
+
+  def logSanitizedBody(canonicalUrl: String): Boolean = {
+    !DoNotLogSanitizedBodyURls.contains(canonicalUrl)
+  }
 
   object Headers {
 

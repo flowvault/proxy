@@ -265,14 +265,12 @@ class GenericHandler @Inject() (
   ): Unit = {
     // if canonical URL is in list of things that are noisy, do not log bodies
     val url = canonicalUrl(request).getOrElse("-")
-    val finalAttributes = if (Constants.canonicalUrlsToRemoveBodyInLog.contains(url)) {
-      attributes.filterNot(_._1 == "body")
-    } else {
-      attributes
-    }
 
-    finalAttributes.foldLeft(request.log) { case (l, el) =>
-      l.withKeyValue(el._1, el._2)
+    attributes.foldLeft(request.log) { case (l, el) =>
+      el._1 match {
+        case "body" if !Constants.logSanitizedBody(url) => l
+        case _ => l.withKeyValue(el._1, el._2)
+      }
     }.
       withKeyValue("server", server.name).
       withKeyValue("canonical_url", url).
