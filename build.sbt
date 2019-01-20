@@ -18,7 +18,7 @@ lazy val root = project
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
       "commons-codec" % "commons-codec" % "1.11",
       "io.flow" %% "apibuilder-validation" % "0.3.6",
-      "io.flow" %% "lib-play-play26" % "0.5.28",
+      "io.flow" %% "lib-play-play26" % "0.5.33",
       "org.yaml" % "snakeyaml" % "1.23",
       "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test,
       compilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.3.0"),
