@@ -5,7 +5,8 @@ object Constants {
   val StopWords = Set("undefined", "null")
 
   private[this] val DoNotLogSanitizedBodyURls = Set(
-    "/:organization/catalog/items/:number"
+    "/:organization/catalog/items/:number",
+    "/:organization/inventory_updates"
   )
 
   def logSanitizedBody(canonicalUrl: String): Boolean = {
@@ -81,5 +82,5 @@ object Constants {
     * member of this organization.
     */
   val FlowOrganizationId = "flow"
-  
+
 }
