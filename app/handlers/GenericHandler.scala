@@ -88,7 +88,11 @@ class GenericHandler @Inject() (
     route: Route,
     token: ResolvedToken
   ): WSRequest = {
-    wsClient.url(server.host + request.path)
+    // TODO add dynamic switch here so we can turn off usage of all new hosts altogether dynamically very quickly
+    val host = server.newHost
+      .getOrElse(server.host)
+
+    wsClient.url(host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method.toString)
       .withRequestTimeout(server.requestTimeout)

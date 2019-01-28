@@ -102,7 +102,8 @@ case class InternalProxyConfig(
 case class Server(
   name: String,
   host: String,
-  logger: RollbarLogger
+  logger: RollbarLogger,
+  newHost: Option[String] = None
 ) {
 
   // TODO: Move to proxy configuration file
@@ -128,6 +129,7 @@ case class Operation(
 case class InternalServer(
   name: String,
   host: String,
+  newHost: Option[String],
   logger: RollbarLogger
 ) {
 
@@ -139,7 +141,8 @@ case class InternalServer(
         Server(
           name = name,
           host = host,
-          logger
+          logger = logger,
+          newHost = newHost
         )
       )
     }

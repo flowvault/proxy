@@ -56,6 +56,7 @@ class ConfigParser @Inject() (
             InternalServer(
               name = getString(obj, "name"),
               host = getString(obj, "host"),
+              newHost = obj.get("new_host").map(_.toString.trim),
               logger = serverLogger
             )
           }

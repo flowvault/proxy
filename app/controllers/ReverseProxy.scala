@@ -371,7 +371,7 @@ class ReverseProxy @Inject () (
                           method = request.method,
                           path = path
                         ),
-                        server = Server(name = "override", host = host, logger = logger)
+                        server = Server(name = "override", host = host, newHost = None, logger = logger)
                       )
                     )
                   } else {
