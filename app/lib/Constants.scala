@@ -6,7 +6,8 @@ object Constants {
 
   private[this] val DoNotLogSanitizedBodyURls = Set(
     "/:organization/catalog/items/:number",
-    "/:organization/inventory_updates"
+    "/:organization/inventory_updates",
+    "/shopify/webhook/events/shops/:shopify_shop_id/:topic/:action"
   )
 
   def logSanitizedBody(canonicalUrl: String): Boolean = {
