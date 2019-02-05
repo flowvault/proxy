@@ -2,7 +2,7 @@ package handlers
 
 import javax.inject.{Inject, Singleton}
 import io.apibuilder.spec.v0.models.ParameterLocation
-import io.apibuilder.validation.MultiService
+import io.apibuilder.validation.{EncodingOptions, FormData, MultiService}
 import lib._
 import org.joda.time.DateTime
 import play.api.http.HttpEntity
@@ -228,7 +228,7 @@ class GenericHandler @Inject() (
         }
       }
     } else {
-      allQueryParameters
+      FormData.normalize(allQueryParameters, options = Set(EncodingOptions.OmitArrayIndexes))
     }
   }
 
