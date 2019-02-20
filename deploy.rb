@@ -18,18 +18,22 @@
 
 require 'uri'
 require 'net/http'
+require 'json'
 
 PORT = 7000
 
+def latest_tag(owner,repo)
+  cmd = "curl --silent https://api.github.com/repos/flowvault/proxy/tags"
+  if latest = JSON.parse(`#{cmd}`).first
+    latest['name'].to_s.strip
+  else
+    nil
+  end
+end
+
 version = ARGV.shift.to_s.strip
 if version.empty?
-  default = if system("which sem-info")
-              tag = `sem-info tag latest`.strip
-              tag.empty? ? nil : tag
-            else
-              nil
-            end
-
+  default = latest_tag("flowvault", "proxy")
   default_message = default ? " Default[#{default}]" : nil
   
   while version.empty?
