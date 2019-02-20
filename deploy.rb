@@ -23,7 +23,7 @@ require 'json'
 PORT = 7000
 
 def latest_tag(owner,repo)
-  cmd = "curl --silent https://api.github.com/repos/flowvault/proxy/tags"
+  cmd = "curl --silent https://api.github.com/repos/#{owner}/#{repo}/tags"
   if latest = JSON.parse(`#{cmd}`).first
     latest['name'].to_s.strip
   else
