@@ -19,4 +19,4 @@ set -x #echo on
 docker stop `docker ps -q`;
 docker rmi -f `docker images -q`;
 docker rm $(docker ps -qa --no-trunc --filter "status=exited")
-docker run -d -p 7000:9000 flowvault/proxy:$1 production;
+docker run --log-opt max-size=1g --log-opt max-file=10 -d -p 7000:9000 flowvault/proxy:$1 production;
