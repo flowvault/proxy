@@ -247,7 +247,16 @@ class GenericHandler @Inject() (
         Map("body" -> safeBody(request, response).getOrElse(""))
       }
 
-      case _ => Map.empty
+      case _ => {
+        // if session, show last 5 chars of the session id
+        request.headers.headers.toMap.get("Authorization").map { headerValue =>
+           if (isSessionAuth(headerValue)) {
+             Map("SessionLast5" -> headerValue.takeRight(5))
+           } else {
+             Map.empty[String, String]
+           }
+        }.getOrElse(Map.empty[String, String])
+      }
     }
 
     log(request, server, "done", extra ++ Map(
@@ -255,6 +264,10 @@ class GenericHandler @Inject() (
       "timeToFirstByteMs" -> duration.toString,
       "response.contentLength" -> response.header("Content-Length").getOrElse("-")
     ))
+  }
+
+  private[this] def isSessionAuth(value: String): Boolean = {
+    value.toLowerCase().contains("session")
   }
 
   private[this] def log(
