@@ -300,7 +300,7 @@ case class ProxyRequest(
         status,
         body,
         contentType,
-          headers
+        headers
       )
     }
   }
@@ -309,7 +309,7 @@ case class ProxyRequest(
     status: Int,
     body: String,
     contentType: ContentType,
-    headers: Map[String,Seq[String]] = Map()
+    headers: Map[String,Seq[String]]
   ): Result = {
     val responseHeaders = Util.removeKeys(
       headers,
@@ -338,7 +338,7 @@ case class ProxyRequest(
   private[this] def responseError(
     status: Int,
     message: String,
-    headers: Map[String,Seq[String]] = Map()
+    headers: Map[String,Seq[String]]
   ): Result = {
     log.
       fingerprint("ProxyResponseError").
@@ -355,7 +355,7 @@ case class ProxyRequest(
   /**
    * Wraps the specified response body based on the requested wrappers
    */
-  private[this] def wrappedResponseBody(status: Int, body: String, headers: Map[String,Seq[String]] = Map()): String = {
+  private[this] def wrappedResponseBody(status: Int, body: String, headers: Map[String,Seq[String]]): String = {
     val env = envelopeBody(status, body, headers)
     jsonpCallback.fold(env)(jsonpEnvelopeBody(_, env))
   }
@@ -366,7 +366,7 @@ case class ProxyRequest(
   private[this] def envelopeBody(
     status: Int,
     body: String,
-    headers: Map[String,Seq[String]] = Map()
+    headers: Map[String,Seq[String]]
   ): String = {
     val jsonHeaders = Json.toJson(headers)
     s"""{\n  "status": $status,\n  "headers": ${jsonHeaders},\n  "body": $body\n}"""

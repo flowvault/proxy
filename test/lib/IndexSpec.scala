@@ -111,6 +111,7 @@ class IndexSpec extends BasePlaySpec {
       index.resolve(Method.Get, "/organizations")
       index.resolve(Method.Get, "/:organization/catalog/items")
       index.resolve(Method.Get, "/:organization/catalog/items/:number")
+      ()
     }
     println(s"1000 path lookups took $ms ms")
     ms < 50 must be(true)

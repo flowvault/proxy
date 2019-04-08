@@ -22,7 +22,7 @@ case class Index(config: ProxyConfig) {
     val all: Seq[Operation] = config.operations
 
     // Map from method name to list of internal routes
-    var dynamicRouteMap = scala.collection.mutable.Map[Method, Seq[Operation]]()
+    val dynamicRouteMap = scala.collection.mutable.Map[Method, Seq[Operation]]()
     all.foreach { op =>
       op.route match {
         case r: Route.Dynamic => {

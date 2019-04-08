@@ -28,7 +28,7 @@ trait HandlerUtilities extends Errors {
         fingerprint("Proxy4xx").
         withKeyValue("status", status).
         withKeyValue("body", finalBody.toString).
-        info("[proxy $request] responded with status:$status")
+        info(s"[proxy $request] responded with status:$status")
     }
   }
 

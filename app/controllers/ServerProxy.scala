@@ -5,7 +5,6 @@ import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
 import javax.inject.Inject
-import akka.stream.ActorMaterializer
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -98,8 +97,7 @@ class ServerProxyImpl @Inject()(
   with BaseControllerHelpers
 {
 
-  private[this] implicit val (ec, name) = resolveContextName(server.name)
-  private[this] implicit val materializer: ActorMaterializer = ActorMaterializer()
+  private[this] implicit val (ec, _) = resolveContextName(server.name)
 
   /**
     * Returns the execution context to use, if found. Works by recursively

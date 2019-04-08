@@ -11,7 +11,6 @@ import scala.util.{Failure, Success, Try}
   * Parses the contents of the configuration file from a URI
   */
 class ConfigParser @Inject() (
-  config: Config,
   logger: RollbarLogger
 ) {
 

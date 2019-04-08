@@ -15,7 +15,6 @@ import scala.concurrent.Future
 class ReverseProxy @Inject () (
   system: ActorSystem,
   authorizationParser: AuthorizationParser,
-  config: Config,
   val flowAuth: FlowAuth,
   val logger: RollbarLogger,
   proxyConfigFetcher: ProxyConfigFetcher,
@@ -105,13 +104,13 @@ class ReverseProxy @Inject () (
           request.responseUnprocessableEntity(errors.mkString(", "))
         )
       }
-      case Right(operation) => {
-        internalHandle(request, operation)
+      case Right(_) => {
+        internalHandleValid(request)
       }
     }
   }
 
-  private[this] def internalHandle(request: ProxyRequest, operation: io.apibuilder.spec.v0.models.Operation) = {
+  private[this] def internalHandleValid(request: ProxyRequest) = {
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
         proxyPostAuth(request, token = ResolvedToken(requestId = request.requestId))

@@ -2,7 +2,7 @@ package controllers
 
 import javax.inject.{Inject, Singleton}
 
-import lib.{ApiBuilderServicesFetcher, Config, Method, ProxyRequest}
+import lib.{ApiBuilderServicesFetcher, Config, Method}
 import play.api.mvc._
 import play.api.libs.json._
 

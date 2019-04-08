@@ -45,14 +45,14 @@ class GenericHandler @Inject() (
 
     request.body match {
       case None => {
-        processResponse(server, request, token, wsRequest.stream())
+        processResponse(server, request, wsRequest.stream())
       }
 
       case Some(ProxyRequestBody.File(file)) => {
         request.method match {
-          case Method.Post => processResponse(server, request, token, wsRequest.post(file))
-          case Method.Put => processResponse(server, request, token, wsRequest.put(file))
-          case Method.Patch => processResponse(server, request, token, wsRequest.patch(file))
+          case Method.Post => processResponse(server, request, wsRequest.post(file))
+          case Method.Put => processResponse(server, request, wsRequest.put(file))
+          case Method.Patch => processResponse(server, request, wsRequest.patch(file))
           case _ => Future.successful(
             request.responseUnprocessableEntity(
               s"Invalid method '${request.method}' for body with file. Must be POST, PUT, or PATCH"
@@ -65,15 +65,14 @@ class GenericHandler @Inject() (
         processResponse(
           server,
           request,
-          token,
           wsRequest.withBody(bytes).stream()
         )
       }
 
       case Some(ProxyRequestBody.Json(json)) => {
-        processResponse(server,
+        processResponse(
+          server,
           request,
-          token,
           wsRequest.withBody(json).stream
         )
       }
@@ -103,7 +102,6 @@ class GenericHandler @Inject() (
   private[this] def processResponse(
     server: Server,
     request: ProxyRequest,
-    token: ResolvedToken,
     response: Future[WSResponse]
   )(
     implicit ec: ExecutionContext

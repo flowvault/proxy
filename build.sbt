@@ -28,6 +28,7 @@ lazy val root = project
     flowGeneratedFiles ++= Seq(
       "app/generated/.*".r,
       "test/generated/.*".r,
+      "target/.*".r,
     ),
     // Make sure you only exclude warnings for the project directories, i.e. make builds reproducible
     scalacOptions += s"-P:silencer:sourceRoots=${baseDirectory.value.getCanonicalPath}"
