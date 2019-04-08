@@ -1,7 +1,7 @@
 package controllers
 
+import io.flow.usage.util.UsageUtil
 import javax.inject.{Inject, Singleton}
-
 import lib.{ApiBuilderServicesFetcher, Config, Method}
 import play.api.mvc._
 import play.api.libs.json._
@@ -18,7 +18,8 @@ class Internal @Inject() (
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   config: Config,
   reverseProxy: ReverseProxy,
-  val controllerComponents: ControllerComponents
+  val controllerComponents: ControllerComponents,
+  uu: UsageUtil
 ) extends BaseController {
 
   private[this] val HealthyJson = Json.obj(
@@ -120,6 +121,12 @@ class Internal @Inject() (
     Future.successful(
       NoContent
     )
+  }
+
+  // I can't seem to import the controller from lib-usage, so I have copied it here:
+  def usage = Action {
+    import io.flow.usage.v0.models.json._
+    Ok(Json.toJson(uu.currentUsage))
   }
 
   def getRoute = Action.async { request =>

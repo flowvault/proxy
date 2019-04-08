@@ -19,6 +19,7 @@ lazy val root = project
       "commons-codec" % "commons-codec" % "1.11",
       "io.flow" %% "apibuilder-validation" % "0.3.9",
       "io.flow" %% "lib-play-play26" % "0.5.43",
+      "io.flow" %% "lib-usage" % "0.0.80",
       "org.yaml" % "snakeyaml" % "1.23",
       "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test,
       compilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.3.1"),

@@ -26,7 +26,7 @@ class RequestHandler @Inject() (
   */
 class Router @Inject() (
   internal: Internal,
-  proxy: ReverseProxy
+  proxy: ReverseProxy,
 ) extends SimpleRouter {
 
   override def routes = new AbstractPartialFunction[RequestHeader, Handler] {
@@ -35,6 +35,7 @@ class Router @Inject() (
         case ("GET", "/_internal_/healthcheck", None) => internal.getHealthcheck
         case ("GET", "/_internal_/config", None) => internal.getConfig
         case ("GET", "/_internal_/route", None) => internal.getRoute()
+        case ("GET", "/_internal_/usage", None) => internal.usage
         case ("GET", "/favicon.ico", None) => internal.favicon
         case (_, "/_internal_/diagnostics", None) => internal.diagnostics
         case ("GET", "/robots.txt", None) => internal.getRobots
