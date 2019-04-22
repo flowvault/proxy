@@ -8,15 +8,45 @@ flow:
   error:
     play_2_x_json:
     - app/generated/FlowErrorV0Models.scala
+  catalog:
+    play_2_x_json:
+    - app/generated/FlowCatalogV0Models.scala
+  checkout-configuration:
+    play_2_x_json:
+    - app/generated/FlowCheckoutConfigurationV0Models.scala
+  currency:
+    play_2_x_json:
+    - app/generated/FlowCurrencyV0Models.scala
+  experience:
+    play_2_x_json:
+    - app/generated/FlowExperienceV0Models.scala
+  fulfillment:
+    play_2_x_json:
+    - app/generated/FlowFulfillmentV0Models.scala
+  harmonization:
+    play_2_x_json:
+    - app/generated/FlowHarmonizationV0Models.scala
+  inventory:
+    play_2_x_json:
+    - app/generated/FlowInventoryV0Models.scala
   reference:
     play_2_x_json:
     - app/generated/FlowReferenceV0Models.scala
   organization:
     play_2_6_client:
     - app/generated/FlowOrganizationV0Client.scala
+  payment:
+    play_2_x_json:
+    - app/generated/FlowPaymentV0Models.scala
   permission:
     play_2_6_client:
     - app/generated/FlowPermissionV0Client.scala
+  price:
+    play_2_x_json:
+    - app/generated/FlowPriceV0Models.scala
+  query-builder:
+    play_2_x_json:
+    - app/generated/FlowQueryBuilderV0Models.scala
   session:
     play_2_6_client:
     - app/generated/FlowSessionV0Client.scala

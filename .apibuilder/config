@@ -9,6 +9,34 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+    catalog:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    checkout-configuration:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    currency:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    experience:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    fulfillment:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    harmonization:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    inventory:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     reference:
       version: latest
       generators:
@@ -17,10 +45,22 @@ code:
       version: latest
       generators:
         play_2_6_client: app/generated
+    payment:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     permission:
       version: latest
       generators:
         play_2_6_client: app/generated
+    price:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    query-builder:
+          version: latest
+          generators:
+            play_2_x_json: app/generated
     session:
       version: latest
       generators:
