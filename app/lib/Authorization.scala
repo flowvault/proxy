@@ -141,7 +141,7 @@ class AuthorizationParser @Inject() (
         claims.get("id") match {
           case None =>
             (claims.get("customer"), claims.get("session")) match {
-              case (Some(cn), Some(sid)) => Authorization.Customer(number = cn, sessionId = sid)
+              case (Some(cn), Some(sid)) => Authorization.Customer(customer = cn, session = sid)
               case _ => Authorization.InvalidJwt(Seq("id"))
             }
           case Some(userId) => Authorization.User(userId)
