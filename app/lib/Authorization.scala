@@ -66,7 +66,7 @@ object Authorization {
   /**
     * Indicates customer number and session id for a given request
     */
-  case class Customer(number: String, sessionId: String) extends Authorization
+  case class Customer(customer: String, session: String) extends Authorization
 
 }
 
@@ -140,7 +140,7 @@ class AuthorizationParser @Inject() (
       case Some(claims) => {
         claims.get("id") match {
           case None =>
-            (claims.get("customer_number"), claims.get("session_id")) match {
+            (claims.get("customer"), claims.get("session")) match {
               case (Some(cn), Some(sid)) => Authorization.Customer(number = cn, sessionId = sid)
               case _ => Authorization.InvalidJwt(Seq("id"))
             }
