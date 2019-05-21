@@ -10,12 +10,13 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries session server to authorize this user for this
   * organization and also pulls the organization's environment.
   */
-trait SessionAuth extends LoggingHelper {
+trait CustomerAuth extends LoggingHelper {
 
   def sessionClient: SessionClient
 
-  def resolveSession(
+  def resolveCustomer(
     requestId: String,
+    customerNumber: String,
     sessionId: String
   ) (
     implicit ec: ExecutionContext
@@ -24,15 +25,17 @@ trait SessionAuth extends LoggingHelper {
       // javascript sending in 'undefined' or 'null' as session id
       Future.successful(None)
     } else {
-      doResolveSession(
+      doResolveCustomer(
         requestId = requestId,
+        customerNumber = customerNumber,
         sessionId = sessionId
       )
     }
   }
 
-  private[this] def doResolveSession(
+  private[this] def doResolveCustomer(
     requestId: String,
+    customerNumber: String,
     sessionId: String
   ) (
     implicit ec: ExecutionContext
@@ -50,6 +53,7 @@ trait SessionAuth extends LoggingHelper {
             organizationId = Some(auth.organization.id),
             partnerId = None,
             role = None,
+            customerNumber = Some(customerNumber),
             sessionId = Some(sessionId)
           )
         )

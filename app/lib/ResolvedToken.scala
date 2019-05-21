@@ -11,7 +11,8 @@ case class ResolvedToken(
   organizationId: Option[String] = None,
   partnerId: Option[String] = None,
   role: Option[Role] = None,
-  sessionId: Option[String] = None
+  sessionId: Option[String] = None,
+  customerNumber: Option[String] = None
 ) {
   private[lib] val createdAt = DateTime.now
 
@@ -24,7 +25,8 @@ case class ResolvedToken(
       "organization" -> organizationId,
       "partner" -> partnerId,
       "role" -> role.map(_.toString),
-      "environment" -> environment.map(_.toString)
+      "environment" -> environment.map(_.toString),
+      "customer" -> customerNumber
     ).flatMap { case (key, value) => value.map { v => key -> v } }
   }
   

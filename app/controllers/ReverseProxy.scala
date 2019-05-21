@@ -27,6 +27,7 @@ class ReverseProxy @Inject () (
   with auth.OrganizationAuth
   with auth.TokenAuth
   with auth.SessionAuth
+  with auth.CustomerAuth
 {
 
   val index: Index = proxyConfigFetcher.current()
@@ -168,6 +169,21 @@ class ReverseProxy @Inject () (
             userId = Some(userId)
           )
         )
+      }
+
+      case Authorization.Customer(number, sessionId) => {
+        resolveCustomer(
+          requestId = request.requestId,
+          customerNumber = number,
+          sessionId = sessionId
+        ).flatMap {
+          case None => Future.successful(
+            request.responseUnauthorized("Session is not valid")
+          )
+          case Some(token) => {
+            proxyPostAuth(request, token)
+          }
+        }
       }
     }
   }

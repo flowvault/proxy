@@ -63,6 +63,11 @@ object Authorization {
     */
   case class Session(id: String) extends Authorization
 
+  /**
+    * Indicates customer number and session id for a given request
+    */
+  case class Customer(number: String, sessionId: String) extends Authorization
+
 }
 
 /**
@@ -89,7 +94,10 @@ class AuthorizationParser @Inject() (
   /**
     * Parses the actual authorization header value. Acceptable types are:
     * - Basic - the API Token for the user
-    * - Bearer - the JWT Token for the user with that contains an id field representing the user id in the database
+    * - Bearer (multiple JWT claim sets supported)
+    *   - the JWT Token for the user that contains an id field representing the user id in the database
+    *   - the JWT Token for the customer that contains a number field representing the customer number in the database
+    *     and sessionId field representing the session id in the database
     */
   def parse(headerValue: String): Authorization = {
     headerValue.split(" ").toList match {
@@ -131,7 +139,11 @@ class AuthorizationParser @Inject() (
     claimsSet.asSimpleMap.toOption match {
       case Some(claims) => {
         claims.get("id") match {
-          case None => Authorization.InvalidJwt(Seq("id"))
+          case None =>
+            (claims.get("customer_number"), claims.get("session_id")) match {
+              case (Some(cn), Some(sid)) => Authorization.Customer(number = cn, sessionId = sid)
+              case _ => Authorization.InvalidJwt(Seq("id"))
+            }
           case Some(userId) => Authorization.User(userId)
         }
       }
