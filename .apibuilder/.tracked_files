@@ -20,6 +20,9 @@ flow:
   experience:
     play_2_x_json:
     - app/generated/FlowExperienceV0Models.scala
+  field-validation:
+    play_2_x_json:
+    - app/generated/FlowFieldValidationV0Models.scala
   fulfillment:
     play_2_x_json:
     - app/generated/FlowFulfillmentV0Models.scala

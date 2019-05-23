@@ -25,6 +25,10 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+    field-validation:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     fulfillment:
       version: latest
       generators:
