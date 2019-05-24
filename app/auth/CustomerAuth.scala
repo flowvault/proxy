@@ -5,10 +5,10 @@ import lib.{Constants, ResolvedToken}
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * Queries session server to authorize this user for this
+  * Queries session and customer servers to authorize this customer for this
   * organization and also pulls the organization's environment.
   */
-trait CustomerAuth extends SessionAuthHelper {
+trait CustomerAuth extends CustomerAuthHelper {
 
   def resolveCustomer(
     requestId: String,
@@ -36,10 +36,17 @@ trait CustomerAuth extends SessionAuthHelper {
   ) (
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
-    postSessionAuthorization(requestId = requestId, sessionId = sessionId) { resolvedToken =>
-      resolvedToken.copy(
-        customerNumber = Some(customerNumber)
-      )
+    for {
+      sessionResolvedTokenOption <- postSessionAuthorizationFuture(requestId = requestId, sessionId = sessionId)
+      customerResolvedTokenOption <-
+        getCustomerResolvedToken(
+          requestId = requestId,
+          customerNumber = customerNumber,
+          sessionResolvedTokenOption = sessionResolvedTokenOption
+        )
+    } yield {
+      customerResolvedTokenOption
     }
   }
+
 }

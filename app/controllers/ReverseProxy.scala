@@ -5,6 +5,7 @@ import io.flow.log.RollbarLogger
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.session.v0.{Client => SessionClient}
+import io.flow.customer.v0.{Client => CustomerClient}
 import javax.inject.{Inject, Singleton}
 import lib._
 import play.api.mvc._
@@ -50,6 +51,12 @@ class ReverseProxy @Inject () (
     val server = mustFindServerByName("token")
     logger.withKeyValue("base_url", server.host).info("Creating TokenClient")
     new TokenClient(ws, baseUrl = server.host)
+  }
+
+  override val customerClient: CustomerClient = {
+    val server = mustFindServerByName("customer")
+    logger.withKeyValue("base_url", server.host).info("Creating CustomerClient")
+    new CustomerClient(ws, baseUrl = server.host)
   }
 
   private[this] val proxies: Map[String, ServerProxy] = {

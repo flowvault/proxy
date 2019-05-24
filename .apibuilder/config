@@ -21,6 +21,10 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+    customer:
+      version: latest
+      generators:
+        play_2_6_client: app/generated
     experience:
       version: latest
       generators:

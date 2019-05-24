@@ -10,6 +10,18 @@ trait SessionAuthHelper extends LoggingHelper {
 
   def sessionClient: SessionClient
 
+  private[auth] def postSessionAuthorizationFuture(
+    requestId: String,
+    sessionId: String
+  )(implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
+    postSessionAuthorization(
+      requestId = requestId,
+      sessionId = sessionId
+    ) { sessionResolvedToken =>
+      sessionResolvedToken
+    }
+  }
+
   private[auth] def postSessionAuthorization(
     requestId: String,
     sessionId: String
@@ -21,7 +33,7 @@ trait SessionAuthHelper extends LoggingHelper {
       requestHeaders = FlowAuth.headersFromRequestId(requestId)
     ).map {
       case auth: OrganizationSessionAuthorization => {
-        val resolvedSessionOrgToken =
+        val sessionResolvedToken =
           ResolvedToken(
             requestId = requestId,
             userId = None,
@@ -32,7 +44,7 @@ trait SessionAuthHelper extends LoggingHelper {
             sessionId = Some(sessionId)
           )
 
-        Some(f(resolvedSessionOrgToken))
+        Some(f(sessionResolvedToken))
       }
 
       case SessionAuthorizationUndefinedType(other) => {
@@ -43,7 +55,7 @@ trait SessionAuthHelper extends LoggingHelper {
         None
       }
     }.recover {
-      case io.flow.organization.v0.errors.UnitResponse(code) => {
+      case io.flow.session.v0.errors.UnitResponse(code) => {
         log(requestId).
           withKeyValue("http_status_code", code).
           withKeyValue("session_id", sessionId).
