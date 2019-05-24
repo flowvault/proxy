@@ -60,29 +60,7 @@ trait CustomerAuthHelper extends LoggingHelper {
     ).map { customer =>
       Some(customer)
     }.recover {
-      case io.flow.customer.v0.errors.UnitResponse(code) => {
-        log(requestId).
-          withKeyValue("http_status_code", code).
-          withKeyValue("customer_number", customerNumber).
-          warn("Unexpected HTTP Status Code - request will not be authorized")
-        None
-      }
-
-      case e: io.flow.customer.v0.errors.GenericErrorResponse => {
-        e.genericError.messages.mkString(", ") match {
-          case "Customer does not exist" => // expected - don't log
-          case _ => {
-            log(requestId).
-              withKeyValue("http_status_code", "422").
-              withKeyValue("customer_number", customerNumber).
-              withKeyValues("message", e.genericError.messages).
-              warn("422 authorizing customer")
-          }
-        }
-
-        None
-      }
-
+      case io.flow.customer.v0.errors.UnitResponse(_) => None
       case ex: Throwable => {
         val msg = "Error communication with customer service"
         log(requestId).
