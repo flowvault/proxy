@@ -1,6 +1,7 @@
 package controllers
 
 import akka.actor.ActorSystem
+import auth.RequestHeadersUtil
 import io.flow.log.RollbarLogger
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
@@ -22,7 +23,8 @@ class ReverseProxy @Inject () (
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   serverProxyFactory: ServerProxy.Factory,
   val controllerComponents: ControllerComponents,
-  ws: play.api.libs.ws.WSClient
+  ws: play.api.libs.ws.WSClient,
+  override val requestHeadersUtil: RequestHeadersUtil
 ) extends BaseController
   with lib.Errors
   with auth.OrganizationAuth

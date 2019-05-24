@@ -2,13 +2,14 @@ package auth
 
 import io.flow.customer.v0.models.Customer
 import io.flow.customer.v0.{Client => CustomerClient}
-import lib.{FlowAuth, ResolvedToken}
+import lib.ResolvedToken
 
 import scala.concurrent.{ExecutionContext, Future}
 
 trait CustomerAuthHelper extends SessionAuthHelper {
 
   def customerClient: CustomerClient
+  def requestHeadersUtil: RequestHeadersUtil
 
   private[auth] def getCustomerResolvedToken(
     requestId: String,
@@ -54,7 +55,10 @@ trait CustomerAuthHelper extends SessionAuthHelper {
     customerClient.customers.getByNumber(
       organization = organizationId,
       number = customerNumber,
-      requestHeaders = FlowAuth.headersFromRequestId(requestId)
+      requestHeaders = requestHeadersUtil.organizationAsSystemUser(
+        organizationId = organizationId,
+        requestId = requestId
+      )
     ).map { customer =>
       Some(f(customer))
     }.recover {
