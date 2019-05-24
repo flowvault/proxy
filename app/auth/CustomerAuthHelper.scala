@@ -6,7 +6,7 @@ import lib.ResolvedToken
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait CustomerAuthHelper extends SessionAuthHelper {
+trait CustomerAuthHelper extends LoggingHelper {
 
   def customerClient: CustomerClient
   def requestHeadersUtil: RequestHeadersUtil
