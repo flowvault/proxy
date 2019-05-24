@@ -8,7 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries session server to authorize this user for this
   * organization and also pulls the organization's environment.
   */
-trait SessionAuthAuth extends SessionAuthHelper {
+trait SessionAuth extends SessionAuthHelper {
 
   def resolveSession(
     requestId: String,
@@ -33,16 +33,8 @@ trait SessionAuthAuth extends SessionAuthHelper {
   ) (
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
-    postSessionAuthorization(requestId = requestId, sessionId = sessionId) { auth =>
-      ResolvedToken(
-        requestId = requestId,
-        userId = None,
-        environment = Some(auth.environment),
-        organizationId = Some(auth.organization.id),
-        partnerId = None,
-        role = None,
-        sessionId = Some(sessionId)
-      )
+    postSessionAuthorization(requestId = requestId, sessionId = sessionId) { resolvedSessionOrgToken =>
+      resolvedSessionOrgToken
     }
   }
 }

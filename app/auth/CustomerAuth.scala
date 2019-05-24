@@ -36,16 +36,9 @@ trait CustomerAuth extends SessionAuthHelper {
   ) (
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
-    postSessionAuthorization(requestId = requestId, sessionId = sessionId) { auth =>
-      ResolvedToken(
-        requestId = requestId,
-        userId = None,
-        environment = Some(auth.environment),
-        organizationId = Some(auth.organization.id),
-        partnerId = None,
-        role = None,
-        customerNumber = Some(customerNumber),
-        sessionId = Some(sessionId)
+    postSessionAuthorization(requestId = requestId, sessionId = sessionId) { resolvedToken =>
+      resolvedToken.copy(
+        customerNumber = Some(customerNumber)
       )
     }
   }

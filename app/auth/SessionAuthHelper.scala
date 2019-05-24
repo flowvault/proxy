@@ -14,14 +14,25 @@ trait SessionAuthHelper extends LoggingHelper {
     requestId: String,
     sessionId: String
   )(
-    f: OrganizationSessionAuthorization => ResolvedToken
+    f: ResolvedToken => ResolvedToken
   )(implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
     sessionClient.sessionAuthorizations.post(
       SessionAuthorizationForm(session = sessionId),
       requestHeaders = FlowAuth.headersFromRequestId(requestId)
     ).map {
       case auth: OrganizationSessionAuthorization => {
-        Some(f(auth))
+        val resolvedSessionOrgToken =
+          ResolvedToken(
+            requestId = requestId,
+            userId = None,
+            environment = Some(auth.environment),
+            organizationId = Some(auth.organization.id),
+            partnerId = None,
+            role = None,
+            sessionId = Some(sessionId)
+          )
+
+        Some(f(resolvedSessionOrgToken))
       }
 
       case SessionAuthorizationUndefinedType(other) => {
