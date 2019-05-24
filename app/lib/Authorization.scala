@@ -139,17 +139,20 @@ class AuthorizationParser @Inject() (
     claimsSet.asSimpleMap.toOption match {
       case Some(claims) => {
         claims.get("id") match {
-          case None =>
-            (claims.get("customer"), claims.get("session")) match {
-              case (Some(cn), Some(sid)) => Authorization.Customer(customer = cn, session = sid)
-              case (None, Some(sid)) => Authorization.Session(id = sid)
-              case _ => Authorization.InvalidJwt(Seq("customer", "session"))
-            }
+          case None => parseCustomerJwtToken(claims)
           case Some(userId) => Authorization.User(userId)
         }
       }
 
       case _ => Authorization.InvalidBearer
+    }
+  }
+
+  private[this] def parseCustomerJwtToken(claims: Map[String, String]): Authorization = {
+    (claims.get("customer"), claims.get("session")) match {
+      case (Some(cn), Some(sid)) => Authorization.Customer(customer = cn, session = sid)
+      case (None, Some(sid)) => Authorization.Session(id = sid)
+      case _ => Authorization.InvalidJwt(Seq("customer", "session"))
     }
   }
 
