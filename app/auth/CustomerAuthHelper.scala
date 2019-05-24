@@ -35,9 +35,11 @@ trait CustomerAuthHelper extends LoggingHelper {
         requestId = requestId,
         organizationId = organizationId,
         customerNumber = customerNumber
-      ) { customer =>
-        sessionResolvedToken.copy(
-          customerNumber = Some(customer.number)
+      ).map { customer =>
+        Some(
+          sessionResolvedToken.copy(
+            customerNumber = customer.map(_.number)
+          )
         )
       }
     }.getOrElse(Future.successful(None))
@@ -47,9 +49,7 @@ trait CustomerAuthHelper extends LoggingHelper {
     requestId: String,
     organizationId: String,
     customerNumber: String
-  )(
-    f: Customer => ResolvedToken
-  )(implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
+  )(implicit ec: ExecutionContext): Future[Option[Customer]] = {
     customerClient.customers.getByNumber(
       organization = organizationId,
       number = customerNumber,
@@ -58,7 +58,7 @@ trait CustomerAuthHelper extends LoggingHelper {
         requestId = requestId
       )
     ).map { customer =>
-      Some(f(customer))
+      Some(customer)
     }.recover {
       case io.flow.customer.v0.errors.UnitResponse(code) => {
         log(requestId).
