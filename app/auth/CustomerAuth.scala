@@ -17,8 +17,8 @@ trait CustomerAuth extends SessionAuthHelper {
   ) (
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
-    if (Constants.StopWords.contains(sessionId)) {
-      // javascript sending in 'undefined' or 'null' as session id
+    if (Constants.StopWords.contains(sessionId) || Constants.StopWords.contains(customerNumber)) {
+      // javascript sending in 'undefined' or 'null' as session id or customer number
       Future.successful(None)
     } else {
       doResolveCustomer(
