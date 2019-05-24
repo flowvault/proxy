@@ -37,7 +37,7 @@ trait CustomerAuth extends CustomerAuthHelper {
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
     for {
-      sessionResolvedTokenOption <- postSessionAuthorizationFuture(requestId = requestId, sessionId = sessionId)
+      sessionResolvedTokenOption <- postSessionAuthorization(requestId = requestId, sessionId = sessionId)
       customerResolvedTokenOption <-
         getCustomerResolvedToken(
           requestId = requestId,

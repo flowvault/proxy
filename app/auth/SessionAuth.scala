@@ -32,5 +32,5 @@ trait SessionAuth extends SessionAuthHelper {
     sessionId: String
   ) (
     implicit ec: ExecutionContext
-  ): Future[Option[ResolvedToken]] = postSessionAuthorizationFuture(requestId = requestId, sessionId = sessionId)
+  ): Future[Option[ResolvedToken]] = postSessionAuthorization(requestId = requestId, sessionId = sessionId)
 }

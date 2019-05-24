@@ -10,23 +10,9 @@ trait SessionAuthHelper extends LoggingHelper {
 
   def sessionClient: SessionClient
 
-  private[auth] def postSessionAuthorizationFuture(
-    requestId: String,
-    sessionId: String
-  )(implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
-    postSessionAuthorization(
-      requestId = requestId,
-      sessionId = sessionId
-    ) { sessionResolvedToken =>
-      sessionResolvedToken
-    }
-  }
-
   private[auth] def postSessionAuthorization(
     requestId: String,
     sessionId: String
-  )(
-    f: ResolvedToken => ResolvedToken
   )(implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
     sessionClient.sessionAuthorizations.post(
       SessionAuthorizationForm(session = sessionId),
@@ -44,7 +30,7 @@ trait SessionAuthHelper extends LoggingHelper {
             sessionId = Some(sessionId)
           )
 
-        Some(f(sessionResolvedToken))
+        Some(sessionResolvedToken)
       }
 
       case SessionAuthorizationUndefinedType(other) => {
