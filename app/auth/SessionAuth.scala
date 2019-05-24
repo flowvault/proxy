@@ -13,9 +13,7 @@ trait SessionAuth extends SessionAuthHelper {
   def resolveSession(
     requestId: String,
     sessionId: String
-  ) (
-    implicit ec: ExecutionContext
-  ): Future[Option[ResolvedToken]] = {
+  ) (implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
     if (Constants.StopWords.contains(sessionId)) {
       // javascript sending in 'undefined' or 'null' as session id
       Future.successful(None)

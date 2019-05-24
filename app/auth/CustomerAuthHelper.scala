@@ -15,9 +15,7 @@ trait CustomerAuthHelper extends LoggingHelper {
     requestId: String,
     customerNumber: String,
     sessionResolvedTokenOption: Option[ResolvedToken]
-  )(
-    implicit ec: ExecutionContext
-  ): Future[Option[ResolvedToken]] = {
+  )(implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
     sessionResolvedTokenOption.map { t =>
       getCustomerResolvedToken(
         requestId = requestId,

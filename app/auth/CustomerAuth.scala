@@ -8,15 +8,13 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries session and customer servers to authorize this customer for this
   * organization and also pulls the organization's environment.
   */
-trait CustomerAuth extends CustomerAuthHelper {
+trait CustomerAuth extends CustomerAuthHelper with SessionAuthHelper {
 
   def resolveCustomer(
     requestId: String,
     customerNumber: String,
     sessionId: String
-  ) (
-    implicit ec: ExecutionContext
-  ): Future[Option[ResolvedToken]] = {
+  ) (implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
     if (Constants.StopWords.contains(sessionId) || Constants.StopWords.contains(customerNumber)) {
       // javascript sending in 'undefined' or 'null' as session id or customer number
       Future.successful(None)
@@ -33,9 +31,7 @@ trait CustomerAuth extends CustomerAuthHelper {
     requestId: String,
     customerNumber: String,
     sessionId: String
-  ) (
-    implicit ec: ExecutionContext
-  ): Future[Option[ResolvedToken]] = {
+  ) (implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
     for {
       sessionResolvedTokenOption <- postSessionAuthorization(requestId = requestId, sessionId = sessionId)
       customerResolvedTokenOption <-
