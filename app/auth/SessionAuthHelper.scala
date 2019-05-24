@@ -1,58 +1,27 @@
 package auth
 
-import io.flow.session.v0.models._
+import io.flow.session.v0.models.{OrganizationSessionAuthorization, SessionAuthorizationForm, SessionAuthorizationUndefinedType}
 import io.flow.session.v0.{Client => SessionClient}
-import lib.{Constants, FlowAuth, ResolvedToken}
+import lib.{FlowAuth, ResolvedToken}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
-  * Queries session server to authorize this user for this
-  * organization and also pulls the organization's environment.
-  */
-trait SessionAuth extends LoggingHelper {
+trait SessionAuthHelper extends LoggingHelper {
 
   def sessionClient: SessionClient
 
-  def resolveSession(
+  private[auth] def postSessionAuthorization(
     requestId: String,
     sessionId: String
-  ) (
-    implicit ec: ExecutionContext
-  ): Future[Option[ResolvedToken]] = {
-    if (Constants.StopWords.contains(sessionId)) {
-      // javascript sending in 'undefined' or 'null' as session id
-      Future.successful(None)
-    } else {
-      doResolveSession(
-        requestId = requestId,
-        sessionId = sessionId
-      )
-    }
-  }
-
-  private[this] def doResolveSession(
-    requestId: String,
-    sessionId: String
-  ) (
-    implicit ec: ExecutionContext
-  ): Future[Option[ResolvedToken]] = {
+  )(
+    f: OrganizationSessionAuthorization => ResolvedToken
+  )(implicit ec: ExecutionContext): Future[Option[ResolvedToken]] = {
     sessionClient.sessionAuthorizations.post(
       SessionAuthorizationForm(session = sessionId),
       requestHeaders = FlowAuth.headersFromRequestId(requestId)
     ).map {
       case auth: OrganizationSessionAuthorization => {
-        Some(
-          ResolvedToken(
-            requestId = requestId,
-            userId = None,
-            environment = Some(auth.environment),
-            organizationId = Some(auth.organization.id),
-            partnerId = None,
-            role = None,
-            sessionId = Some(sessionId)
-          )
-        )
+        Some(f(auth))
       }
 
       case SessionAuthorizationUndefinedType(other) => {
@@ -95,4 +64,5 @@ trait SessionAuth extends LoggingHelper {
       }
     }
   }
+
 }

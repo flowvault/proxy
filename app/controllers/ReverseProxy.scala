@@ -26,7 +26,7 @@ class ReverseProxy @Inject () (
   with lib.Errors
   with auth.OrganizationAuth
   with auth.TokenAuth
-  with auth.SessionAuth
+  with auth.SessionAuthAuth
   with auth.CustomerAuth
 {
 
