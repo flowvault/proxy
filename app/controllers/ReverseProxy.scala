@@ -187,7 +187,7 @@ class ReverseProxy @Inject () (
           sessionId = sessionId
         ).flatMap {
           case None => Future.successful(
-            request.responseUnauthorized("Session is not valid")
+            request.responseUnauthorized("Customer is not valid")
           )
           case Some(token) => {
             proxyPostAuth(request, token)
