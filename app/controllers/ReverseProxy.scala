@@ -157,17 +157,10 @@ class ReverseProxy @Inject () (
       }
 
       case Authorization.Session(sessionId) => {
-        resolveSession(
-          requestId = request.requestId,
+        internalResolveSession(
+          request = request,
           sessionId = sessionId
-        ).flatMap {
-          case None => Future.successful(
-            request.responseUnauthorized("Session is not valid")
-          )
-          case Some(token) => {
-            proxyPostAuth(request, token)
-          }
-        }
+        )
       }
 
       case Authorization.User(userId) => {
@@ -186,13 +179,34 @@ class ReverseProxy @Inject () (
           customerNumber = number,
           sessionId = sessionId
         ).flatMap {
-          case None => Future.successful(
-            request.responseUnauthorized("Customer is not valid")
-          )
+          // fallback to Authorization.Session
+          case None => {
+            internalResolveSession(
+              request = request,
+              sessionId = sessionId
+            )
+          }
           case Some(token) => {
             proxyPostAuth(request, token)
           }
         }
+      }
+    }
+  }
+
+  private[this] def internalResolveSession(
+    request: ProxyRequest,
+    sessionId: String
+  ): Future[Result] = {
+    resolveSession(
+      requestId = request.requestId,
+      sessionId = sessionId
+    ).flatMap {
+      case None => Future.successful(
+        request.responseUnauthorized("Session is not valid")
+      )
+      case Some(token) => {
+        proxyPostAuth(request, token)
       }
     }
   }
