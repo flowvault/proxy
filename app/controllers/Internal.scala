@@ -22,6 +22,17 @@ class Internal @Inject() (
   uu: UsageUtil
 ) extends BaseController {
 
+  private[this] val expectedTypeNames = List(
+    ("io.flow.shopify.external.v0", "shopify_cart"),
+    ("io.flow.shopify.v0", "shopify_cart_add_form"),
+    ("io.flow.common.v0", "user"),
+    ("io.flow.beacon.v0", "event"),
+    ("io.flow.billing.v0", "account"),
+    ("io.flow.experience.v0", "experience"),
+    ("io.flow.experience.v0", "order"),
+    ("io.flow.partner.v0", "label"),
+  )
+
   private[this] val HealthyJson = Json.obj(
     "status" -> "healthy"
   )
@@ -45,14 +56,17 @@ class Internal @Inject() (
           }
 
           case _ => {
-            if (apiBuilderServicesFetcher.multiService.services.isEmpty) {
+            val missingTypes = expectedTypeNames.filter { el =>
+              apiBuilderServicesFetcher.multiService.findType(el._1, el._2).isEmpty
+            }
+            if (missingTypes.isEmpty) {
+              Ok(HealthyJson)
+            } else {
               UnprocessableEntity(
                 Json.toJson(
                   Seq("No apibuilder services found")
                 )
               )
-            } else {
-              Ok(HealthyJson)
             }
           }
         }

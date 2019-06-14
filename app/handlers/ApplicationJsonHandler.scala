@@ -68,7 +68,7 @@ class ApplicationJsonHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    apiBuilderServicesFetcher.multiService.upcast(route.method.toString, route.path, js) match {
+    apiBuilderServicesFetcher.multiService.upcastOperationBody(route.method.toString, route.path, js) match {
       case Left(errors) => {
         Future.successful(
           request.responseUnprocessableEntity(

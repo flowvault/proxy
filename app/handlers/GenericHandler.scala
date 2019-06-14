@@ -209,8 +209,8 @@ class GenericHandler @Inject() (
           allQueryParameters
         }
 
-        case Some(operation) => {
-          val definedNames = operation.parameters.filter { p =>
+        case Some(apibuilderOperation) => {
+          val definedNames = apibuilderOperation.operation.parameters.filter { p =>
             p.location == ParameterLocation.Query
           }.map(_.name)
 
@@ -290,7 +290,7 @@ class GenericHandler @Inject() (
     apiBuilderServicesFetcher.multiService.operation(
       method = request.method.toString,
       path = request.path
-    ).map(_.path)
+    ).map(_.operation.path)
   }
 
   private[this] def safeBody(

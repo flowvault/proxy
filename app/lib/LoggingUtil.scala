@@ -1,5 +1,6 @@
 package lib
 
+import io.apibuilder.validation.ApiBuilderType
 import io.flow.log.RollbarLogger
 import play.api.libs.json._
 
@@ -56,33 +57,40 @@ case class JsonSafeLogger(config: JsonSafeLoggerConfig, rollbar: RollbarLogger) 
   /**
     * Accepts a JsValue, redacting any fields that may contain sensitive data
     * @param value The JsValue itself
-    * @param typ The type represented by the JsValue if resolved from the API Builder specification
+    * @param apiBuilderType The type represented by the JsValue if resolved from the API Builder specification
     */
   def safeJson(
     value: JsValue,
-    typ: Option[String] = None
+    apiBuilderType: Option[ApiBuilderType] = None
   ): JsValue = {
-    if (typ.exists(config.blacklistFields) || typ.exists(isTypeBlacklisted)) {
+    safeJsonString(value, apiBuilderType.map(_.name))
+  }
+
+  private[lib] def safeJsonString(
+    value: JsValue,
+    typeName: Option[String] = None
+  ): JsValue = {
+    if (typeName.exists(config.blacklistFields) || typeName.exists(isTypeBlacklisted)) {
       redact(value)
 
     } else {
       value match {
         case o: JsObject => JsObject(
           o.value.map {
-            case (k, v) if isFieldBlacklisted(k, typ) => k -> redact(v)
+            case (k, v) if isFieldBlacklisted(k, typeName) => k -> redact(v)
             case (k, v) => {
               v match {
                 case _: JsObject => {
                   // Hack to use the key value as the new type name. TODO: Lookup from spec
-                  k -> safeJson(v, Some(k))
+                  k -> safeJsonString(v, Some(k))
                 }
-                case _ => k -> safeJson(v, typ)
+                case _ => k -> safeJsonString(v, typeName)
               }
             }
           }
         )
 
-        case ar: JsArray => JsArray(ar.value.map { v => safeJson(v) })
+        case ar: JsArray => JsArray(ar.value.map { v => safeJsonString(v) })
 
         case _ => value
       }

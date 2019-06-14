@@ -1,6 +1,6 @@
 package handlers
 
-import io.apibuilder.validation.MultiService
+import io.apibuilder.validation.{ApiBuilderType, MultiService}
 import io.flow.log.RollbarLogger
 import lib._
 import play.api.libs.json.{JsValue, Json}
@@ -44,14 +44,14 @@ trait HandlerUtilities extends Errors {
   def toLogValue(
     request: ProxyRequest,
     js: JsValue,
-    typ: Option[String]
+    typ: Option[ApiBuilderType]
   ): JsValue = {
     if (config.isVerboseLogEnabled(request.path)) {
       js
     } else {
       typ match {
         case None => Json.obj("redacted" -> "object type not known. cannot log")
-        case Some(_) => LoggingUtil(logger).logger.safeJson(js, typ = typ)
+        case Some(_) => LoggingUtil(logger).logger.safeJson(js, apiBuilderType = typ)
       }
     }
   }

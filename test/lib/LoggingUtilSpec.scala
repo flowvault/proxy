@@ -63,7 +63,7 @@ class LoggingUtilSpec extends BasePlaySpec {
   }
 
   "safeJson with type whitelist" in {
-    jsonSafeLogger.safeJson(Json.obj("number" -> "1234567890"), typ = Some("order_form")) must equal(
+    jsonSafeLogger.safeJsonString(Json.obj("number" -> "1234567890"), typeName = Some("order_form")) must equal(
       Json.obj("number" -> "1234567890")
     )
 
@@ -87,7 +87,7 @@ class LoggingUtilSpec extends BasePlaySpec {
       "io.flow.user.v0.models.password_change_form",
       "iO.flOw.User.V0.mOdels.PasSword_CHANGE_forM"
     ) foreach { typ =>
-      jsonSafeLogger.safeJson(
+      jsonSafeLogger.safeJsonString(
         Json.obj(
           "current" -> "foo",
           "new" -> "bar"
