@@ -20,7 +20,7 @@ class ApiBuilderServicesFetcher @Inject() (
   private[this] val Cache = new ConcurrentHashMap[Int, Either[Seq[String], MultiService]]()
   private[this] val CacheKey: Int = 1
 
-  private[this] lazy val Uris: List[String] = config.requiredList("apibuilder.service.uris")
+  private[this] lazy val Uris: List[String] = config.nonEmptyList("apibuilder.service.uris")
 
   private[this] def load(): Either[Seq[String], MultiService] = {
     Cache.computeIfAbsent(
