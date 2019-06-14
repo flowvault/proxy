@@ -31,7 +31,6 @@ class UrlFormEncodedHandlerSpec extends HandlerBasePlaySpec {
       "/users",
       body = Some("name=joe")
     )
-    println(response.body)
     (response.bodyAsJson \ "messages").as[Seq[String]] must equal(
       Seq("user_form.name must be an object and not a string")
     )
