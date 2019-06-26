@@ -2,6 +2,7 @@ package lib
 
 import java.net.URI
 
+import io.apibuilder.validation.util.UrlDownloader
 import io.flow.log.RollbarLogger
 import javax.inject.{Inject, Singleton}
 
@@ -237,16 +238,22 @@ class ProxyConfigFetcher @Inject() (
 
   private[this] def load(uri: String): Either[Seq[String], ProxyConfig] = {
     logger.withKeyValue("uri", uri).info("Fetching configuration")
-    val contents = Source.fromURL(uri).mkString
-    configParser.parse(uri, contents).validate()
+    UrlDownloader.withInputStream(uri) { is =>
+      val contents = Source.fromInputStream(is).mkString
+      if (contents.trim.isEmpty) {
+        Left(Seq(s"No content returned from uri '$uri'"))
+      } else {
+        configParser.parse(uri, contents).validate()
+      }
+    }
   }
 
   private[this] def refresh(): Option[Index] = {
     load(Uris) match {
       case Left(errors) => {
         logger.
-          withKeyValue("uris", Uris.mkString(", ")).
-          withKeyValue("errors", errors.mkString(", ")).
+          withKeyValues("uris", Uris).
+          withKeyValues("errors", errors).
           error("Failed to load proxy configuration")
         None
       }

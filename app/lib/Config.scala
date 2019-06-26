@@ -97,7 +97,7 @@ class Config @Inject() (
     }
   }
 
-  private[this] val Protocols = Set("http", "https", "ftp")
+  private[this] val Protocols = Set("http", "https", "ftp", "file")
   private[this] def isProtocol(value: String) = {
     Protocols.contains(value.toLowerCase().trim)
   }
