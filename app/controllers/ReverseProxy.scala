@@ -104,7 +104,6 @@ class ReverseProxy @Inject () (
   private[this] def internalHandle(request: ProxyRequest): Future[Result] = {
     index.resolve(request.method, request.path) match {
       case None => {
-        request.log.info("Route does not exist - returning 422")
         Future.successful(
           request.responseUnprocessableEntity(
             s"HTTP operation '${request.method} ${request.path}' is not defined"
@@ -243,7 +242,9 @@ class ReverseProxy @Inject () (
             // note that console uses a token without an org, just a user - so can't be too strict here
             token.partnerId match {
               case None => proxyOrganization(operation, org, request, token)
-              case Some(_) => Future.successful(request.responseUnauthorized(invalidOrgMessage(org)))
+              case Some(_) => Future.successful(request.responseUnauthorized(
+                s"Token is associated with a partner and not the organization '$org'"
+              ))
             }
           }
         }
@@ -287,7 +288,9 @@ class ReverseProxy @Inject () (
               proxyDefault(operation, request, token)
             } else {
               Future.successful(
-                request.responseUnprocessableEntity(invalidOrgMessage(organization))
+                request.responseUnauthorized(
+                  s"Session Id belongs to organization '${tokenOrganizationId}' and not '$organization'"
+                )
               )
             }
           }
@@ -297,7 +300,9 @@ class ReverseProxy @Inject () (
       case Some(_) => {
         authorizeOrganization(token, organization).flatMap {
           case None => Future.successful(
-            request.responseUnprocessableEntity(invalidOrgMessage(organization))
+            request.responseUnauthorized(
+              s"Token is not associated with the organization '$organization'"
+            )
           )
 
           case Some(orgToken) => {

@@ -322,15 +322,14 @@ case class ProxyRequest(
   }
 
   def responseUnauthorized(
-    message: String,
-    headers: Map[String,Seq[String]] = Map()
+    message: String
   ): Result = {
-    responseError(401, message, headers)
+    responseError(401, message, Map.empty)
   }
 
   def responseUnprocessableEntity(
     message: String,
-    headers: Map[String,Seq[String]] = Map()
+    headers: Map[String,Seq[String]] = Map.empty
   ): Result = {
     responseError(422, message, headers)
   }

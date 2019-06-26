@@ -2,7 +2,7 @@ package lib
 
 object Constants {
 
-  val StopWords = Set("undefined", "null")
+  val StopWords: Set[String] = Set("undefined", "null")
 
   private[this] val DoNotLogSanitizedBodyURls = Set(
     "/:organization/catalog/items/:number",
