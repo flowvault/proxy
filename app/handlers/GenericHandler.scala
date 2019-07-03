@@ -24,6 +24,7 @@ class GenericHandler @Inject() (
 ) extends Handler with HandlerUtilities {
 
   override def multiService: MultiService = apiBuilderServicesFetcher.multiService
+  val enableAuditLogging = false //TODO: drive off feature?
 
   override def process(
     wsClient: WSClient,
@@ -34,12 +35,14 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    val body = request.body.map {
-      case ProxyRequestBody.Json(json) => safeBody(request, json)
-      case ProxyRequestBody.Bytes(_) => "bytes"
-      case ProxyRequestBody.File(_) => "file"
+    if (enableAuditLogging) {
+      val body = request.body.map {
+        case ProxyRequestBody.Json(json) => safeBody(request, json)
+        case ProxyRequestBody.Bytes(_) => "bytes"
+        case ProxyRequestBody.File(_) => "file"
+      }
+      log(request, server, "start", Map("body" -> body.getOrElse("-")))
     }
-    log(request, server, "start", Map("body" -> body.getOrElse("-")))
 
     val wsRequest = buildRequest(wsClient, server, request, route, token)
 
@@ -108,7 +111,9 @@ class GenericHandler @Inject() (
   ): Future[Result] = {
     response.map { response =>
       val duration = System.currentTimeMillis() - request.createdAtMillis
-      logResponse(request, server, response, duration)
+      if (enableAuditLogging) {
+        logResponse(request, server, response, duration)
+      }
 
       /**
         * Returns the content type of the response, defaulting to the
