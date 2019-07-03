@@ -39,8 +39,6 @@ class GenericHandler @Inject() (
       case ProxyRequestBody.Bytes(_) => "bytes"
       case ProxyRequestBody.File(_) => "file"
     }
-    log(request, server, "start", Map("body" -> body.getOrElse("-")))
-
     val wsRequest = buildRequest(wsClient, server, request, route, token)
 
     request.body match {
@@ -252,12 +250,6 @@ class GenericHandler @Inject() (
         }.getOrElse(Map.empty[String, String])
       }
     }
-
-    log(request, server, "done", extra ++ Map(
-      "status" -> response.status.toString,
-      "timeToFirstByteMs" -> duration.toString,
-      "response.contentLength" -> response.header("Content-Length").getOrElse("-")
-    ))
   }
 
   private[this] def isSessionAuth(value: String): Boolean = {
