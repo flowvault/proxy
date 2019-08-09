@@ -22,6 +22,14 @@ class LoggingFilter @Inject() (
   implicit val mat: Materializer, ec: ExecutionContext
 ) extends Filter {
 
+  private val LoggedHeaders = Seq(
+    "User-Agent",
+    "X-Forwarded-For",
+    "CF-Connecting-IP",
+    "True-Client-IP",
+    "X-Apidoc-Version",
+  ).map(_.toLowerCase)
+
   def apply(nextFilter: RequestHeader => Future[Result])
            (requestHeader: RequestHeader): Future[Result] = {
 
@@ -45,7 +53,18 @@ class LoggingFilter @Inject() (
         ).mkString(",")
       ).mkString(" ")
 
-      logger.info(line)
+      logger
+        .withKeyValue("method", requestHeader.method)
+        .withKeyValue("host", requestHeader.host)
+        .withKeyValue("path", requestHeader.path)
+        .withKeyValue("query_params", requestHeader.queryString)
+        .withKeyValue("http_code", result.header.status)
+        .withKeyValue("request_time_ms", requestTime)
+        .withKeyValue("request_headers",
+          headerMap
+            .map { case (key, value) => key.toLowerCase -> value }
+            .filterKeys(LoggedHeaders.contains))
+        .info(line)
 
       result.withHeaders("Request-Time" -> requestTime.toString)
     }
