@@ -108,7 +108,7 @@ case class Server(
 
   // TODO: Move to proxy configuration file
   val requestTimeout: FiniteDuration = name match {
-    case "payment" | "payment-internal" | "partner" | "label" | "label-internal" | "return" => FiniteDuration(60, SECONDS)
+    case "payment" | "payment-internal" | "partner" | "label" | "label-internal" | "return" | "marketing-gateway" => FiniteDuration(60, SECONDS)
     case "session" => FiniteDuration(10, SECONDS)
     case "token" | "organization" => FiniteDuration(5, SECONDS)
     case _ => FiniteDuration(30, SECONDS) // TODO: Figure out what the optimal value should be for this
