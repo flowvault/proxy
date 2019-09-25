@@ -23,7 +23,7 @@ class ErrorHandler @Inject() (
     errorLogger.logger.
       withKeyValue("http_status_code", statusCode).
       withKeyValue("message", message).
-      warn("Client error")
+      warn("ClientError")
 
     val r = Status(statusCode)(clientErrors(Seq(s"Invalid request (err #${errorLogger.errorId})")))
     Future.successful(r)
@@ -31,7 +31,7 @@ class ErrorHandler @Inject() (
 
   def onServerError(request: RequestHeader, ex: Throwable): Future[Result] = {
     val errorLogger = rollbarLogger(request)
-    errorLogger.logger.error("FlowError", ex)
+    errorLogger.logger.error("ServerError", ex)
 
     val r = InternalServerError(serverErrors(Seq(s"A server error occurred (err #${errorLogger.errorId})")))
     Future.successful(r)
