@@ -3,7 +3,7 @@
 # Simple ruby script that we use to deploy a new version of the proxy
 # server. Process is:
 #
-#  ssh to each server in order and execute ./deploy-proxy.sh <version>
+#  ssh to each server in order and execute docker commands
 #  wait for healthcheck to succeed
 #   - if fails, stop the release
 #   - if succeeds, continue
@@ -35,7 +35,7 @@ version = ARGV.shift.to_s.strip
 if version.empty?
   default = latest_tag("flowvault", "proxy")
   default_message = default ? " Default[#{default}]" : nil
-  
+
   while version.empty?
     print "Specify version to deploy#{default_message}: "
     version = $stdin.gets.strip
@@ -67,7 +67,14 @@ end
 
 # Installs and starts software
 def deploy(node, version)
-  cmd = "ssh #{node} ./deploy-proxy.sh #{version}"
+  docker_commands = [
+    "docker stop `docker ps -q`",
+    "docker rmi -f `docker images -q`",
+    "docker rm $(docker ps -qa --no-trunc --filter 'status=exited')",
+    "docker run --log-opt max-size=1g --log-opt max-file=10 -d -p 7000:9000 flowvault/proxy:#{version} production"
+  ].join(" && ")
+
+  cmd = "ssh #{node} '#{docker_commands}'"
   puts "==> #{cmd}"
   if !system(cmd)
     puts "ERROR running cmd: #{cmd}"
@@ -84,7 +91,7 @@ def wait(timeout_seconds = 50, &check_function)
     if check_function.call
       return
     end
-    
+
     duration = Time.now - started_at
     if i % 10 == 0 && i > 0
       puts " (#{duration.to_i} seconds)"
