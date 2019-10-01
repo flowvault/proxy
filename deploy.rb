@@ -68,7 +68,7 @@ end
 # Installs and starts software
 def deploy(node, version)
   docker_commands = [
-    "docker stop `docker ps -q`",
+    "docker stop $(docker ps -q)",
     "docker rmi -f `docker images -q`",
     "docker rm $(docker ps -qa --no-trunc --filter 'status=exited')",
     "docker run --log-opt max-size=1g --log-opt max-file=10 -d -p 7000:9000 flowvault/proxy:#{version} production"
