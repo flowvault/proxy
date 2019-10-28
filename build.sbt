@@ -1,3 +1,5 @@
+import play.sbt.PlayScala._
+
 name := "proxy"
 
 organization := "io.flow"
@@ -7,7 +9,7 @@ scalaVersion in ThisBuild := "2.12.10"
 lazy val root = project
   .in(file("."))
   .enablePlugins(PlayScala)
-  .enablePlugins(NewRelic)
+  .enablePlugins(NewRelic, JavaAgent)
   .settings(commonSettings: _*)
   .settings(
     libraryDependencies ++= Seq(
@@ -25,6 +27,8 @@ lazy val root = project
       compilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.4.2"),
       "com.github.ghik" %% "silencer-lib" % "1.4.2" % Provided
     ),
+    javaAgents += "org.aspectj" % "aspectjweaver" % "1.9.4",
+    javaOptions in Universal += "-Dorg.aspectj.tracing.factory=default",
     javaOptions in Test += "-Dkamon.modules.kamon-system-metrics.auto-start=false",
     javaOptions in Test += "-Dkamon.show-aspectj-missing-warning=no",
     testOptions += Tests.Argument("-oF"),

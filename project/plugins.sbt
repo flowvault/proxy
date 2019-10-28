@@ -7,6 +7,8 @@ resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releas
 // Use the Play sbt plugin for Play projects
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.6.20")
 
+addSbtPlugin("com.lightbend.sbt" % "sbt-javaagent" % "0.1.4")
+
 addSbtPlugin("com.gilt.sbt" % "sbt-newrelic" % "0.2.4")
 
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.4")
