@@ -1,5 +1,3 @@
-import play.sbt.PlayScala._
-
 name := "proxy"
 
 organization := "io.flow"
