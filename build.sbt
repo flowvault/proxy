@@ -18,7 +18,7 @@ lazy val root = project
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
       "commons-codec" % "commons-codec" % "1.13",
       "io.flow" %% "apibuilder-validation" % "0.4.9",
-      "io.flow" %% "lib-play-play26" % "0.5.82",
+      "io.flow" %% "lib-play-graphite-play26" % "0.1.17",
       "io.flow" %% "lib-usage" % "0.1.6",
       "org.yaml" % "snakeyaml" % "1.25",
       "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test,
