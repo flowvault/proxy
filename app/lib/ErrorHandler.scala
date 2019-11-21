@@ -53,6 +53,7 @@ class ErrorHandler @Inject() (
         withKeyValue("request_ip", request.remoteAddress).
         withKeyValue("request_method", request.method.toString).
         withKeyValue("request_uri", request.uri).
+        withKeyValue("request_id", request.id).
         withKeyValue("route_path", operation.map(_.route.path)).
         withKeyValue("route_server_name", operation.map(_.server.name)).
         withKeyValue("route_server_host", operation.map(_.server.host)).
