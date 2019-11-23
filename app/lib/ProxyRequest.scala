@@ -236,32 +236,25 @@ case class ProxyRequest(
         }
       )
     } match {
+      case Failure(_) => {
+        Left(Seq("Envelope requests require a valid JSON body"))
+      }
       case Success(js) => {
-        val validatedMethod = RequestEnvelopeUtil.validateMethod(js)
-        val validatedHeaders = RequestEnvelopeUtil.validateHeaders(js)
-        val validatedBody = RequestEnvelopeUtil.validateBody(js)
-
-        Seq(
-          validatedMethod, validatedHeaders, validatedBody
-        ).flatMap(_.left.getOrElse(Nil)).toList match {
-          case Nil => {
+        RequestEnvelopeUtil.validate(js) match {
+          case Right(env) => {
             ProxyRequest.validate(
               requestMethod = originalMethod,
               requestPath = path,
               body = body,
               queryParameters = queryParameters ++ Map(
-                "method" -> Seq(validatedMethod.right.get.toString),
+                "method" -> Seq(env.method.toString),
                 Constants.Headers.FlowRequestId -> Seq(requestId)
               ),
-              headers = validatedHeaders.right.get
+              headers = env.headers
             )
           }
-          case errors => Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
+          case Left(errors) => Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
         }
-      }
-
-      case Failure(_) => {
-        Left(Seq("Envelope requests require a valid JSON body"))
       }
     }
   }

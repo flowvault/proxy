@@ -3,12 +3,37 @@ package lib
 import play.api.libs.json.{JsError, JsObject, JsSuccess, JsValue}
 import play.api.mvc.Headers
 
+case class RequestEnvelope(
+  method: Method,
+  headers: Headers,
+  body: Option[ProxyRequestBody.Json],
+)
+
 object RequestEnvelopeUtil {
 
   object Fields {
     val Body = "body"
     val Method = "method"
     val Headers = "headers"
+  }
+
+  def validate(js: JsValue): Either[List[String], RequestEnvelope] = {
+    val validatedMethod = RequestEnvelopeUtil.validateMethod(js)
+    val validatedHeaders = RequestEnvelopeUtil.validateHeaders(js)
+    val validatedBody = RequestEnvelopeUtil.validateBody(js)
+
+    Seq(
+      validatedMethod, validatedHeaders, validatedBody
+    ).flatMap(_.left.getOrElse(Nil)).toList match {
+      case Nil => Right(
+        RequestEnvelope(
+          method = validatedMethod.right.get,
+          headers = validatedHeaders.right.get,
+          body = validatedBody.right.get,
+        )
+      )
+      case errors => Left(errors)
+    }
   }
 
   def validateBody(js: JsValue): Either[Seq[String], Option[ProxyRequestBody.Json]] = {

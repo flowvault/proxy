@@ -59,8 +59,8 @@ if uri == ""
 end
 
 helpers = Helpers.new(uri, api_key_file)
-response = helpers.json_post("/organizations/0?envelope=request", { :method => "POST", :headers => "test", :body => 'test' }).execute
-assert_generic_error(response, "zzz")
+response = helpers.json_post("/organizations/0?envelope=request", { :method => "GET", :headers => "test", :body => 'test' }).execute
+assert_generic_error(response, "todo")
 raise 'done'
 
 # One deploy had an error where these endpoints began returning 401 - test for that now.
