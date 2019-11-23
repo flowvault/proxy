@@ -250,7 +250,7 @@ case class ProxyRequest(
                 "method" -> Seq(env.method.toString),
                 Constants.Headers.FlowRequestId -> Seq(requestId)
               ),
-              headers = env.headers
+              headers = env.headers,
             )
           }
           case Left(errors) => {
