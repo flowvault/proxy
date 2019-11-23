@@ -1,6 +1,6 @@
 package lib
 
-import play.api.libs.json.{JsError, JsObject, JsSuccess, JsValue}
+import play.api.libs.json.{JsError, JsSuccess, JsValue}
 import play.api.mvc.Headers
 
 case class RequestEnvelope(
@@ -9,7 +9,7 @@ case class RequestEnvelope(
   body: Option[ProxyRequestBody.Json],
 )
 
-object RequestEnvelopeUtil {
+object RequestEnvelope {
 
   object Fields {
     val Body = "body"
@@ -18,9 +18,9 @@ object RequestEnvelopeUtil {
   }
 
   def validate(js: JsValue): Either[List[String], RequestEnvelope] = {
-    val validatedMethod = RequestEnvelopeUtil.validateMethod(js)
-    val validatedHeaders = RequestEnvelopeUtil.validateHeaders(js)
-    val validatedBody = RequestEnvelopeUtil.validateBody(js)
+    val validatedMethod = validateMethod(js)
+    val validatedHeaders = validateHeaders(js)
+    val validatedBody = validateBody(js)
 
     Seq(
       validatedMethod, validatedHeaders, validatedBody
@@ -44,9 +44,9 @@ object RequestEnvelopeUtil {
 
   def validateMethod(js: JsValue): Either[Seq[String], Method] = {
     (js \ Fields.Method).validateOpt[String] match {
-      case JsError(_) => Left(Seq(s"Field '${Fields.Method}' must be a string"))
+      case JsError(_) => Left(Seq(s"Request envelope field '${Fields.Method}' must be a string"))
       case JsSuccess(value, _) => value match {
-        case None => Left(Seq(s"Field '${Fields.Method}' is required"))
+        case None => Left(Seq(s"Request envelope field '${Fields.Method}' is required"))
         case Some(v) => validateMethod(v)
       }
     }
@@ -54,7 +54,7 @@ object RequestEnvelopeUtil {
 
   private[this] def validateMethod(value: String): Either[Seq[String], Method] = {
     Method.fromString(value) match {
-      case None => Left(Seq(s"Field '${Fields.Method}' must be one of ${Method.all.map(_.toString).mkString(", ")}"))
+      case None => Left(Seq(s"Request envelope field '${Fields.Method}' must be one of ${Method.all.map(_.toString).mkString(", ")}"))
       case Some(m) => Right(m)
     }
   }
@@ -72,15 +72,15 @@ object RequestEnvelopeUtil {
    *   { "name": ["value1", "value2"] }
    */
   def validateHeaders(js: JsValue): Either[Seq[String], Headers] = {
-    val all = (js \ Fields.Headers).asOpt[JsObject] match {
-      case None => Nil
-      case Some(headersJson) => {
-        Util.toFlatSeq(headersJson.as[Map[String, Seq[String]]])
+    (js \ Fields.Headers).asOpt[JsValue] match {
+      case None => Right(Headers())
+      case Some(js) => {
+        js.asOpt[Map[String, Seq[String]]] match {
+          case None => Left(Seq("Request envelope field 'headers' must be an object of type map[string, [string]]"))
+          case Some(v) => Right(Headers(Util.toFlatSeq(v): _*))
+        }
       }
     }
-    Right(
-      Headers(all: _*)
-    )
   }
 
 }

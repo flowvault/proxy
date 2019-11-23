@@ -240,12 +240,12 @@ case class ProxyRequest(
         Left(Seq("Envelope requests require a valid JSON body"))
       }
       case Success(js) => {
-        RequestEnvelopeUtil.validate(js) match {
+        RequestEnvelope.validate(js) match {
           case Right(env) => {
             ProxyRequest.validate(
               requestMethod = originalMethod,
               requestPath = path,
-              body = body,
+              body = env.body,
               queryParameters = queryParameters ++ Map(
                 "method" -> Seq(env.method.toString),
                 Constants.Headers.FlowRequestId -> Seq(requestId)
@@ -253,7 +253,9 @@ case class ProxyRequest(
               headers = env.headers
             )
           }
-          case Left(errors) => Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
+          case Left(errors) => {
+            Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
+          }
         }
       }
     }
