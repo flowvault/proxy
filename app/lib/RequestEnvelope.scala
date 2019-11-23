@@ -76,8 +76,14 @@ object RequestEnvelope {
       case None => Right(Headers())
       case Some(js) => {
         js.asOpt[Map[String, Seq[String]]] match {
-          case None => Left(Seq("Request envelope field 'headers' must be an object of type map[string, [string]]"))
           case Some(v) => Right(Headers(Util.toFlatSeq(v): _*))
+          case None => {
+            // handle simple k->v which is default serialization from JS libraries
+            js.asOpt[Map[String, String]] match {
+              case None => Left(Seq("Request envelope field 'headers' must be an object"))
+              case Some(all) => Right(Headers(all.keys.map { k => (k, all(k)) }.toSeq: _*))
+            }
+          }
         }
       }
     }

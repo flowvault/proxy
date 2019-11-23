@@ -65,9 +65,17 @@ class RequestEnvelopeSpec extends PlaySpec {
     )
 
     RequestEnvelope.validateHeaders(Json.obj(
+      "headers" -> Json.obj(
+        "foo" -> "bar"
+      )
+    )) must equal(
+      Right(Headers(("foo", "bar")))
+    )
+
+    RequestEnvelope.validateHeaders(Json.obj(
       "headers" -> "a"
     )) must equal(
-      Left(Seq("Request envelope field 'headers' must be an object of type map[string, [string]]"))
+      Left(Seq("Request envelope field 'headers' must be an object"))
     )
   }
 
