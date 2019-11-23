@@ -59,6 +59,9 @@ if uri == ""
 end
 
 helpers = Helpers.new(uri, api_key_file)
+response = helpers.json_post("/organizations/0?envelope=request", { :method => "POST", :headers => "test", :body => 'test' }).execute
+assert_generic_error(response, "zzz")
+raise 'done'
 
 # One deploy had an error where these endpoints began returning 401 - test for that now.
 response = helpers.get("/demo/catalog/subcatalogs").with_api_key.execute
@@ -149,6 +152,8 @@ assert_generic_error(response, "Error in envelope request body: Field 'method' i
 
 response = helpers.json_post("/organizations/0?envelope=request", { :method => 123, :body => "test" }).with_api_key.execute
 assert_generic_error(response, "Error in envelope request body: Field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE")
+
+# TODO
 
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
 assert_status(200, response)

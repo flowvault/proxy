@@ -237,36 +237,23 @@ case class ProxyRequest(
       )
     } match {
       case Success(js) => {
-        val (method, methodErrors) = parseMethod(js, "method") match {
-          case Left(errors) => ("", errors)
-          case Right(m) => (m, Nil)
-        }
+        val validatedMethod = RequestEnvelopeUtil.validateMethod(js)
+        val validatedHeaders = RequestEnvelopeUtil.validateHeaders(js)
+        val validatedBody = RequestEnvelopeUtil.validateBody(js)
 
-        val body = (js \ "body").asOpt[JsValue].map(ProxyRequestBody.Json)
-
-        /**
-          * Read the headers from either:
-          *   a. the json envelope if specified
-          *   b. the original request headers
-          */
-        val envHeaders = (js \ "headers").asOpt[JsObject] match {
-          case None => headers.headers
-          case Some(headersJson) => {
-            Util.toFlatSeq(headersJson.as[Map[String, Seq[String]]])
-          }
-        }
-
-        methodErrors match {
+        Seq(
+          validatedMethod, validatedHeaders, validatedBody
+        ).flatMap(_.left.getOrElse(Nil)).toList match {
           case Nil => {
             ProxyRequest.validate(
               requestMethod = originalMethod,
               requestPath = path,
               body = body,
               queryParameters = queryParameters ++ Map(
-                "method" -> Seq(method),
+                "method" -> Seq(validatedMethod.right.get.toString),
                 Constants.Headers.FlowRequestId -> Seq(requestId)
               ),
-              headers = Headers(envHeaders: _*)
+              headers = validatedHeaders.right.get
             )
           }
           case errors => Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
@@ -380,16 +367,6 @@ case class ProxyRequest(
   ): String = {
     // Prefix /**/ is to avoid a JSONP/Flash vulnerability
     "/**/" + s"""$callback($body)"""
-  }
-
-  private[this] def parseMethod(json: JsValue, field: String): Either[Seq[String], String] = {
-    (json \ field).validateOpt[String] match {
-      case JsError(_) => Left(Seq(s"Field '$field' must be one of ${Method.all.map(_.toString).mkString(", ")}"))
-      case JsSuccess(value, _) => value match {
-        case None => Left(Seq(s"Field '$field' is required"))
-        case Some(v) => Right(v)
-      }
-    }
   }
 
 }
