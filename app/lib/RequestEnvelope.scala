@@ -17,7 +17,7 @@ object RequestEnvelope {
     val Headers = "headers"
   }
 
-  def validate(js: JsValue): Either[List[String], RequestEnvelope] = {
+  def validate(js: JsValue, requestHeaders: Headers): Either[List[String], RequestEnvelope] = {
     val validatedMethod = validateMethod(js)
     val validatedHeaders = validateHeaders(js)
     val validatedBody = validateBody(js)
@@ -28,7 +28,7 @@ object RequestEnvelope {
       case Nil => Right(
         RequestEnvelope(
           method = validatedMethod.right.get,
-          headers = validatedHeaders.right.get,
+          headers = merge(validatedHeaders.right.get, requestHeaders),
           body = validatedBody.right.get,
         )
       )
@@ -71,17 +71,17 @@ object RequestEnvelope {
    * (from play libraries):
    *   { "name": ["value1", "value2"] }
    */
-  def validateHeaders(js: JsValue): Either[Seq[String], Headers] = {
+  def validateHeaders(js: JsValue): Either[Seq[String], Map[String, Seq[String]]] = {
     (js \ Fields.Headers).asOpt[JsValue] match {
-      case None => Right(Headers())
+      case None => Right(Map.empty)
       case Some(js) => {
         js.asOpt[Map[String, Seq[String]]] match {
-          case Some(v) => Right(Headers(Util.toFlatSeq(v): _*))
+          case Some(v) => Right(v)
           case None => {
             // handle simple k->v which is default serialization from JS libraries
             js.asOpt[Map[String, String]] match {
               case None => Left(Seq("Request envelope field 'headers' must be an object"))
-              case Some(all) => Right(Headers(all.keys.map { k => (k, all(k)) }.toSeq: _*))
+              case Some(all) => Right(all.map { case (k, v) => k -> Seq(v) })
             }
           }
         }
@@ -89,4 +89,15 @@ object RequestEnvelope {
     }
   }
 
+  private[this] def merge(envelopeHeaders: Map[String, Seq[String]], requestHeaders: Headers): Headers = {
+    Headers(
+      Util.toFlatSeq(
+        safeHeaders(requestHeaders) ++ envelopeHeaders
+      ): _*
+    )
+  }
+
+  private[this] def safeHeaders(headers: Headers): Map[String, Seq[String]] = {
+    headers.toMap.filter { case (k, _) => Constants.Headers.namesToWhitelist.contains(k) }
+  }
 }

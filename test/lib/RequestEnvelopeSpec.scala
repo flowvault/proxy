@@ -6,6 +6,14 @@ import play.api.mvc.Headers
 
 class RequestEnvelopeSpec extends PlaySpec {
 
+  private[this] def validateHeaders(envelopeHeaders: Map[String, Seq[String]], requestHeaders: Headers): Headers = {
+    val js = Json.obj(
+      "method" -> "POST",
+      "headers" -> envelopeHeaders,
+    )
+    RequestEnvelope.validate(js, requestHeaders).right.get.headers
+  }
+
   "validateMethod" in {
     RequestEnvelope.validateMethod(Json.obj()) must equal(
       Left(Seq("Request envelope field 'method' is required"))
@@ -29,14 +37,14 @@ class RequestEnvelopeSpec extends PlaySpec {
   }
 
   "validateHeaders" in {
-    RequestEnvelope.validateHeaders(Json.obj()) must equal(Right(Headers()))
+    RequestEnvelope.validateHeaders(Json.obj()) must equal(Right(Map.empty))
     RequestEnvelope.validateHeaders(Json.obj("headers" -> Json.obj())) must equal(
-      Right(Headers())
+      Right(Map.empty)
     )
     RequestEnvelope.validateHeaders(Json.obj("headers" -> Json.obj(
       "foo" -> JsArray(Nil)
     ))) must equal(
-      Right(Headers())
+      Right(Map("foo" -> Nil))
     )
 
     RequestEnvelope.validateHeaders(Json.obj(
@@ -44,7 +52,7 @@ class RequestEnvelopeSpec extends PlaySpec {
         "foo" -> Seq("bar")
       )
     )) must equal(
-      Right(Headers(("foo", "bar")))
+      Right(Map("foo" -> Seq("bar")))
     )
 
     RequestEnvelope.validateHeaders(Json.obj(
@@ -53,7 +61,7 @@ class RequestEnvelopeSpec extends PlaySpec {
         "a" -> Seq("b"),
       )
     )) must equal(
-      Right(Headers(("foo", "bar"), ("a", "b")))
+      Right(Map("foo" -> Seq("bar"), "a" -> Seq("b")))
     )
 
     RequestEnvelope.validateHeaders(Json.obj(
@@ -61,7 +69,7 @@ class RequestEnvelopeSpec extends PlaySpec {
         "foo" -> Seq("bar", "baz")
       )
     )) must equal(
-      Right(Headers(("foo", "bar"), ("foo", "baz")))
+      Right(Map("foo" -> Seq("bar", "baz")))
     )
 
     RequestEnvelope.validateHeaders(Json.obj(
@@ -69,13 +77,36 @@ class RequestEnvelopeSpec extends PlaySpec {
         "foo" -> "bar"
       )
     )) must equal(
-      Right(Headers(("foo", "bar")))
+      Right(Map("foo" -> Seq("bar")))
     )
 
     RequestEnvelope.validateHeaders(Json.obj(
       "headers" -> "a"
     )) must equal(
       Left(Seq("Request envelope field 'headers' must be an object"))
+    )
+  }
+
+  "validateHeaders preserves only whitelisted headers" in {
+    validateHeaders(Map.empty, Headers())  must equal(Headers())
+    validateHeaders(Map.empty, Headers(("foo", "bar")))  must equal(Headers())
+    validateHeaders(Map.empty, Headers(("CF-Connecting-IP", "1.2.3.4")))  must equal(
+      Headers(("CF-Connecting-IP", "1.2.3.4"))
+    )
+  }
+
+  "validateHeaders prefers envelope headers to request headers" in {
+    validateHeaders(Map("CF-Connecting-IP" -> Seq("4.5.6.7")), Headers(("CF-Connecting-IP", "1.2.3.4")))  must equal(
+      Headers(("CF-Connecting-IP", "4.5.6.7"))
+    )
+
+    validateHeaders(Map(
+      "foo" -> Seq("bar"),
+      "CF-Connecting-IP" -> Seq("4.5.6.7"),
+    ), Headers(
+      ("CF-Connecting-IP", "1.2.3.4"))
+    )  must equal(
+      Headers(("foo", "bar"), ("CF-Connecting-IP", "4.5.6.7"))
     )
   }
 

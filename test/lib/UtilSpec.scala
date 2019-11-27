@@ -35,7 +35,7 @@ class UtilSpec extends BasePlaySpec {
         "foo" -> Seq("bar"),
         "foo2" -> Seq("baz")
       ),
-      Seq("a", "foo2")
+      Set("a", "foo2")
     )
     parts.keys.toSeq must equal(Seq("foo"))
   }
@@ -46,7 +46,7 @@ class UtilSpec extends BasePlaySpec {
         "foo" -> Seq("bar"),
         "foo2" -> Seq("baz")
       ),
-      Seq("a", "foo2")
+      Set("a", "foo2")
     )
     parts.keys.toSeq must equal(Seq("foo2"))
   }

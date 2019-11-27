@@ -19,7 +19,7 @@ object Util {
 
   def removeKeys(
     data: Map[String, Seq[String]],
-    keys: Seq[String]
+    keys: Set[String],
   ): Map[String, Seq[String]] = {
     data.filter { case (k, _) =>
       !keys.contains(k)
@@ -28,7 +28,7 @@ object Util {
 
   def filterKeys(
     data: Map[String, Seq[String]],
-    keys: Seq[String]
+    keys: Set[String]
   ): Map[String, Seq[String]] = {
     data.filter { case (k, _) =>
       keys.contains(k)

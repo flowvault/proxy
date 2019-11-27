@@ -240,7 +240,7 @@ case class ProxyRequest(
         Left(Seq("Envelope requests require a valid JSON body"))
       }
       case Success(js) => {
-        RequestEnvelope.validate(js) match {
+        RequestEnvelope.validate(js, headers) match {
           case Right(env) => {
             ProxyRequest.validate(
               requestMethod = originalMethod,
@@ -287,16 +287,14 @@ case class ProxyRequest(
     }
   }
 
+  private[this] val HeadersToRemove = Set(Constants.Headers.ContentLength, Constants.Headers.ContentType)
   private[this] def internalResponse(
     status: Int,
     body: String,
     contentType: ContentType,
     headers: Map[String,Seq[String]]
   ): Result = {
-    val responseHeaders = Util.removeKeys(
-      headers,
-      Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
-    )
+    val responseHeaders = Util.removeKeys(headers, HeadersToRemove)
 
     Status(status)(body).
       withHeaders(Util.toFlatSeq(responseHeaders): _*).
