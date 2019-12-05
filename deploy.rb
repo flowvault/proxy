@@ -38,7 +38,7 @@ class MultiLog
 end
 
 # output to both log file and std out
-log_file_path = "/tmp/proxy-##{Time.now.strftime("%Y%m%d%H%M%S")}.log"
+log_file_path = "/tmp/proxy-#{Time.now.strftime("%Y%m%d%H%M%S")}.log"
 log_file = File.open(log_file_path, "a")
 LOGGER = Logger.new(MultiLog.new(STDOUT, log_file))
 
