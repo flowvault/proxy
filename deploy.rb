@@ -92,7 +92,7 @@ def deploy(node, version)
 
   begin
     output = `#{cmd}`
-    LOGGER.info cmd
+    LOGGER.info output
   rescue Exception => e
     LOGGER.info "ERROR running cmd: #{e.message}"
     exit(1)
