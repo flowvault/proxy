@@ -6,8 +6,6 @@ import play.api.libs.json.Json
 
 class UrlFormEncodedHandlerSpec extends HandlerBasePlaySpec {
 
-  import scala.concurrent.ExecutionContext.Implicits.global
-
   private[this] def urlFormEncodedHandler = app.injector.instanceOf[UrlFormEncodedHandler]
 
   "converts url form encoded to application/json" in {

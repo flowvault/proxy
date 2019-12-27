@@ -1,12 +1,11 @@
 package controllers
 
-import akka.actor.ActorSystem
 import auth.RequestHeadersUtil
+import io.flow.customer.v0.{Client => CustomerClient}
 import io.flow.log.RollbarLogger
-import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.session.v0.{Client => SessionClient}
-import io.flow.customer.v0.{Client => CustomerClient}
+import io.flow.token.v0.{Client => TokenClient}
 import javax.inject.{Inject, Singleton}
 import lib._
 import play.api.mvc._
@@ -15,7 +14,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ReverseProxy @Inject () (
-  system: ActorSystem,
   authorizationParser: AuthorizationParser,
   val flowAuth: FlowAuth,
   val logger: RollbarLogger,
@@ -24,7 +22,7 @@ class ReverseProxy @Inject () (
   val controllerComponents: ControllerComponents,
   ws: play.api.libs.ws.WSClient,
   override val requestHeadersUtil: RequestHeadersUtil
-) extends BaseController
+)(implicit ec: ExecutionContext) extends BaseController
   with lib.Errors
   with auth.OrganizationAuth
   with auth.TokenAuth
@@ -33,8 +31,6 @@ class ReverseProxy @Inject () (
 {
 
   val index: Index = proxyConfigFetcher.current()
-
-  private[this] implicit val ec: ExecutionContext = system.dispatchers.lookup("reverse-proxy-context")
 
   override val organizationClient: OrganizationClient = {
     val server = mustFindServerByName("organization")

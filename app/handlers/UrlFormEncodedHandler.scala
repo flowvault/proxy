@@ -1,13 +1,12 @@
 package handlers
 
-import javax.inject.{Inject, Singleton}
-
 import io.apibuilder.validation.FormData
+import javax.inject.{Inject, Singleton}
 import lib._
 import play.api.libs.ws.WSClient
 import play.api.mvc.Result
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 /**
   * Converts url form encoded into a JSON body, then
@@ -24,8 +23,6 @@ class UrlFormEncodedHandler @Inject() (
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
-  )(
-    implicit ec: ExecutionContext
   ): Future[Result] = {
     request.bodyUtf8 match {
       case None => Future.successful(
@@ -52,8 +49,6 @@ class UrlFormEncodedHandler @Inject() (
     route: Route,
     token: ResolvedToken,
     body: Option[String]
-  )(
-    implicit ec: ExecutionContext
   ): Future[Result] = {
     val map = body match {
       case None => Map.empty[String, Seq[String]]

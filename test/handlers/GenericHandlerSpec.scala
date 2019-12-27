@@ -6,8 +6,6 @@ import play.api.libs.json._
 
 class GenericHandlerSpec extends HandlerBasePlaySpec {
 
-  import scala.concurrent.ExecutionContext.Implicits.global
-
   private[this] def genericHandler = app.injector.instanceOf[GenericHandler]
 
   "defaults content type to application/json" in {

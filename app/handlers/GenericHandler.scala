@@ -1,8 +1,9 @@
 package handlers
 
-import javax.inject.{Inject, Singleton}
 import io.apibuilder.spec.v0.models.ParameterLocation
 import io.apibuilder.validation.{EncodingOptions, FormData, MultiService}
+import io.flow.log.RollbarLogger
+import javax.inject.{Inject, Singleton}
 import lib._
 import org.joda.time.DateTime
 import play.api.http.HttpEntity
@@ -10,7 +11,6 @@ import play.api.http.Status.{UNPROCESSABLE_ENTITY, UNSUPPORTED_MEDIA_TYPE}
 import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Headers, Result, Results}
-import io.flow.log.RollbarLogger
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -21,7 +21,7 @@ class GenericHandler @Inject() (
   override val logger: RollbarLogger,
   flowAuth: FlowAuth,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
-) extends Handler with HandlerUtilities {
+)(implicit ec: ExecutionContext) extends Handler with HandlerUtilities {
 
   override def multiService: MultiService = apiBuilderServicesFetcher.multiService
   val enableAuditLogging = false //TODO: drive off feature?
@@ -32,8 +32,6 @@ class GenericHandler @Inject() (
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
-  )(
-    implicit ec: ExecutionContext
   ): Future[Result] = {
     if (enableAuditLogging) {
       val body = request.body.map {
@@ -106,8 +104,6 @@ class GenericHandler @Inject() (
     server: Server,
     request: ProxyRequest,
     response: Future[WSResponse]
-  )(
-    implicit ec: ExecutionContext
   ): Future[Result] = {
     response.map { response =>
       val duration = System.currentTimeMillis() - request.createdAtMillis

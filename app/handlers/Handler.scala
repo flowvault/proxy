@@ -4,7 +4,7 @@ import lib.{ProxyRequest, ResolvedToken, Route, Server}
 import play.api.libs.ws.WSClient
 import play.api.mvc.Result
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 trait Handler {
 
@@ -14,8 +14,6 @@ trait Handler {
     request: ProxyRequest,
     route: Route,
     token: ResolvedToken
-  )(
-    implicit ec: ExecutionContext
   ): Future[Result]
 
 }

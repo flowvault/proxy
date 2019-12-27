@@ -5,14 +5,11 @@ import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
 import javax.inject.Inject
-import play.api.mvc._
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
 import lib._
 import play.api.libs.ws.WSClient
+import play.api.mvc._
 
-import scala.annotation.tailrec
+import scala.concurrent.Future
 
 /**
   * Server Proxy is responsible for proxying all requests to a given
@@ -35,8 +32,6 @@ trait ServerProxy {
 }
 
 object ServerProxy {
-
-  val DefaultContextName = s"default-server-context"
 
   trait Factory {
     def apply(server: Server): ServerProxy
@@ -66,9 +61,7 @@ object ServerProxy {
     * @return A sequence of keys, each paired with exactly one value. The keys are further
     *         normalized to match Flow expectations (e.g. number[] => number)
     */
-  def query(
-             incoming: Map[String, Seq[String]]
-           ): Seq[(String, String)] = {
+  def query(incoming: Map[String, Seq[String]]): Seq[(String, String)] = {
     Util.toFlatSeq(
       FormData.parseEncoded(FormData.toEncoded(FormData.toJson(incoming)))
     )
@@ -96,38 +89,6 @@ class ServerProxyImpl @Inject()(
 ) extends ServerProxy
   with BaseControllerHelpers
 {
-
-  private[this] implicit val (ec, _) = resolveContextName(server.name)
-
-  /**
-    * Returns the execution context to use, if found. Works by recursively
-    * shortening service name by splitting on "-"
-    */
-  @tailrec
-  private[this] def resolveContextName(name: String): (ExecutionContext, String) = {
-    val contextName = s"$name-context"
-    Try {
-      system.dispatchers.lookup(contextName)
-    } match {
-      case Success(context) => {
-        server.logger.
-          withKeyValue("server", server.name).
-          withKeyValue("context_name", contextName).
-          info("Using execution context with this name")
-        (context, name)
-      }
-
-      case Failure(_) => {
-        val i = name.lastIndexOf("-")
-        if (i > 0) {
-          resolveContextName(name.substring(0, i))
-        } else {
-          server.logger.withKeyValue("context_name", name).warn("Execution context not found. Using default execution context")
-          (system.dispatchers.lookup(ServerProxy.DefaultContextName), ServerProxy.DefaultContextName)
-        }
-      }
-    }
-  }
 
   override final def proxy(
     request: ProxyRequest,

@@ -10,7 +10,6 @@ import lib._
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Headers, Result}
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 trait HandlerBasePlaySpec extends BasePlaySpec {
@@ -80,8 +79,6 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
     serverName: String = "test",
     queryParameters: Map[String, Seq[String]] = Map.empty,
     body: Option[String] = None
-  )(
-   implicit ec: ExecutionContext
   ): SimulatedResponse = {
     MockStandaloneServer.withTestClient { (client, port) =>
       val server = Server(
