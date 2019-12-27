@@ -8,31 +8,16 @@ object Util {
     }.flatten.toSeq
   }
 
-  def removeKey(
-    data: Map[String, Seq[String]],
-    key: String
-  ): Map[String, Seq[String]] = {
-    data.filter { case (k, _) =>
-      k != key
-    }
-  }
-
   def removeKeys(
     data: Map[String, Seq[String]],
     keys: Set[String],
-  ): Map[String, Seq[String]] = {
-    data.filter { case (k, _) =>
-      !keys.contains(k)
-    }
-  }
+  ): Map[String, Seq[String]] =
+    data -- keys
 
   def filterKeys(
     data: Map[String, Seq[String]],
     keys: Set[String]
-  ): Map[String, Seq[String]] = {
-    data.filter { case (k, _) =>
-      keys.contains(k)
-    }
-  }
+  ): Map[String, Seq[String]] =
+    data.filterKeys(keys)
 
 }

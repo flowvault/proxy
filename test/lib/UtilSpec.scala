@@ -18,17 +18,6 @@ class UtilSpec extends BasePlaySpec {
     parts.contains(("foo2", "baz")) must be(true)
   }
 
-  "removeKey" in {
-    val parts = Util.removeKey(
-      Map[String, Seq[String]](
-        "foo" -> Seq("bar"),
-        "foo2" -> Seq("baz")
-      ),
-      "foo2"
-    )
-    parts.keys.toSeq must equal(Seq("foo"))
-  }
-
   "removeKeys" in {
     val parts = Util.removeKeys(
       Map[String, Seq[String]](

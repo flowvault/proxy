@@ -156,8 +156,6 @@ class GenericHandler @Inject() (
           }
         }
       }
-    }.recover {
-      case ex: Throwable => throw new Exception(ex)
     }
   }
 
