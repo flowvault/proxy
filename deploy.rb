@@ -19,8 +19,28 @@
 require 'uri'
 require 'net/http'
 require 'json'
+require 'logger'
 
 PORT = 7000
+
+class MultiLog
+  def initialize(*targets)
+     @targets = targets
+  end
+
+  def write(*args)
+    @targets.each {|t| t.write(*args)}
+  end
+
+  def close
+    @targets.each(&:close)
+  end
+end
+
+# output to both log file and std out
+log_file_path = "/tmp/proxy-#{Time.now.strftime("%Y%m%d%H%M%S")}.log"
+log_file = File.open(log_file_path, "a")
+LOGGER = Logger.new(MultiLog.new(STDOUT, log_file))
 
 def latest_tag(owner,repo)
   cmd = "curl --silent https://api.github.com/repos/#{owner}/#{repo}/tags"
@@ -35,7 +55,7 @@ version = ARGV.shift.to_s.strip
 if version.empty?
   default = latest_tag("flowvault", "proxy")
   default_message = default ? " Default[#{default}]" : nil
-  
+
   while version.empty?
     print "Specify version to deploy#{default_message}: "
     version = $stdin.gets.strip
@@ -43,7 +63,7 @@ if version.empty?
       version = default
     end
     if version.to_s.strip.empty?
-      puts "\nEnter a valid version\n"
+      LOGGER.info "\nEnter a valid version\n"
     end
   end
 end
@@ -55,22 +75,26 @@ if nodes_file.empty?
 end
 
 if !File.exists?(nodes_file)
-  puts "ERROR: Nodes configuration file[%s] not found" % nodes_file
+  LOGGER.info "ERROR: Nodes configuration file[%s] not found" % nodes_file
   exit(1)
 end
 
 nodes = IO.readlines(nodes_file).map(&:strip).select { |l| !l.empty? }
 if nodes.empty?
-  puts "ERROR: Nodes configuration file[%s] is empty" % nodes_file
+  LOGGER.info "ERROR: Nodes configuration file[%s] is empty" % nodes_file
   exit(1)
 end
 
 # Installs and starts software
 def deploy(node, version)
   cmd = "ssh #{node} ./deploy-proxy.sh #{version}"
-  puts "==> #{cmd}"
-  if !system(cmd)
-    puts "ERROR running cmd: #{cmd}"
+  LOGGER.info "==> #{cmd}"
+
+  begin
+    output = `#{cmd}`
+    LOGGER.info output
+  rescue Exception => e
+    LOGGER.info "ERROR running cmd: #{e.message}"
     exit(1)
   end
 end
@@ -84,10 +108,10 @@ def wait(timeout_seconds = 50, &check_function)
     if check_function.call
       return
     end
-    
+
     duration = Time.now - started_at
     if i % 10 == 0 && i > 0
-      puts " (#{duration.to_i} seconds)"
+      LOGGER.info " (#{duration.to_i} seconds)"
       print "    "
     end
 
@@ -103,24 +127,26 @@ def wait(timeout_seconds = 50, &check_function)
     sleep(1)
   end
 
-  puts "\nERROR: Timeout exceeded[%s seconds]" % timeout_seconds
+  LOGGER.info "\nERROR: Timeout exceeded[%s seconds]" % timeout_seconds
   exit(1)
 end
+
+LOGGER.info "Logs found in: #{log_file_path}"
 
 timeout = 50
 start = Time.now
 nodes.each_with_index do |node, index|
-  puts node
+  LOGGER.info node
   label = "node #{index+1}/#{nodes.size}"
-  puts "  - Deploying version #{version} to #{label}"
+  LOGGER.info "  - Deploying version #{version} to #{label}"
   deploy(node, version)
 
   uri = "http://#{node}:#{PORT}/_internal_/healthcheck"
   url = URI.parse(uri)
   req = Net::HTTP::Get.new(url.to_s)
 
-  puts  "  - Checking health of #{label}"
-  puts  "    #{uri} (timeout #{timeout} seconds)"
+  LOGGER.info "  - Checking health of #{label}"
+  LOGGER.info "    #{uri} (timeout #{timeout} seconds)"
   wait(timeout) do
     begin
       res = Net::HTTP.start(url.host, url.port) { |http|
@@ -132,9 +158,10 @@ nodes.each_with_index do |node, index|
     end
   end
 
-  puts ""
+  LOGGER.info ""
 end
 duration = Time.now - start
 
-puts ""
-puts "Proxy version %s deployed successfully. Total duration: %s seconds" % [version, duration.to_i]
+LOGGER.info ""
+LOGGER.info "Logs found in: #{log_file_path}"
+LOGGER.info "Proxy version %s deployed successfully. Total duration: %s seconds" % [version, duration.to_i]

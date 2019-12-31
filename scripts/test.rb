@@ -145,10 +145,16 @@ assert_equals(r.json['id'], id)
 
 # Test request envelope
 response = helpers.json_post("/organizations/0?envelope=request", { }).with_api_key.execute
-assert_generic_error(response, "Error in envelope request body: Field 'method' is required")
+assert_generic_error(response, "Error in envelope request body: Request envelope field 'method' is required")
 
 response = helpers.json_post("/organizations/0?envelope=request", { :method => 123, :body => "test" }).with_api_key.execute
-assert_generic_error(response, "Error in envelope request body: Field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE")
+assert_generic_error(response, "Error in envelope request body: Request envelope field 'method' must be a string")
+
+response = helpers.json_post("/organizations/0?envelope=request", { :method => "FOO", :body => "test" }).with_api_key.execute
+assert_generic_error(response, "Error in envelope request body: Request envelope field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE")
+
+response = helpers.json_post("/organizations/0?envelope=request", { :method => "GET", :headers => "test", :body => 'test' }).execute
+assert_generic_error(response, "Error in envelope request body: Request envelope field 'headers' must be an object")
 
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
 assert_status(200, response)
@@ -159,34 +165,8 @@ assert_status(201, response)
 session_id = response.json['id']
 assert_not_nil(session_id)
 
-response = wait_for_status("Org countries endpoint", 200) { helpers.get("/#{id}/countries").with_header("Authorization", "session %s" % session_id).execute }
+response = wait_for_status("Org countries endpoint", 200) { helpers.get("/#{id}/countries").execute }
 assert_status(200, response)
-
-response = helpers.get("/#{id}/countries").execute
-assert_unauthorized(response)
-
-response = helpers.new_request("POST", "/#{id}/countries?envelope=request").
-             with_body(
-               ProxyGlobal.format_json(
-                 :method => "GET", "headers" => { "Authorization" => ["Session #{session_id}"] }
-               )
-             ).execute
-assert_status(200, response)
-
-
-# tests that we upsert models defined in external api
-# Here we are specifically testing that quantity is turned
-# from a string to an integer
-response = helpers.json_post("/checkouts?country=CAN", {
-                               :organization => id,
-                               :order => {
-                                 :items => [{:number => "32353637185", :quantity => "1"}],
-                               }
-                             }
-                            ).with_header("Authorization", "session %s" % session_id).execute
-# TODO: the code should have returned an error as the item number doesn't exist. In future
-# we would expect a 422. Previously this endpoint returns a 500
-assert_status(201, response)
 
 puts "Tests Complete. Starting cleanup"
 

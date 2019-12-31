@@ -37,7 +37,7 @@ object Constants {
     val CfIpCountry = "CF-IPCountry"
     val CfVisitor = "CF-Visitor"
 
-    val namesToRemove = Seq(
+    val namesToRemove: Set[String] = Set(
       ContentType,
       ContentLength,
       FlowAuth,
@@ -56,7 +56,7 @@ object Constants {
       CfVisitor
     )
 
-    val namesToWhitelist = Seq(
+    val namesToWhitelist: Set[String] = Set(
       // cloudflare headers
       CfRay,
       CfConnectingIp,

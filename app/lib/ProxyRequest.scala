@@ -236,45 +236,27 @@ case class ProxyRequest(
         }
       )
     } match {
+      case Failure(_) => {
+        Left(Seq("Envelope requests require a valid JSON body"))
+      }
       case Success(js) => {
-        val (method, methodErrors) = parseMethod(js, "method") match {
-          case Left(errors) => ("", errors)
-          case Right(m) => (m, Nil)
-        }
-
-        val body = (js \ "body").asOpt[JsValue].map(ProxyRequestBody.Json)
-
-        /**
-          * Read the headers from either:
-          *   a. the json envelope if specified
-          *   b. the original request headers
-          */
-        val envHeaders = (js \ "headers").asOpt[JsObject] match {
-          case None => headers.headers
-          case Some(headersJson) => {
-            Util.toFlatSeq(headersJson.as[Map[String, Seq[String]]])
-          }
-        }
-
-        methodErrors match {
-          case Nil => {
+        RequestEnvelope.validate(js, headers) match {
+          case Right(env) => {
             ProxyRequest.validate(
               requestMethod = originalMethod,
               requestPath = path,
-              body = body,
+              body = env.body,
               queryParameters = queryParameters ++ Map(
-                "method" -> Seq(method),
+                "method" -> Seq(env.method.toString),
                 Constants.Headers.FlowRequestId -> Seq(requestId)
               ),
-              headers = Headers(envHeaders: _*)
+              headers = env.headers,
             )
           }
-          case errors => Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
+          case Left(errors) => {
+            Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
+          }
         }
-      }
-
-      case Failure(_) => {
-        Left(Seq("Envelope requests require a valid JSON body"))
       }
     }
   }
@@ -305,16 +287,14 @@ case class ProxyRequest(
     }
   }
 
+  private[this] val HeadersToRemove = Set(Constants.Headers.ContentLength, Constants.Headers.ContentType)
   private[this] def internalResponse(
     status: Int,
     body: String,
     contentType: ContentType,
     headers: Map[String,Seq[String]]
   ): Result = {
-    val responseHeaders = Util.removeKeys(
-      headers,
-      Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
-    )
+    val responseHeaders = Util.removeKeys(headers, HeadersToRemove)
 
     Status(status)(body).
       withHeaders(Util.toFlatSeq(responseHeaders): _*).
@@ -380,16 +360,6 @@ case class ProxyRequest(
   ): String = {
     // Prefix /**/ is to avoid a JSONP/Flash vulnerability
     "/**/" + s"""$callback($body)"""
-  }
-
-  private[this] def parseMethod(json: JsValue, field: String): Either[Seq[String], String] = {
-    (json \ field).validateOpt[String] match {
-      case JsError(_) => Left(Seq(s"Field '$field' must be one of ${Method.all.map(_.toString).mkString(", ")}"))
-      case JsSuccess(value, _) => value match {
-        case None => Left(Seq(s"Field '$field' is required"))
-        case Some(v) => Right(v)
-      }
-    }
   }
 
 }

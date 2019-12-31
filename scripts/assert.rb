@@ -1,4 +1,4 @@
-def assert_equals(expected, actual)
+def assert_equals(actual, expected)
   if expected != actual
     raise "expected[%s] actual[%s]" % [expected, actual]
   end
