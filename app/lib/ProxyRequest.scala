@@ -294,7 +294,7 @@ case class ProxyRequest(
     contentType: ContentType,
     headers: Map[String,Seq[String]]
   ): Result = {
-    val responseHeaders = headers -- HeadersToRemove
+    val responseHeaders = Util.removeKeys(headers, HeadersToRemove)
 
     Status(status)(body).
       withHeaders(Util.toFlatSeq(responseHeaders): _*).
