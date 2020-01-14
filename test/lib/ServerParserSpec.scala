@@ -19,7 +19,7 @@ class ServerParserSpec extends BasePlaySpec {
 
   "empty" in {
     configParser.parse(uri, "   ").validate() must be(
-      Invalid(NonEmptyChain.one("Missing uri", "Missing version"))
+      Invalid(NonEmptyChain("Missing uri", "Missing version"))
     )
   }
 
