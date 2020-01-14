@@ -204,7 +204,10 @@ class ProxyConfigFetcher @Inject() (
       }
 
       case uri :: rest => {
-        load(uri).andThen(newConfig => combine(rest, config.merge(newConfig)))
+        load(uri) match {
+          case Valid(newConfig) => combine(rest, config.merge(newConfig))
+          case invalid => invalid
+        }
       }
     }
   }
