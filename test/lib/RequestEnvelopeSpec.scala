@@ -1,5 +1,7 @@
 package lib
 
+import cats.data.NonEmptyChain
+import cats.data.Validated.Invalid
 import helpers.BasePlaySpec
 import play.api.libs.json.{JsArray, JsBoolean, JsNull, Json}
 import play.api.mvc.Headers
@@ -16,20 +18,20 @@ class RequestEnvelopeSpec extends BasePlaySpec {
 
   "validateMethod" in {
     RequestEnvelope.validateMethod(Json.obj()) must equal(
-      Left(Seq("Request envelope field 'method' is required"))
+      Invalid(NonEmptyChain.one("Request envelope field 'method' is required"))
     )
 
     RequestEnvelope.validateMethod(Json.obj("method" -> " ")) must equal(
-      Left(Seq("Request envelope field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE"))
+      Invalid(NonEmptyChain.one("Request envelope field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE"))
     )
 
     RequestEnvelope.validateMethod(Json.obj("method" -> "foo")) must equal(
-      Left(Seq("Request envelope field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE"))
+      Invalid(NonEmptyChain.one("Request envelope field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE"))
     )
 
 
-    RequestEnvelope.validateMethod(Json.obj("method" -> "post")) must equal(
-      Right(Method.Post)
+    validOrErrors(RequestEnvelope.validateMethod(Json.obj("method" -> "post"))) must equal(
+      Method.Post
     )
     Method.all.forall { m =>
       RequestEnvelope.validateMethod(Json.obj("method" -> m.toString)).isValid
@@ -37,53 +39,53 @@ class RequestEnvelopeSpec extends BasePlaySpec {
   }
 
   "validateHeaders" in {
-    RequestEnvelope.validateHeaders(Json.obj()) must equal(Right(Map.empty))
-    RequestEnvelope.validateHeaders(Json.obj("headers" -> Json.obj())) must equal(
-      Right(Map.empty)
+    validOrErrors(RequestEnvelope.validateHeaders(Json.obj())) must equal(Map.empty)
+    validOrErrors(RequestEnvelope.validateHeaders(Json.obj("headers" -> Json.obj()))) must equal(
+      Map.empty
     )
-    RequestEnvelope.validateHeaders(Json.obj("headers" -> Json.obj(
+      validOrErrors(RequestEnvelope.validateHeaders(Json.obj("headers" -> Json.obj(
       "foo" -> JsArray(Nil)
-    ))) must equal(
-      Right(Map("foo" -> Nil))
+    )))) must equal(
+      Map("foo" -> Nil)
     )
 
-    RequestEnvelope.validateHeaders(Json.obj(
+    validOrErrors(RequestEnvelope.validateHeaders(Json.obj(
       "headers" -> Json.obj(
         "foo" -> Seq("bar")
       )
-    )) must equal(
-      Right(Map("foo" -> Seq("bar")))
+    ))) must equal(
+      Map("foo" -> Seq("bar"))
     )
 
-    RequestEnvelope.validateHeaders(Json.obj(
+    validOrErrors(RequestEnvelope.validateHeaders(Json.obj(
       "headers" -> Json.obj(
         "foo" -> Seq("bar"),
         "a" -> Seq("b"),
       )
-    )) must equal(
-      Right(Map("foo" -> Seq("bar"), "a" -> Seq("b")))
+    ))) must equal(
+      Map("foo" -> Seq("bar"), "a" -> Seq("b"))
     )
 
-    RequestEnvelope.validateHeaders(Json.obj(
+    validOrErrors(RequestEnvelope.validateHeaders(Json.obj(
       "headers" -> Json.obj(
         "foo" -> Seq("bar", "baz")
       )
-    )) must equal(
-      Right(Map("foo" -> Seq("bar", "baz")))
+    ))) must equal(
+      Map("foo" -> Seq("bar", "baz"))
     )
 
-    RequestEnvelope.validateHeaders(Json.obj(
+    validOrErrors(RequestEnvelope.validateHeaders(Json.obj(
       "headers" -> Json.obj(
         "foo" -> "bar"
       )
-    )) must equal(
-      Right(Map("foo" -> Seq("bar")))
+    ))) must equal(
+      Map("foo" -> Seq("bar"))
     )
 
     RequestEnvelope.validateHeaders(Json.obj(
       "headers" -> "a"
     )) must equal(
-      Left(Seq("Request envelope field 'headers' must be an object"))
+      Invalid(NonEmptyChain.one("Request envelope field 'headers' must be an object"))
     )
   }
 
@@ -111,16 +113,16 @@ class RequestEnvelopeSpec extends BasePlaySpec {
   }
 
   "validateBody" in {
-    RequestEnvelope.validateBody(JsNull) must be(Right(None))
-    RequestEnvelope.validateBody(Json.obj()) must be(Right(None))
-    RequestEnvelope.validateBody(Json.obj("body" -> Json.obj())) must equal(Right(Some(
+    validOrErrors(RequestEnvelope.validateBody(JsNull)) must be(None)
+    validOrErrors(RequestEnvelope.validateBody(Json.obj())) must be(None)
+    validOrErrors(RequestEnvelope.validateBody(Json.obj("body" -> Json.obj()))) must equal(Some(
       ProxyRequestBody.Json(Json.obj())
-    )))
-    RequestEnvelope.validateBody(Json.obj("body" -> Json.obj("a" -> "b"))) must equal(Right(Some(
+    ))
+    validOrErrors(RequestEnvelope.validateBody(Json.obj("body" -> Json.obj("a" -> "b")))) must equal(Some(
       ProxyRequestBody.Json(Json.obj("a" -> "b"))
-    )))
-    RequestEnvelope.validateBody(Json.obj("body" -> JsBoolean(true))) must equal(Right(Some(
+    ))
+    validOrErrors(RequestEnvelope.validateBody(Json.obj("body" -> JsBoolean(true)))) must equal(Some(
       ProxyRequestBody.Json(JsBoolean(true))
-    )))
+    ))
   }
 }

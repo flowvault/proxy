@@ -1,6 +1,9 @@
 package lib
 
+import cats.data.NonEmptyChain
+import cats.data.Validated.Invalid
 import helpers.BasePlaySpec
+
 import scala.io.Source
 
 class ServerParserSpec extends BasePlaySpec {
@@ -16,7 +19,7 @@ class ServerParserSpec extends BasePlaySpec {
 
   "empty" in {
     configParser.parse(uri, "   ").validate() must be(
-      Left(Seq("Missing uri", "Missing version"))
+      Invalid(NonEmptyChain.one("Missing uri", "Missing version"))
     )
   }
 
@@ -36,15 +39,13 @@ servers:
   - name: test
     host: https://test.api.flow.io
 """
-    configParser.parse(uri, spec).validate() must be(
-      Right(
-        ProxyConfig(
-          sources = Seq(source),
-          servers = Seq(
-            Server("test", "https://test.api.flow.io", logger)
-          ),
-          operations = Nil
-        )
+    validOrErrors(configParser.parse(uri, spec).validate()) must be(
+      ProxyConfig(
+        sources = Seq(source),
+        servers = Seq(
+          Server("test", "https://test.api.flow.io", logger)
+        ),
+        operations = Nil
       )
     )
   }
@@ -150,7 +151,7 @@ operations:
       "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-internal-proxy/development.config"
     )
     val proxyConfigFetcher = app.injector.instanceOf[ProxyConfigFetcher]
-    val config = validOrErrors(proxyConfigFetcher.load(uris))
+    val config = validOrErrors(proxyConfigFetcher.load(uris))ServerParserSpec
 
     Seq("currency", "currency-internal").foreach { name =>
       config.servers.find(_.name == name).getOrElse {
