@@ -74,7 +74,7 @@ operations:
       logger = logger
     )
 
-    val cfg = rightOrErrors(
+    val cfg = validOrErrors(
       configParser.parse(uri, spec).validate()
     )
     cfg.sources must be(Seq(source.copy(version = "1.2.3")))
@@ -91,7 +91,7 @@ operations:
   "latest production config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
     val contents = Source.fromURL(uri).mkString
-    val config = rightOrErrors(configParser.parse(uri, contents).validate())
+    val config = validOrErrors(configParser.parse(uri, contents).validate())
     Seq("user", "organization", "catalog").foreach { name =>
       val server = config.servers.find(_.name == name).getOrElse {
         sys.error(s"Failed to find server[$name]")
@@ -117,7 +117,7 @@ operations:
   "latest development config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     val contents = Source.fromURL(uri).mkString
-    val config = rightOrErrors(configParser.parse(uri, contents).validate())
+    val config = validOrErrors(configParser.parse(uri, contents).validate())
     Map(
       "user" -> "http://localhost:6021",
       "organization" -> "http://localhost:6081",

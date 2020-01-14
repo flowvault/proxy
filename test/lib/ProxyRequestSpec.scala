@@ -33,7 +33,7 @@ class ProxyRequestSpec extends BasePlaySpec {
       "callback" -> Seq("jj")
     )
 
-    val request = rightOrErrors(
+    val request = validOrErrors(
       ProxyRequest.validate(
         requestMethod = "get",
         requestPath = "/users/?foo=1&foo=2",
@@ -64,7 +64,7 @@ class ProxyRequestSpec extends BasePlaySpec {
   "validate method" must {
 
     "accept valid" in {
-      rightOrErrors(
+      validOrErrors(
         ProxyRequest.validate(
           requestMethod = "GET",
           requestPath = "/users/",
@@ -105,7 +105,7 @@ class ProxyRequestSpec extends BasePlaySpec {
   "validate callback" must {
 
     "accept valid" in {
-      val request = rightOrErrors(
+      val request = validOrErrors(
         ProxyRequest.validate(
           requestMethod = "GET",
           requestPath = "/users/",
@@ -159,7 +159,7 @@ class ProxyRequestSpec extends BasePlaySpec {
   "validate envelope" must {
 
     "accept valid" in {
-      val request = rightOrErrors(
+      val request = validOrErrors(
         ProxyRequest.validate(
           requestMethod = "GET",
           requestPath = "/users/",
@@ -197,7 +197,7 @@ class ProxyRequestSpec extends BasePlaySpec {
     }
 
     "merges duplicates" in {
-      val request = rightOrErrors(
+      val request = validOrErrors(
         ProxyRequest.validate(
           requestMethod = "GET",
           requestPath = "/users/",

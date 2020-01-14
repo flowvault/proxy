@@ -44,7 +44,7 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
     queryParameters: Map[String, Seq[String]] = Map.empty,
     headers: Map[String, Seq[String]] = Map.empty
   ): ProxyRequest = {
-    rightOrErrors(
+    validOrErrors(
       ProxyRequest.validate(
         requestMethod = requestMethod.toString,
         requestPath = requestPath,

@@ -1,17 +1,17 @@
 package lib
 
-import org.scalatestplus.play.PlaySpec
+import io.flow.test.utils.FlowPlaySpec
 import play.api.libs.json.{JsArray, JsBoolean, JsNull, Json}
 import play.api.mvc.Headers
 
-class RequestEnvelopeSpec extends PlaySpec {
+class RequestEnvelopeSpec extends FlowPlaySpec {
 
   private[this] def validateHeaders(envelopeHeaders: Map[String, Seq[String]], requestHeaders: Headers): Headers = {
     val js = Json.obj(
       "method" -> "POST",
       "headers" -> envelopeHeaders,
     )
-    RequestEnvelope.validate(js, requestHeaders).right.get.headers
+    validOrErrors(RequestEnvelope.validate(js, requestHeaders)).headers
   }
 
   "validateMethod" in {
@@ -32,7 +32,7 @@ class RequestEnvelopeSpec extends PlaySpec {
       Right(Method.Post)
     )
     Method.all.forall { m =>
-      RequestEnvelope.validateMethod(Json.obj("method" -> m.toString)).isRight
+      RequestEnvelope.validateMethod(Json.obj("method" -> m.toString)).isValid
     } must be(true)
   }
 

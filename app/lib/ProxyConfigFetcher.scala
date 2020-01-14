@@ -2,7 +2,10 @@ package lib
 
 import java.net.URI
 
-import io.apibuilder.validation.util.UrlDownloader
+import cats.data.Validated.{Invalid, Valid}
+import cats.data.{NonEmptyChain, ValidatedNec}
+import cats.implicits._
+import io.apibuilder.validation.util.ValidatedUrlDownloader
 import io.flow.log.RollbarLogger
 import javax.inject.{Inject, Singleton}
 
@@ -45,56 +48,39 @@ case class InternalProxyConfig(
   errors: Seq[String]
 ) {
 
-  def validate(): Either[Seq[String], ProxyConfig] = {
-    val uriErrors = uri match {
-      case "" => Seq("Missing uri")
-      case _ => Nil
+  def validate(): ValidatedNec[String, ProxyConfig] = {
+    val errorsV = errors match {
+      case Nil => ().validNec
+      case e :: rest => NonEmptyChain(e, rest: _*).invalid
     }
 
-    val versionErrors = version match {
-      case "" => Seq("Missing version")
-      case _ => Nil
+    val uriV = uri match {
+      case "" => "Missing uri".invalidNec
+      case _ => uri.validNec
     }
 
-    val additionalErrors = scala.collection.mutable.ListBuffer[String]()
-    val validServers = servers.flatMap { s =>
-      s.validate match {
-        case Left(e) => {
-          additionalErrors ++= e
-          None
-        }
-        case Right(valid) => {
-          Some(valid)
-        }
-      }
+    val versionV = version match {
+      case "" => "Missing version".invalidNec
+      case _ => version.validNec
     }
 
-    val validOperations: Seq[Operation] = operations.flatMap { op =>
-      op.validate(validServers) match {
-        case Left(e) => {
-          additionalErrors ++= e
-          None
-        }
-        case Right(valid) => {
-          Some(valid)
-        }
-      }
+    val serversV = servers.toList.map(_.validate).traverse(identity)
+
+    val operationsV = serversV.andThen { servers =>
+      operations.toList.map(_.validate(servers)).traverse(identity)
     }
 
-    (errors ++ uriErrors ++ versionErrors ++ additionalErrors).toList match {
-      case Nil => Right(
-        ProxyConfig(
-          Seq(
-            ProxyConfigSource(
-              uri = uri,
-              version = version
-            )
-          ),
-          servers = validServers,
-          operations = validOperations
-        )
+    (errorsV, uriV, versionV, serversV, operationsV).mapN { case (_, uri, version, servers, operations) =>
+      ProxyConfig(
+        Seq(
+          ProxyConfigSource(
+            uri = uri,
+            version = version
+          )
+        ),
+        servers = servers,
+        operations = operations
       )
-      case e => Left(e)
     }
   }
 
@@ -132,17 +118,15 @@ case class InternalServer(
   logger: RollbarLogger
 ) {
 
-  def validate: Either[Seq[String], Server] = {
+  def validate: ValidatedNec[String, Server] = {
     if (name.isEmpty || host.isEmpty) {
-      Left(Seq("Server name and host are required"))
+      "Server name and host are required".invalidNec
     } else {
-      Right(
-        Server(
-          name = name,
-          host = host,
-          logger
-        )
-      )
+      Server(
+        name = name,
+        host = host,
+        logger
+      ).validNec
     }
   }
 
@@ -154,25 +138,23 @@ case class InternalOperation(
   server: String
 ) {
 
-  def validate(servers: Seq[Server]): Either[Seq[String], Operation] = {
+  def validate(servers: Seq[Server]): ValidatedNec[String, Operation] = {
     if (method.isEmpty || path.isEmpty || server.isEmpty) {
-      Left(Seq("Operation method, path, and server are required"))
+      "Operation method, path, and server are required".invalidNec
     } else {
       servers.find(_.name == server) match {
         case None => {
-          Left(Seq(s"Server[$server] not found"))
+          s"Server[$server] not found".invalidNec
         }
 
         case Some(s) => {
-          Right(
-            Operation(
-              Route(
-                method = Method(method),
-                path = path
-              ),
-              server = s
-            )
-          )
+          Operation(
+            Route(
+              method = Method(method),
+              path = path
+            ),
+            server = s
+          ).validNec
         }
       }
     }
@@ -201,47 +183,38 @@ class ProxyConfigFetcher @Inject() (
   /**
     * Loads proxy configuration from the specified URIs
     */
-  def load(uris: Seq[String]): Either[Seq[String], ProxyConfig] = {
+  def load(uris: Seq[String]): ValidatedNec[String, ProxyConfig] = {
     uris.toList match {
       case Nil => {
+        // Shouldn't this be an `Invalid`?
         sys.error("Must have at least one configuration uri")
       }
 
       case uri :: rest => {
-        load(uri) match {
-          case Left(errors) => Left(errors)
-          case Right(c) => combine(rest, c)
-        }
+        load(uri).andThen(combine(rest, _))
       }
     }
   }
 
   @scala.annotation.tailrec
-  private[this] def combine(uris: Seq[String], config: ProxyConfig): Either[Seq[String], ProxyConfig] = {
+  private[this] def combine(uris: Seq[String], config: ProxyConfig): ValidatedNec[String, ProxyConfig] = {
     uris.toList match {
       case Nil => {
-        Right(config)
+        config.validNec
       }
 
       case uri :: rest => {
-        load(uri) match {
-          case Left(errors) => {
-            Left(errors)
-          }
-          case Right(newConfig) => {
-            combine(rest, config.merge(newConfig))
-          }
-        }
+        load(uri).andThen(newConfig => combine(rest, config.merge(newConfig)))
       }
     }
   }
 
-  private[this] def load(uri: String): Either[Seq[String], ProxyConfig] = {
+  private[this] def load(uri: String): ValidatedNec[String, ProxyConfig] = {
     logger.withKeyValue("uri", uri).info("Fetching configuration")
-    UrlDownloader.withInputStream(uri) { is =>
+    ValidatedUrlDownloader.withInputStream(uri) { is =>
       val contents = Source.fromInputStream(is).mkString
       if (contents.trim.isEmpty) {
-        Left(Seq(s"No content returned from uri '$uri'"))
+        s"No content returned from uri '$uri'".invalidNec
       } else {
         configParser.parse(uri, contents).validate()
       }
@@ -250,14 +223,14 @@ class ProxyConfigFetcher @Inject() (
 
   private[this] def refresh(): Option[Index] = {
     load(Uris) match {
-      case Left(errors) => {
+      case Invalid(errors) => {
         logger.
           withKeyValues("uris", Uris).
-          withKeyValues("errors", errors).
+          withKeyValues("errors", errors.toList).
           error("Failed to load proxy configuration")
         None
       }
-      case Right(cfg) => {
+      case Valid(cfg) => {
         Option(Index(cfg))
       }
     }

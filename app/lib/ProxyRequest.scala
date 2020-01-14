@@ -2,6 +2,9 @@ package lib
 
 import java.util.UUID
 
+import cats.data.Validated.{Invalid, Valid}
+import cats.data.ValidatedNec
+import cats.implicits._
 import io.flow.log.RollbarLogger
 import play.api.libs.json._
 import play.api.mvc._
@@ -12,7 +15,7 @@ object ProxyRequest {
 
   val ReservedQueryParameters: Seq[String] = Seq("method", "callback", "envelope")
 
-  def validate(request: Request[RawBuffer])(implicit logger: RollbarLogger): Either[Seq[String], ProxyRequest] = {
+  def validate(request: Request[RawBuffer])(implicit logger: RollbarLogger): ValidatedNec[String, ProxyRequest] = {
     validate(
       requestMethod = request.method,
       requestPath = request.path,
@@ -33,55 +36,55 @@ object ProxyRequest {
     body: Option[ProxyRequestBody],
     queryParameters: Map[String, Seq[String]],
     headers: Headers
-  )(implicit logger: RollbarLogger): Either[Seq[String], ProxyRequest] = {
-    val (method, methodErrors) = queryParameters.getOrElse("method", Nil).toList match {
-      case Nil => (Some(Method(requestMethod)), Nil)
+  )(implicit logger: RollbarLogger): ValidatedNec[String, ProxyRequest] = {
+    val methodV = queryParameters.getOrElse("method", Nil).toList match {
+      case Nil => Method(requestMethod).validNec
 
       case m :: Nil => {
         Method.fromString(m) match {
-          case None => (None, Seq(s"Invalid value '$m' for query parameter 'method' - must be one of ${Method.all.map(_.toString).mkString(", ")}"))
-          case Some(methodInstance) => (Some(methodInstance), Nil)
+          case None => s"Invalid value '$m' for query parameter 'method' - must be one of ${Method.all.map(_.toString).mkString(", ")}".invalidNec
+          case Some(methodInstance) => methodInstance.validNec
         }
       }
 
       case _ => {
-        (None, Seq("Query parameter 'method', if specified, cannot be specified more than once"))
+        "Query parameter 'method', if specified, cannot be specified more than once".invalidNec
       }
     }
 
-    val (envelopes, envelopeErrors) = queryParameters.getOrElse("envelope", Nil).toList match {
-      case Nil => (Nil, Nil)
+    val envelopesV = queryParameters.getOrElse("envelope", Nil).toList match {
+      case Nil => Nil.validNec
 
       case values => {
         values.filter(Envelope.fromString(_).isEmpty) match {
-          case Nil => (values.flatMap(Envelope.fromString).distinct, Nil)
+          case Nil => values.flatMap(Envelope.fromString).distinct.validNec
           case invalid => {
             val label = invalid match {
               case one :: Nil => s"Invalid value '$one'"
               case multiple => s"Invalid values ${multiple.mkString("'", "', '", "'")}"
             }
-            (Nil, Seq(s"$label for query parameter 'envelope' - must be one of ${Envelope.all.map(_.toString).mkString(", ")}"))
+            s"$label for query parameter 'envelope' - must be one of ${Envelope.all.map(_.toString).mkString(", ")}".invalidNec
           }
         }
       }
     }
 
-    val (jsonpCallback, jsonpCallbackErrors) = queryParameters.getOrElse("callback", Nil).toList match {
-      case Nil => (None, Nil)
+    val jsonpCallbackV = queryParameters.getOrElse("callback", Nil).toList match {
+      case Nil => None.validNec
 
       case cb :: Nil => {
         if (cb.trim.isEmpty) {
-          (None, Seq("Callback query parameter, if specified, must be non empty"))
+          "Callback query parameter, if specified, must be non empty".invalidNec
 
         } else if (isValidCallback(cb)) {
-          (Some(cb), Nil)
+          Some(cb).validNec
         } else {
-          (None, Seq("Callback query parameter, if specified, must contain only alphanumerics, '_' and '.' characters"))
+          "Callback query parameter, if specified, must contain only alphanumerics, '_' and '.' characters".invalidNec
         }
       }
 
       case _ => {
-        (None, Seq("Query parameter 'callback', if specified, cannot be specified more than once"))
+        "Query parameter 'callback', if specified, cannot be specified more than once".invalidNec
       }
     }
 
@@ -95,21 +98,18 @@ object ProxyRequest {
       map(ContentType.apply).
       getOrElse(ContentType.ApplicationJson)
 
-    methodErrors ++ envelopeErrors ++ jsonpCallbackErrors match {
-      case Nil => Right(
-        ProxyRequest(
-          headers = headers,
-          originalMethod = requestMethod,
-          method = method.get,
-          pathWithQuery = requestPath,
-          contentType = contentType,
-          body = body,
-          queryParameters = queryParameters.filter { case (k, _) => !ReservedQueryParameters.contains(k) },
-          envelopes = envelopes,
-          jsonpCallback = jsonpCallback
-        )
+    (methodV, envelopesV, jsonpCallbackV).mapN { case (method, envelopes, jsonpCallback) =>
+      ProxyRequest(
+        headers = headers,
+        originalMethod = requestMethod,
+        method = method,
+        pathWithQuery = requestPath,
+        contentType = contentType,
+        body = body,
+        queryParameters = queryParameters.filter { case (k, _) => !ReservedQueryParameters.contains(k) },
+        envelopes = envelopes,
+        jsonpCallback = jsonpCallback
       )
-      case errors => Left(errors)
     }
   }
 
@@ -226,7 +226,7 @@ case class ProxyRequest(
     s"id:$requestId $method $pathWithQuery"
   }
 
-  def parseRequestEnvelope(): Either[Seq[String], ProxyRequest] = {
+  def parseRequestEnvelope(): ValidatedNec[String, ProxyRequest] = {
     assert(requestEnvelope, "method only valid if request envelope")
 
     Try {
@@ -237,11 +237,11 @@ case class ProxyRequest(
       )
     } match {
       case Failure(_) => {
-        Left(Seq("Envelope requests require a valid JSON body"))
+        "Envelope requests require a valid JSON body".invalidNec
       }
       case Success(js) => {
         RequestEnvelope.validate(js, headers) match {
-          case Right(env) => {
+          case Valid(env) => {
             ProxyRequest.validate(
               requestMethod = originalMethod,
               requestPath = path,
@@ -253,8 +253,8 @@ case class ProxyRequest(
               headers = env.headers,
             )
           }
-          case Left(errors) => {
-            Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
+          case Invalid(errors) => {
+            s"Error in envelope request body: ${errors.toList.mkString(", ")}".invalidNec
           }
         }
       }

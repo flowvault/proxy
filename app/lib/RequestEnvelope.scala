@@ -1,5 +1,7 @@
 package lib
 
+import cats.data.ValidatedNec
+import cats.implicits._
 import play.api.libs.json.{JsError, JsSuccess, JsValue}
 import play.api.mvc.Headers
 
@@ -17,45 +19,40 @@ object RequestEnvelope {
     val Headers = "headers"
   }
 
-  def validate(js: JsValue, requestHeaders: Headers): Either[List[String], RequestEnvelope] = {
+  def validate(js: JsValue, requestHeaders: Headers): ValidatedNec[String, RequestEnvelope] = {
     val validatedMethod = validateMethod(js)
     val validatedHeaders = validateHeaders(js)
     val validatedBody = validateBody(js)
 
-    Seq(
+    (
       validatedMethod, validatedHeaders, validatedBody
-    ).flatMap(_.left.getOrElse(Nil)).toList match {
-      case Nil => Right(
-        RequestEnvelope(
-          method = validatedMethod.right.get,
-          headers = merge(validatedHeaders.right.get, requestHeaders),
-          body = validatedBody.right.get,
-        )
+    ).mapN { case (method, headers, body) =>
+      RequestEnvelope(
+        method = method,
+        headers = merge(headers, requestHeaders),
+        body = body,
       )
-      case errors => Left(errors)
     }
   }
 
-  def validateBody(js: JsValue): Either[Seq[String], Option[ProxyRequestBody.Json]] = {
-    Right(
-      (js \ Fields.Body).asOpt[JsValue].map(ProxyRequestBody.Json)
-    )
+  private[lib] def validateBody(js: JsValue): ValidatedNec[String, Option[ProxyRequestBody.Json]] = {
+    (js \ Fields.Body).asOpt[JsValue].map(ProxyRequestBody.Json).validNec
   }
 
-  def validateMethod(js: JsValue): Either[Seq[String], Method] = {
+  private[lib] def validateMethod(js: JsValue): ValidatedNec[String, Method] = {
     (js \ Fields.Method).validateOpt[String] match {
-      case JsError(_) => Left(Seq(s"Request envelope field '${Fields.Method}' must be a string"))
+      case JsError(_) => s"Request envelope field '${Fields.Method}' must be a string".invalidNec
       case JsSuccess(value, _) => value match {
-        case None => Left(Seq(s"Request envelope field '${Fields.Method}' is required"))
+        case None => s"Request envelope field '${Fields.Method}' is required".invalidNec
         case Some(v) => validateMethod(v)
       }
     }
   }
 
-  private[this] def validateMethod(value: String): Either[Seq[String], Method] = {
+  private[this] def validateMethod(value: String): ValidatedNec[String, Method] = {
     Method.fromString(value) match {
-      case None => Left(Seq(s"Request envelope field '${Fields.Method}' must be one of ${Method.all.map(_.toString).mkString(", ")}"))
-      case Some(m) => Right(m)
+      case None => s"Request envelope field '${Fields.Method}' must be one of ${Method.all.map(_.toString).mkString(", ")}".invalidNec
+      case Some(m) => m.validNec
     }
   }
 
@@ -71,17 +68,17 @@ object RequestEnvelope {
    * (from play libraries):
    *   { "name": ["value1", "value2"] }
    */
-  def validateHeaders(js: JsValue): Either[Seq[String], Map[String, Seq[String]]] = {
+  private[lib] def validateHeaders(js: JsValue): ValidatedNec[String, Map[String, Seq[String]]] = {
     (js \ Fields.Headers).asOpt[JsValue] match {
-      case None => Right(Map.empty)
+      case None => Map.empty.validNec
       case Some(js) => {
         js.asOpt[Map[String, Seq[String]]] match {
-          case Some(v) => Right(v)
+          case Some(v) => v.validNec
           case None => {
             // handle simple k->v which is default serialization from JS libraries
             js.asOpt[Map[String, String]] match {
-              case None => Left(Seq("Request envelope field 'headers' must be an object"))
-              case Some(all) => Right(all.map { case (k, v) => k -> Seq(v) })
+              case None => "Request envelope field 'headers' must be an object".invalidNec
+              case Some(all) => all.map { case (k, v) => k -> Seq(v) }.validNec
             }
           }
         }

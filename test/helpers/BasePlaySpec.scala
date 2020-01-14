@@ -2,6 +2,9 @@ package helpers
 
 import java.util.UUID
 
+import cats.data.Validated.{Invalid, Valid}
+import cats.data.ValidatedNec
+import cats.implicits._
 import io.flow.log.RollbarLogger
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
@@ -16,10 +19,10 @@ abstract class BasePlaySpec extends PlaySpec
   def wsClient: WSClient = app.injector.instanceOf[WSClient]
   def logger: RollbarLogger = app.injector.instanceOf[RollbarLogger]
 
-  def rightOrErrors[K, V](result: Either[K, V]): V = {
+  def validOrErrors[V, T](result: ValidatedNec[V, T]): T = {
     result match {
-      case Left(error) => sys.error(s"Expected right but got left: $error")
-      case Right(r) => r
+      case Invalid(errors) => sys.error(s"Expected Valid but got Invalid: " + errors.toList.mkString(", "))
+      case Valid(obj) => obj
     }
   }
 

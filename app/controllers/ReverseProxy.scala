@@ -1,6 +1,8 @@
 package controllers
 
 import auth.RequestHeadersUtil
+import cats.data.Validated.{Invalid, Valid}
+import cats.implicits._
 import io.flow.customer.v0.{Client => CustomerClient}
 import io.flow.log.RollbarLogger
 import io.flow.organization.v0.{Client => OrganizationClient}
@@ -76,23 +78,16 @@ class ReverseProxy @Inject () (
   }
 
   def handle: Action[RawBuffer] = Action.async(parse.raw) { request =>
-    ProxyRequest.validate(request)(logger) match {
-      case Left(errors) => Future.successful {
-        UnprocessableEntity(genericErrors(errors))
+    ProxyRequest.validate(request)(logger).andThen { proxyRequest =>
+      if (proxyRequest.requestEnvelope) {
+        proxyRequest.parseRequestEnvelope()
+      } else {
+        proxyRequest.validNec
       }
-      case Right(pr) => {
-        if (pr.requestEnvelope) {
-          pr.parseRequestEnvelope()  match {
-            case Left(errors) => Future.successful {
-              UnprocessableEntity(genericErrors(errors))
-            }
-            case Right(envelopeProxyRequest) => {
-              internalHandle(envelopeProxyRequest)
-            }
-          }
-        } else {
-          internalHandle(pr)
-        }
+    } match {
+      case Valid(proxyRequest) => internalHandle(proxyRequest)
+      case Invalid(errors) => Future.successful {
+        UnprocessableEntity(genericErrors(errors.toList))
       }
     }
   }
