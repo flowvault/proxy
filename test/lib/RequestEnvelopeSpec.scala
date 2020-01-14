@@ -1,10 +1,10 @@
 package lib
 
-import io.flow.test.utils.FlowPlaySpec
+import helpers.BasePlaySpec
 import play.api.libs.json.{JsArray, JsBoolean, JsNull, Json}
 import play.api.mvc.Headers
 
-class RequestEnvelopeSpec extends FlowPlaySpec {
+class RequestEnvelopeSpec extends BasePlaySpec {
 
   private[this] def validateHeaders(envelopeHeaders: Map[String, Seq[String]], requestHeaders: Headers): Headers = {
     val js = Json.obj(

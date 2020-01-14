@@ -150,7 +150,7 @@ operations:
       "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-internal-proxy/development.config"
     )
     val proxyConfigFetcher = app.injector.instanceOf[ProxyConfigFetcher]
-    val config = proxyConfigFetcher.load(uris).right.get
+    val config = validOrErrors(proxyConfigFetcher.load(uris))
 
     Seq("currency", "currency-internal").foreach { name =>
       config.servers.find(_.name == name).getOrElse {

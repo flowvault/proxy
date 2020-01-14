@@ -103,7 +103,7 @@ class IndexSpec extends BasePlaySpec {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     //val uri = "file:///tmp/api-proxy.development.config"
     val contents = Source.fromURL(uri).mkString
-    val config = configParser.parse(source.uri, contents).validate().right.get
+    val config = validOrErrors(configParser.parse(source.uri, contents).validate())
     val index = Index(config)
 
     val ms = time(1000) { () =>
