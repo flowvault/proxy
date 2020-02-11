@@ -1,14 +1,5 @@
 code:
   flow:
-    common:
-      version: latest
-      generators:
-        play_2_x_json: app/generated
-        play_2_8_mock_client: test/generated
-    error:
-      version: latest
-      generators:
-        play_2_x_json: app/generated
     catalog:
       version: latest
       generators:
@@ -17,6 +8,11 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+    common:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+        play_2_8_mock_client: test/generated
     currency:
       version: latest
       generators:
@@ -25,6 +21,10 @@ code:
       version: latest
       generators:
         play_2_8_client: app/generated
+    error:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     experience:
       version: latest
       generators:
@@ -45,10 +45,6 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
-    reference:
-      version: latest
-      generators:
-        play_2_x_json: app/generated
     organization:
       version: latest
       generators:
@@ -66,9 +62,13 @@ code:
       generators:
         play_2_x_json: app/generated
     query-builder:
-          version: latest
-          generators:
-            play_2_x_json: app/generated
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    reference:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     session:
       version: latest
       generators:
