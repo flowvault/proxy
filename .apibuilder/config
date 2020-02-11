@@ -45,6 +45,14 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+    item:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    order-price:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     organization:
       version: latest
       generators:

@@ -35,6 +35,12 @@ flow:
   inventory:
     play_2_x_json:
     - app/generated/FlowInventoryV0Models.scala
+  item:
+    play_2_x_json:
+    - app/generated/FlowItemV0Models.scala
+  order-price:
+    play_2_x_json:
+    - app/generated/FlowOrderPriceV0Models.scala
   organization:
     play_2_8_client:
     - app/generated/FlowOrganizationV0Client.scala
