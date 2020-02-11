@@ -2,9 +2,12 @@ package controllers
 
 import javax.inject.Inject
 import lib.Constants
-import play.api.routing.SimpleRouter
+import play.api.OptionalDevContext
 import play.api.http._
 import play.api.mvc._
+import play.api.routing.SimpleRouter
+import play.core.DefaultWebCommands
+
 import scala.runtime.AbstractPartialFunction
 
 /**
@@ -17,7 +20,12 @@ class RequestHandler @Inject() (
   filters: HttpFilters,
   router: Router
 ) extends DefaultHttpRequestHandler(
-  router, errorHandler, configuration, filters
+  webCommands = new DefaultWebCommands,
+  optDevContext = new OptionalDevContext(None),
+  router = router,
+  errorHandler = errorHandler,
+  configuration = configuration,
+  filters= filters
 )
 
 /**
