@@ -11,10 +11,10 @@ import play.core.DefaultWebCommands
 import scala.runtime.AbstractPartialFunction
 
 /**
-  * We implement our own request handler to inject a custom router
-  * that implements the reverse proxy.
-  */
-class RequestHandler @Inject() (
+ * We implement our own request handler to inject a custom router
+ * that implements the reverse proxy.
+ */
+class RequestHandler @Inject()(
   errorHandler: HttpErrorHandler,
   configuration: HttpConfiguration,
   filters: HttpFilters,
@@ -25,7 +25,7 @@ class RequestHandler @Inject() (
   router = router,
   errorHandler = errorHandler,
   configuration = configuration,
-  filters= filters
+  filters = filters
 )
 
 /**
