@@ -1,11 +1,10 @@
 package lib
 
+import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.codec.binary.{Base64, StringUtils}
-import pdi.jwt.{JwtAlgorithm, JwtJson}
-import play.api.libs.json.JsObject
 
-import scala.util.{Failure, Success}
+import scala.util.Try
 
 sealed trait Authorization
 
@@ -112,10 +111,9 @@ class AuthorizationParser @Inject() (
           }
 
           case Authorization.Prefixes.Bearer => {
-            // whitelist only hmac algorithms
-            JwtJson.decodeJson(value, config.jwtSalt, JwtAlgorithm.allHmac) match {
-              case Success(claims) => parseJwtToken(claims)
-              case Failure(_) => Authorization.InvalidBearer
+            value match {
+              case JsonWebToken(_, claimsSet, _) if jwtIsValid(value) => parseJwtToken(claimsSet)
+              case _ => Authorization.InvalidBearer
             }
           }
 
@@ -132,8 +130,13 @@ class AuthorizationParser @Inject() (
     }
   }
 
-  private[this] def parseJwtToken(claims: JsObject): Authorization = {
-    claims.asOpt[Map[String, String]] match {
+  private[this] def jwtIsValid(token: String): Boolean =
+    Try {
+      JsonWebToken.validate(token, config.jwtSalt)
+    }.getOrElse(false)
+
+  private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization = {
+    claimsSet.asSimpleMap.toOption match {
       case Some(claims) => {
         claims.get("id") match {
           case None => parseCustomerJwtToken(claims)

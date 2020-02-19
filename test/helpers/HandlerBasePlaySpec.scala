@@ -1,6 +1,7 @@
 package helpers
 
 import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import handlers.Handler
@@ -66,6 +67,7 @@ trait HandlerBasePlaySpec extends BasePlaySpec {
 
    private[this] def toString(source: Source[ByteString, _]): String = {
     implicit val system: ActorSystem = ActorSystem("toString")
+    implicit val materializer: ActorMaterializer = ActorMaterializer()
     val is = source.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
     scala.io.Source.fromInputStream(is, "UTF-8").mkString
   }
