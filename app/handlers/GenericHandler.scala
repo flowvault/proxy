@@ -125,7 +125,7 @@ class GenericHandler @Inject() (
 
       // Remove content type (to avoid adding twice below) then add common Flow headers
       val responseHeaders = Util.removeKeys(
-        response.headers,
+        response.headers.map { case (k, v) => k -> v.toSeq },
         Set(Constants.Headers.ContentType, Constants.Headers.ContentLength)
       ) ++ Map(
         Constants.Headers.FlowRequestId -> Seq(request.requestId),

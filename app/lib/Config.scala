@@ -20,6 +20,7 @@ class Config @Inject() (
 
   private[this] lazy val VerboseLogPrefixes: Seq[String] = optionalString(Names.VerboseLogPrefixes).getOrElse("").
     split(",").
+    toSeq.
     map(_.trim).
     filterNot(_.isEmpty)
 

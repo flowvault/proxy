@@ -1,14 +1,5 @@
 code:
   flow:
-    common:
-      version: latest
-      generators:
-        play_2_x_json: app/generated
-        play_2_6_mock_client: test/generated
-    error:
-      version: latest
-      generators:
-        play_2_x_json: app/generated
     catalog:
       version: latest
       generators:
@@ -17,6 +8,11 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
+    common:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+        play_2_8_mock_client: test/generated
     currency:
       version: latest
       generators:
@@ -24,7 +20,11 @@ code:
     customer:
       version: latest
       generators:
-        play_2_6_client: app/generated
+        play_2_8_client: app/generated
+    error:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     experience:
       version: latest
       generators:
@@ -45,14 +45,18 @@ code:
       version: latest
       generators:
         play_2_x_json: app/generated
-    reference:
+    item:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    order-price:
       version: latest
       generators:
         play_2_x_json: app/generated
     organization:
       version: latest
       generators:
-        play_2_6_client: app/generated
+        play_2_8_client: app/generated
     payment:
       version: latest
       generators:
@@ -60,21 +64,25 @@ code:
     permission:
       version: latest
       generators:
-        play_2_6_client: app/generated
+        play_2_8_client: app/generated
     price:
       version: latest
       generators:
         play_2_x_json: app/generated
     query-builder:
-          version: latest
-          generators:
-            play_2_x_json: app/generated
+      version: latest
+      generators:
+        play_2_x_json: app/generated
+    reference:
+      version: latest
+      generators:
+        play_2_x_json: app/generated
     session:
       version: latest
       generators:
-        play_2_6_client: app/generated
+        play_2_8_client: app/generated
     token:
       version: latest
       generators:
-        play_2_6_client: app/generated
-        play_2_6_mock_client: test/generated
+        play_2_8_client: app/generated
+        play_2_8_mock_client: test/generated

@@ -63,6 +63,7 @@ class LoggingFilter @Inject() (
         .withKeyValue("request_headers",
           headerMap
             .map { case (key, value) => key.toLowerCase -> value }
+            .view
             .filterKeys(LoggedHeaders.contains))
         .info(line)
 

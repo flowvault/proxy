@@ -4,7 +4,7 @@ import io.flow.log.RollbarLogger
 import javax.inject.Inject
 import org.yaml.snakeyaml.Yaml
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /**

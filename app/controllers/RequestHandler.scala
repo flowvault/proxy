@@ -2,22 +2,30 @@ package controllers
 
 import javax.inject.Inject
 import lib.Constants
-import play.api.routing.SimpleRouter
+import play.api.OptionalDevContext
 import play.api.http._
 import play.api.mvc._
+import play.api.routing.SimpleRouter
+import play.core.DefaultWebCommands
+
 import scala.runtime.AbstractPartialFunction
 
 /**
-  * We implement our own request handler to inject a custom router
-  * that implements the reverse proxy.
-  */
-class RequestHandler @Inject() (
+ * We implement our own request handler to inject a custom router
+ * that implements the reverse proxy.
+ */
+class RequestHandler @Inject()(
   errorHandler: HttpErrorHandler,
   configuration: HttpConfiguration,
   filters: HttpFilters,
   router: Router
 ) extends DefaultHttpRequestHandler(
-  router, errorHandler, configuration, filters
+  webCommands = new DefaultWebCommands,
+  optDevContext = new OptionalDevContext(None),
+  router = router,
+  errorHandler = errorHandler,
+  configuration = configuration,
+  filters = filters
 )
 
 /**
