@@ -35,7 +35,7 @@ final class FlowAuth @Inject () (
   def jwt(
     token: ResolvedToken
   ): String = {
-    val claimsSet: JwtClaim = JwtClaim() ++ (token.toMap.toSeq: _*)
+    val claimsSet = JwtClaim() ++ (token.toMap.toSeq: _*)
     Jwt.encode(header, claimsSet, config.jwtSalt)
   }
   

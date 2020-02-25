@@ -15,6 +15,7 @@ lazy val root = project
       guice,
       ws,
       "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.714",
+      "com.pauldijou" %% "jwt-play-json" % "4.2.0",
       "commons-codec" % "commons-codec" % "1.14",
       "io.apibuilder" %% "apibuilder-validation" % "0.4.17",
       "io.flow" %% "lib-play-graphite-play28" % "0.1.36",
@@ -52,4 +53,4 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
   resolvers += "Artifactory" at "https://flow.jfrog.io/flow/libs-release/"
 )
-version := "0.6.32"
+version := "0.6.34"

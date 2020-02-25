@@ -1,8 +1,10 @@
 package lib
 
+import java.nio.charset.StandardCharsets
+
+import io.flow.log.RollbarLogger
 import javax.inject.{Inject, Singleton}
-import org.apache.commons.codec.binary.{Base64, StringUtils}
-import pdi.jwt.{JwtAlgorithm, JwtJson}
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtJson, JwtOptions}
 import play.api.libs.json.JsObject
 
 import scala.util.{Failure, Success}
@@ -78,7 +80,8 @@ object Authorization {
   */
 @Singleton
 class AuthorizationParser @Inject() (
-  config: Config
+  config: Config,
+  logger: RollbarLogger
 ) {
 
   /**
@@ -105,7 +108,7 @@ class AuthorizationParser @Inject() (
       case prefix :: value :: Nil => {
         prefix.toLowerCase.trim match {
           case Authorization.Prefixes.Basic => {
-            new String(Base64.decodeBase64(StringUtils.getBytesUsAscii(value))).split(":").toList match {
+            new String(java.util.Base64.getDecoder.decode(value.getBytes(StandardCharsets.US_ASCII))).split(":").toList match {
               case Nil => Authorization.InvalidApiToken
               case token :: _ => Authorization.Token(token)
             }
@@ -115,7 +118,10 @@ class AuthorizationParser @Inject() (
             // whitelist only hmac algorithms
             JwtJson.decodeJson(value, config.jwtSalt, JwtAlgorithm.allHmac) match {
               case Success(claims) => parseJwtToken(claims)
-              case Failure(_) => Authorization.InvalidBearer
+              case Failure(ex) =>
+                if (Jwt.isValid(value, JwtOptions.DEFAULT.copy(signature = false)))
+                  logger.info("JWT Token was valid, but we can't verify the signature", ex)
+                Authorization.InvalidBearer
             }
           }
 
@@ -132,25 +138,18 @@ class AuthorizationParser @Inject() (
     }
   }
 
-  private[this] def parseJwtToken(claims: JsObject): Authorization = {
-    claims.asOpt[Map[String, String]] match {
-      case Some(claims) => {
-        claims.get("id") match {
-          case None => parseCustomerJwtToken(claims)
-          case Some(userId) => Authorization.User(userId)
-        }
-      }
-
-      case _ => Authorization.InvalidBearer
+  private[this] def parseJwtToken(claims: JsObject): Authorization =
+    (claims \ "id").asOpt[String] match {
+      case Some(userId) => Authorization.User(userId)
+      case None => parseCustomerJwtToken(claims)
     }
-  }
 
-  private[this] def parseCustomerJwtToken(claims: Map[String, String]): Authorization = {
-    (claims.get("customer"), claims.get("session")) match {
+  private[this] def parseCustomerJwtToken(claims: JsObject): Authorization =
+    ((claims \ "customer").asOpt[String], (claims \ "session").asOpt[String]) match {
       case (Some(cn), Some(sid)) => Authorization.Customer(customer = cn, session = sid)
       case (None, Some(sid)) => Authorization.Session(id = sid)
-      case _ => Authorization.InvalidJwt(Seq("customer", "session"))
+      case (Some(_), _) => Authorization.InvalidJwt(Seq("customer", "session"))
+      case _ => Authorization.InvalidBearer
     }
-  }
 
 }
