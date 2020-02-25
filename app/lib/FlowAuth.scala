@@ -1,7 +1,7 @@
 package lib
 
-import authentikat.jwt.{JwtClaimsSet, JwtHeader, JsonWebToken}
 import javax.inject.{Inject, Singleton}
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader}
 
 object FlowAuth {
 
@@ -21,7 +21,7 @@ final class FlowAuth @Inject () (
   config: Config
 ) {
 
-  private[this] val header = JwtHeader("HS256")
+  private[this] val header = JwtHeader(JwtAlgorithm.HS256)
 
   def headers(token: ResolvedToken): Seq[(String, String)] = {
     FlowAuth.headersFromRequestId(token.requestId) ++ Seq(
@@ -35,8 +35,8 @@ final class FlowAuth @Inject () (
   def jwt(
     token: ResolvedToken
   ): String = {
-    val claimsSet = JwtClaimsSet(token.toMap)
-    JsonWebToken(header, claimsSet, config.jwtSalt)
+    val claimsSet = JwtClaim() ++ (token.toMap.toSeq: _*)
+    Jwt.encode(header, claimsSet, config.jwtSalt)
   }
   
 }

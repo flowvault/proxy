@@ -1,10 +1,12 @@
 package lib
 
-import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
-import javax.inject.{Inject, Singleton}
-import org.apache.commons.codec.binary.{Base64, StringUtils}
+import java.nio.charset.StandardCharsets
 
-import scala.util.Try
+import javax.inject.{Inject, Singleton}
+import pdi.jwt.{JwtAlgorithm, JwtJson}
+import play.api.libs.json.JsObject
+
+import scala.util.{Failure, Success}
 
 sealed trait Authorization
 
@@ -104,16 +106,17 @@ class AuthorizationParser @Inject() (
       case prefix :: value :: Nil => {
         prefix.toLowerCase.trim match {
           case Authorization.Prefixes.Basic => {
-            new String(Base64.decodeBase64(StringUtils.getBytesUsAscii(value))).split(":").toList match {
+            new String(java.util.Base64.getDecoder.decode(value.getBytes(StandardCharsets.US_ASCII))).split(":").toList match {
               case Nil => Authorization.InvalidApiToken
               case token :: _ => Authorization.Token(token)
             }
           }
 
           case Authorization.Prefixes.Bearer => {
-            value match {
-              case JsonWebToken(_, claimsSet, _) if jwtIsValid(value) => parseJwtToken(claimsSet)
-              case _ => Authorization.InvalidBearer
+            // whitelist only hmac algorithms
+            JwtJson.decodeJson(value, config.jwtSalt, JwtAlgorithm.allHmac) match {
+              case Success(claims) => parseJwtToken(claims)
+              case Failure(_) =>Authorization.InvalidBearer
             }
           }
 
@@ -130,13 +133,8 @@ class AuthorizationParser @Inject() (
     }
   }
 
-  private[this] def jwtIsValid(token: String): Boolean =
-    Try {
-      JsonWebToken.validate(token, config.jwtSalt)
-    }.getOrElse(false)
-
-  private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization = {
-    claimsSet.asSimpleMap.toOption match {
+  private[this] def parseJwtToken(claimsSet: JsObject): Authorization = {
+    claimsSet.asOpt[Map[String, String]] match {
       case Some(claims) => {
         claims.get("id") match {
           case None => parseCustomerJwtToken(claims)

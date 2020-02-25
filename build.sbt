@@ -15,7 +15,7 @@ lazy val root = project
       guice,
       ws,
       "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.714",
-      "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
+      "com.pauldijou" %% "jwt-play-json" % "4.2.0",
       "commons-codec" % "commons-codec" % "1.14",
       "io.apibuilder" %% "apibuilder-validation" % "0.4.17",
       "io.flow" %% "lib-play-graphite-play26" % "0.1.29",
