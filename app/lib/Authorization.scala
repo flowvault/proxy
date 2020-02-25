@@ -2,8 +2,9 @@ package lib
 
 import java.nio.charset.StandardCharsets
 
+import io.flow.log.RollbarLogger
 import javax.inject.{Inject, Singleton}
-import pdi.jwt.{JwtAlgorithm, JwtJson}
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtJson, JwtOptions}
 import play.api.libs.json.JsObject
 
 import scala.util.{Failure, Success}
@@ -79,7 +80,8 @@ object Authorization {
   */
 @Singleton
 class AuthorizationParser @Inject() (
-  config: Config
+  config: Config,
+  logger: RollbarLogger
 ) {
 
   /**
@@ -116,7 +118,10 @@ class AuthorizationParser @Inject() (
             // whitelist only hmac algorithms
             JwtJson.decodeJson(value, config.jwtSalt, JwtAlgorithm.allHmac) match {
               case Success(claims) => parseJwtToken(claims)
-              case Failure(_) =>Authorization.InvalidBearer
+              case Failure(ex) =>
+                if (Jwt.isValid(value, JwtOptions.DEFAULT.copy(signature = false)))
+                  logger.info("JWT Token was valid, but we can't verify the signature", ex)
+                Authorization.InvalidBearer
             }
           }
 
