@@ -138,25 +138,19 @@ class AuthorizationParser @Inject() (
     }
   }
 
-  private[this] def parseJwtToken(claimsSet: JsObject): Authorization = {
-    claimsSet.asOpt[Map[String, String]] match {
-      case Some(claims) => {
-        claims.get("id") match {
-          case None => parseCustomerJwtToken(claims)
-          case Some(userId) => Authorization.User(userId)
-        }
-      }
 
-      case _ => Authorization.InvalidBearer
+  private[this] def parseJwtToken(claims: JsObject): Authorization =
+    (claims \ "id").asOpt[String] match {
+      case Some(userId) => Authorization.User(userId)
+      case None => parseCustomerJwtToken(claims)
     }
-  }
 
-  private[this] def parseCustomerJwtToken(claims: Map[String, String]): Authorization = {
-    (claims.get("customer"), claims.get("session")) match {
+  private[this] def parseCustomerJwtToken(claims: JsObject): Authorization =
+    ((claims \ "customer").asOpt[String], (claims \ "session").asOpt[String]) match {
       case (Some(cn), Some(sid)) => Authorization.Customer(customer = cn, session = sid)
       case (None, Some(sid)) => Authorization.Session(id = sid)
-      case _ => Authorization.InvalidJwt(Seq("customer", "session"))
+      case (Some(_), _) => Authorization.InvalidJwt(Seq("customer", "session"))
+      case _ => Authorization.InvalidBearer
     }
-  }
 
 }
