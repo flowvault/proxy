@@ -81,6 +81,13 @@ class AuthorizationParserSpec extends BasePlaySpec {
       authParser.parse(header) mustBe InvalidJwt(Seq("customer", "session"))
     }
 
+    "Bearer - invalid key" in {
+      val value = Jwt.encode(header = JwtHeader(HS256), claim = createUserClaim("any_user"), key = "wrong_key")
+      val header: String = s"Bearer $value"
+
+      authParser.parse(header) mustBe InvalidBearer
+    }
+
     "Unrecognized - no prefix" in {
       // valid bearer value, but no prefix
       val value = Jwt.encode(header = JwtHeader(HS256), claim = createUserClaim("any_user"), key = jwtKey)
