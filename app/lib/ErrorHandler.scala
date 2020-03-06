@@ -31,13 +31,13 @@ class ErrorHandler @Inject() (
 
   def onServerError(request: RequestHeader, ex: Throwable): Future[Result] = {
     val errorLogger = rollbarLogger(request)
-    errorLogger.logger.error("ServerError", ex)
+    errorLogger.logger.error(s"ServerError: ${ex.getMessage}", ex)
 
     val r = InternalServerError(serverErrors(Seq(s"A server error occurred (err #${errorLogger.errorId})")))
     Future.successful(r)
   }
 
-  private[this] def rollbarLogger(request: RequestHeader): ErrorLogger = {
+  private[this] def rollbarLogger(request: RequestHeader, ex: Option[Throwable] = None): ErrorLogger = {
     val operation = index.resolve(Method(request.method), request.uri)
     val errorId = generateErrorId()
     val baseLogger = operation.map(_.server.logger).getOrElse(defaultLogger)
@@ -46,9 +46,18 @@ class ErrorHandler @Inject() (
     val headerKeys = request.headers.keys.toSeq
     val headers = Util.filterKeys(request.headers.toMap, Constants.Headers.namesToWhitelist)
 
+    // attempt better grouping of errors
+    val fingerprint = Seq(
+      ex.map(_.getClass.getName),
+      Some(request.method.toString),
+      operation.map(_.route.path),
+      operation.map(_.server.host)
+    ).flatten.mkString
+
     ErrorLogger(
       errorId,
       baseLogger.
+        fingerprint(fingerprint).
         withKeyValue("error_id", errorId).
         withKeyValue("request_ip", request.remoteAddress).
         withKeyValue("request_method", request.method.toString).
