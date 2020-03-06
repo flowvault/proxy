@@ -50,8 +50,8 @@ class ErrorHandler @Inject() (
     val fingerprint = Seq(
       ex.map(_.getClass.getName),
       Some(request.method.toString),
-      operation.map(_.route.path),
-      operation.map(_.server.host)
+      operation.map(_.server.host),
+      operation.map(_.route.path)
     ).flatten.mkString
 
     ErrorLogger(
