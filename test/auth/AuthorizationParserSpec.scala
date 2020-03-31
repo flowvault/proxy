@@ -37,7 +37,7 @@ class AuthorizationParserSpec extends BasePlaySpec {
       // }
       // signature: test
 
-      val value = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InRlc3RfaWQiLCJlbWFpbCI6InRlc3RAZmxvdy5pbyIsImlhdCI6MTU4MjY1Mjg1MSwiZXhwIjoxNTgzMjU3NjUxLCJpc3MiOiJodHRwczovL2NvbnNvbGUuZmxvdy5pbyIsInN1YiI6InRlc3RAZmxvdy5pbyJ9.xGgsu8w8ycaz6mDEjNuorFEVDNyuM3Ya562Nih_CU6g"
+      val value = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InRlc3RfaWQiLCJlbWFpbCI6InRlc3RAZmxvdy5pbyIsImlhdCI6MTU4MjY1Mjg1MSwiZXhwIjoyNTgzMjU3NjUxLCJpc3MiOiJodHRwczovL2NvbnNvbGUuZmxvdy5pbyIsInN1YiI6InRlc3RAZmxvdy5pbyJ9.dS94ZOB1f56JrjW1zoPQ3MWb04wnH7uxzgJUvk4co9M"
       val header: String = s"Bearer $value"
 
       authParser.parse(header) mustBe User("test_id")
