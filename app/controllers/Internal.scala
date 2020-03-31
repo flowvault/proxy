@@ -39,6 +39,9 @@ class Internal @Inject() (
 
   private[this] val RobotsTxt = """
     |User-agent: *
+    |Disallow: /
+    |
+    |User-agent: Googlebot
     |Allow: /shopify/shops/*/sessions
     |Disallow: /
     |""".stripMargin.trim
