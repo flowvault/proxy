@@ -37,7 +37,6 @@ class Internal @Inject() (
     "status" -> "healthy"
   )
 
-
   private[this] val RobotsTxt = """
     |User-agent: *
     |Allow: /shopify/shops/*/sessions
