@@ -37,12 +37,25 @@ class Internal @Inject() (
     "status" -> "healthy"
   )
 
+  /**
+    robots.txt Notes
+    -------------------
+
+    Googlebot white-listed URLs are here to allow their crawler access our API during client page-load.
+    These endpoints are consumed by Shopify/FlowJS. This allow Google to crawl our clients sites and
+    localize prices (and more importantly schema data) so as allow l10n'd structured data for localized
+    adverts.
+  */
   private[this] val RobotsTxt = """
     |User-agent: *
     |Disallow: /
     |
     |User-agent: Googlebot
     |Allow: /shopify/shops/*/sessions
+    |Allow: /sessions/
+    |Allow: /*/bundles/browser
+    |Allow: /*/shopify/localized/variants/experience/
+    |Allow: /*/experiences/*/items/query
     |Disallow: /
     |""".stripMargin.trim
 
