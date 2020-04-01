@@ -38,14 +38,11 @@ class Internal @Inject() (
   )
 
   /**
-    robots.txt Notes
-    -------------------
-
-    Googlebot white-listed URLs are here to allow their crawler access our API during client page-load.
-    These endpoints are consumed by Shopify/FlowJS. This allow Google to crawl our clients sites and
-    localize prices (and more importantly schema data) so as allow l10n'd structured data for localized
-    adverts.
-  */
+   * Googlebot white-listed URLs are here to allow their crawler to access our API during client page-load.
+   * These endpoints are consumed by Shopify/FlowJS. This allow Google to crawl our clients sites and
+   * localize prices (and more importantly schema data) so as to allow localized structured data for
+   * localized adverts.
+   */
   private[this] val RobotsTxt = """
     |User-agent: *
     |Disallow: /
