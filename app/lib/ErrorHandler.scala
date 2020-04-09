@@ -38,7 +38,7 @@ class ErrorHandler @Inject() (
   }
 
   private[this] def rollbarLogger(request: RequestHeader, ex: Option[Throwable] = None): ErrorLogger = {
-    val operation = index.resolve(Method(request.method), request.uri)
+    val operation = index.resolve(Method(request.method), request.path)
     val errorId = generateErrorId()
     val baseLogger = operation.map(_.server.logger).getOrElse(defaultLogger)
 
@@ -49,7 +49,7 @@ class ErrorHandler @Inject() (
     // attempt better grouping of errors
     val fingerprint = Seq(
       ex.map(_.getClass.getName),
-      Some(request.method.toString),
+      Some(request.method),
       operation.map(_.server.host),
       operation.map(_.route.path)
     ).flatten.mkString
@@ -60,7 +60,7 @@ class ErrorHandler @Inject() (
         fingerprint(fingerprint).
         withKeyValue("error_id", errorId).
         withKeyValue("request_ip", request.remoteAddress).
-        withKeyValue("request_method", request.method.toString).
+        withKeyValue("request_method", request.method).
         withKeyValue("request_uri", request.uri).
         withKeyValue("route_path", operation.map(_.route.path)).
         withKeyValue("route_server_name", operation.map(_.server.name)).
