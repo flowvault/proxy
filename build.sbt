@@ -14,7 +14,7 @@ lazy val root = project
       filters,
       guice,
       ws,
-      "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.761",
+      "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.808",
       "com.pauldijou" %% "jwt-play-json" % "4.3.0",
       "commons-codec" % "commons-codec" % "1.14",
       "io.apibuilder" %% "apibuilder-validation" % "0.4.17",
