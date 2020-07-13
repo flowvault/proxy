@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
+import io.flow.log.RollbarLogger
 import javax.inject.Inject
 import lib._
 import play.api.libs.ws.WSClient
@@ -79,6 +80,7 @@ class ServerProxyModule extends AbstractModule {
 
 class ServerProxyImpl @Inject()(
   implicit val system: ActorSystem,
+  logger: RollbarLogger,
   wsClient: WSClient,
   urlFormEncodedHandler: handlers.UrlFormEncodedHandler,
   applicationJsonHandler: handlers.ApplicationJsonHandler,
@@ -100,6 +102,15 @@ class ServerProxyImpl @Inject()(
     if (request.jsonpCallback.isDefined) {
       jsonpHandler.process(wsClient, server, request, route, token)
     } else {
+      if (route.isShopifyWebhook && request.bodyUtf8.contains("{}")) {
+        logger
+          .withKeyValue("request_path", request.path)
+          .withKeyValue("bodyUtf8", request.bodyUtf8)
+          .withKeyValue("request_header_keys", request.headers.keys)
+          .withKeyValue("shopify_header", request.headers.get("X-Shopify-Hmac-SHA256"))
+          .info("Debugging shopify webhook body")
+      }
+
       request.contentType match {
         case ContentType.UrlFormEncoded => {
           urlFormEncodedHandler.process(wsClient, server, request, route, token)
