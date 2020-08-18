@@ -32,6 +32,14 @@ if nodes.empty?
   exit(1)
 end
 
+puts "Setting up user permissions:\n\n"
+username = `whoami`.strip
+nodes.each do |n|
+  cmd = "  ssh #{n} sudo usermod -a -G docker #{username}"
+  puts cmd
+  `#{cmd}`
+end
+
 puts "Docker login:\n\n"
 nodes.each do |n|
   cmd = <<TXT
@@ -46,13 +54,6 @@ nodes.each do |n|
   cmd = "  scp deploy-proxy.sh #{n}:~/."
   puts cmd
   `#{cmd}`
-end
-
-puts "\n"
-puts "To setup your user permissions:\n\n"
-username = `whoami`.strip
-nodes.each do |n|
-  puts "  ssh #{n} sudo usermod -a -G docker #{username}"
 end
 
 puts ""
