@@ -2,7 +2,7 @@ package controllers
 
 import io.flow.usage.util.UsageUtil
 import javax.inject.{Inject, Singleton}
-import lib.{Config, Method}
+import lib.{CheckoutHealthcheck, Config, Method}
 import play.api.mvc._
 import play.api.libs.json._
 
@@ -44,11 +44,11 @@ class Internal @Inject() (
     |Disallow: /
     |""".stripMargin.trim
 
-  def getRobots = Action { _ =>
+  def getRobots: Action[AnyContent] = Action { _ =>
     Ok(RobotsTxt)
   }
 
-  def getHealthcheck = Action { _ =>
+  def getHealthcheck: Action[AnyContent] = Action { _ =>
     config.missing().toList match {
       case Nil => {
         reverseProxy.index.config.operations.toList match {
@@ -76,7 +76,7 @@ class Internal @Inject() (
     }
   }
 
-  def getConfig = Action { _ =>
+  def getConfig: Action[AnyContent] = Action { _ =>
     Ok(
       Json.obj(
         "sources" -> reverseProxy.index.config.sources.map { source =>
@@ -104,7 +104,7 @@ class Internal @Inject() (
     )
   }
 
-  def diagnostics = Action.async(parse.raw) { request: Request[RawBuffer] =>
+  def diagnostics: Action[RawBuffer] = Action.async(parse.raw) { request: Request[RawBuffer] =>
     val data = Seq(
       ("method", request.method),
       ("path", request.path),
@@ -125,19 +125,19 @@ class Internal @Inject() (
     )
   }
 
-  def favicon = Action.async { _ =>
+  def favicon: Action[AnyContent] = Action.async { _ =>
     Future.successful(
       NoContent
     )
   }
 
   // I can't seem to import the controller from lib-usage, so I have copied it here:
-  def usage = Action {
+  def usage: Action[AnyContent] = Action {
     import io.flow.usage.v0.models.json._
     Ok(Json.toJson(uu.currentUsage))
   }
 
-  def getRoute = Action.async { request =>
+  def getRoute: Action[AnyContent] = Action.async { request =>
     Future.successful {
       val path = request.getQueryString("path").map(_.trim).filter(_.nonEmpty)
 
@@ -157,5 +157,13 @@ class Internal @Inject() (
         views.html.route(path, results)
       )
     }
+  }
+
+  def getHealthcheckCheckout: Action[AnyContent] = Action.async { _ =>
+    Future.successful(
+      Ok(
+        CheckoutHealthcheck.Body
+      )
+    )
   }
 }
