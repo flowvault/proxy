@@ -4,7 +4,8 @@ object CheckoutHealthcheck {
 
   val Body: String = build(82000)
 
-  def build(bytes: Int): String = {
-    "abcdefghijklmnopqrstuvwxyz " * (bytes/27)
+  private[this] def build(approximateNumberOfBytes: Int): String = {
+    "abcdefghijklmnopqrstuvwxyz " * (approximateNumberOfBytes/27)
   }
+
 }
