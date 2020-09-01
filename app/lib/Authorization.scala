@@ -116,7 +116,7 @@ class AuthorizationParser @Inject() (
 
           case Authorization.Prefixes.Bearer => {
             // whitelist only hmac algorithms
-            JwtJson.decodeJson(value, config.jwtSalt, JwtAlgorithm.allHmac) match {
+            JwtJson.decodeJson(value, config.jwtSalt, JwtAlgorithm.allHmac()) match {
               case Success(claims) => parseJwtToken(claims)
               case Failure(ex) =>
                 if (Jwt.isValid(value, JwtOptions.DEFAULT.copy(signature = false)))

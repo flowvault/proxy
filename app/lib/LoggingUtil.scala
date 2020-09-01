@@ -1,15 +1,15 @@
 package lib
 
-import io.apibuilder.validation.ApiBuilderType
+import io.apibuilder.validation.AnyType
 import io.flow.log.RollbarLogger
 import play.api.libs.json._
 
 case class LoggingUtil(rollbar: RollbarLogger) {
 
-  val logger = JsonSafeLogger(
+  val logger: JsonSafeLogger = JsonSafeLogger(
     rollbar = rollbar,
     config = JsonSafeLoggerConfig(
-      blacklistFields = Set(
+      denylistFields = Set(
         "cvv", "number", "token", "email", "email_address",
         "password", "name", "first_name", "last_name", "streets",
         "address1", "address2", "address3",
@@ -17,8 +17,8 @@ case class LoggingUtil(rollbar: RollbarLogger) {
         "phone", "phone_number",
         "account_owner_name", "account_number", "routing_number", "secret_key", "client_secret", "fingerprint"
       ),
-      blacklistModels = Set("password_change_form", "cipher_form", "ach_authorization_form", "stripe_authentication_data_form"),
-      whitelistModelFields = Map(
+      denylistModels = Set("password_change_form", "cipher_form", "ach_authorization_form", "stripe_authentication_data_form"),
+      allowlistModelFields = Map(
         "customer" -> Set("number"),
         "harmonized_item_form" -> Set("number"),
         "hs_code" -> Set("code"),
@@ -37,15 +37,15 @@ case class LoggingUtil(rollbar: RollbarLogger) {
 }
 
 /**
-  * @param blacklistFields Any value for a field with this name will be redacted
-  * @param blacklistModels All fields for these models will be redacted
-  * @param whitelistModelFields A Map from `type name` to list of fields to white
+  * @param denylistFields Any value for a field with this name will be redacted
+  * @param denylistModels All fields for these models will be redacted
+  * @param allowlistModelFields A Map from `type name` to list of fields to white
   *        list of fields to allow in the output
   */
 case class JsonSafeLoggerConfig(
-  blacklistFields: Set[String],
-  blacklistModels: Set[String],
-  whitelistModelFields: Map[String, Set[String]]
+  denylistFields: Set[String],
+  denylistModels: Set[String],
+  allowlistModelFields: Map[String, Set[String]]
 )
 
 /**
@@ -57,20 +57,20 @@ case class JsonSafeLogger(config: JsonSafeLoggerConfig, rollbar: RollbarLogger) 
   /**
     * Accepts a JsValue, redacting any fields that may contain sensitive data
     * @param value The JsValue itself
-    * @param apiBuilderType The type represented by the JsValue if resolved from the API Builder specification
+    * @param anyType The type represented by the JsValue if resolved from the API Builder specification
     */
   def safeJson(
     value: JsValue,
-    apiBuilderType: Option[ApiBuilderType] = None
+    anyType: Option[AnyType] = None
   ): JsValue = {
-    safeJsonString(value, apiBuilderType.map(_.name))
+    safeJsonString(value, anyType.map(_.name))
   }
 
   private[lib] def safeJsonString(
     value: JsValue,
     typeName: Option[String] = None
   ): JsValue = {
-    if (typeName.exists(config.blacklistFields) || typeName.exists(isTypeBlacklisted)) {
+    if (typeName.exists(config.denylistFields) || typeName.exists(isTypeBlacklisted)) {
       redact(value)
 
     } else {
@@ -98,16 +98,16 @@ case class JsonSafeLogger(config: JsonSafeLoggerConfig, rollbar: RollbarLogger) 
   }
 
   private[this] def isTypeBlacklisted(typ: String): Boolean = {
-    config.blacklistModels.map(_.toLowerCase.trim).exists(typ.toLowerCase.trim.contains)
+    config.denylistModels.map(_.toLowerCase.trim).exists(typ.toLowerCase.trim.contains)
   }
 
   private[this] def isFieldBlacklisted(field: String, typ: Option[String]): Boolean = {
     val whiteList = typ.map(_.toLowerCase.trim) match {
       case None => Set.empty[String]
-      case Some(t) => config.whitelistModelFields.getOrElse(t, Set.empty[String])
+      case Some(t) => config.allowlistModelFields.getOrElse(t, Set.empty[String])
     }
 
-    config.blacklistFields.map(_.toLowerCase.trim).diff(whiteList.map(_.toLowerCase.trim)).contains(field)
+    config.denylistFields.map(_.toLowerCase.trim).diff(whiteList.map(_.toLowerCase.trim)).contains(field)
   }
 
   private[this] def redact(value: JsValue): JsValue = {

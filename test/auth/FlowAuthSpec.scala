@@ -19,7 +19,7 @@ class FlowAuthSpec extends BasePlaySpec with TryValues {
       )
       val jwt = flowAuth.jwt(token)
 
-      val decoded = JwtJson.decodeJson(token = jwt, key = jwtKey, algorithms = JwtAlgorithm.allHmac).success.value
+      val decoded = JwtJson.decodeJson(token = jwt, key = jwtKey, algorithms = JwtAlgorithm.allHmac()).success.value
 
       (decoded \ "request_id").as[String] mustBe "123"
       (decoded \ "session").as[String] mustBe "abc"

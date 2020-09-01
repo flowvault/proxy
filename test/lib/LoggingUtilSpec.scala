@@ -8,9 +8,9 @@ class LoggingUtilSpec extends BasePlaySpec {
   private[this] val jsonSafeLogger = JsonSafeLogger(
     rollbar = logger,
     config = JsonSafeLoggerConfig(
-      blacklistFields = Set("cvv", "number", "token", "email", "password"),
-      blacklistModels = Set("password_change_form"),
-      whitelistModelFields = Map(
+      denylistFields = Set("cvv", "number", "token", "email", "password"),
+      denylistModels = Set("password_change_form"),
+      allowlistModelFields = Map(
         "item_form" -> Set("number"),
         "harmonized_item_form" -> Set("number"),
         "order_form" -> Set("number"),

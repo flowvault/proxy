@@ -2,7 +2,7 @@ name := "proxy"
 
 organization := "io.flow"
 
-scalaVersion in ThisBuild := "2.13.1"
+scalaVersion in ThisBuild := "2.13.3"
 
 lazy val root = project
   .in(file("."))
@@ -17,14 +17,14 @@ lazy val root = project
       "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.808",
       "com.pauldijou" %% "jwt-play-json" % "4.3.0",
       "commons-codec" % "commons-codec" % "1.14",
-      "io.apibuilder" %% "apibuilder-validation" % "0.4.17",
+      "io.apibuilder" %% "apibuilder-validation" % "0.4.19",
       "io.flow" %% "lib-play-graphite-play28" % "0.1.36",
       "io.flow" %% "lib-usage-play28" % "0.1.15",
       "org.typelevel" %% "cats-core" % "2.1.1",
       "org.yaml" % "snakeyaml" % "1.26",
       "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0" % Test,
-      compilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.6.0" cross CrossVersion.full),
-      "com.github.ghik" %% "silencer-lib" % "1.6.0" % Provided cross CrossVersion.full
+      compilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.7.0" cross CrossVersion.full),
+      "com.github.ghik" %% "silencer-lib" % "1.7.0" % Provided cross CrossVersion.full
     ),
     javaAgents += "io.kamon" % "kanela-agent" % "1.0.5",
     testOptions += Tests.Argument("-oF"),

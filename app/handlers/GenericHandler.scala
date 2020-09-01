@@ -74,7 +74,7 @@ class GenericHandler @Inject() (
         processResponse(
           server,
           request,
-          wsRequest.withBody(json).stream
+          wsRequest.withBody(json).stream()
         )
       }
     }
