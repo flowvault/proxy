@@ -17,7 +17,7 @@ lazy val root = project
       "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.808",
       "com.pauldijou" %% "jwt-play-json" % "4.3.0",
       "commons-codec" % "commons-codec" % "1.14",
-      "io.apibuilder" %% "apibuilder-validation" % "0.4.19",
+      "io.apibuilder" %% "apibuilder-validation" % "0.4.21",
       "io.flow" %% "lib-play-graphite-play28" % "0.1.36",
       "io.flow" %% "lib-usage-play28" % "0.1.15",
       "org.typelevel" %% "cats-core" % "2.1.1",
