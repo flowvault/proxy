@@ -1,19 +1,31 @@
 #!/usr/bin/env ruby
 
-# Simple ruby script that we use to deploy a new version of the proxy
-# server. Process is:
-#
-#  ssh to each server in order and execute ./deploy-proxy.sh <version>
-#  wait for healthcheck to succeed
-#   - if fails, stop the release
-#   - if succeeds, continue
+# Deploys our proxy servers running in the PCI environment including
+# our [API Proxy](http://github.com/flowvault/proxy) and 
+# [GraphQL Proxy](http://github.com/flowvault/graphql)
 #
 # Usage:
-#  deploy.rb 0.0.44
-#    - reads node to deploy from ./nodes
+#  deploy.rb <application_name> <version> (<nodes file>)
+#    - application_name: "proxy" or "graphql"
+#    - version: e.g. 0.6.46
+#    - nodes_file (optional): defaults to "./nodes". This file
+#      contains a list of ip addresses which are the servers
+#      on which we deploy.
 #
-#   ./deploy.rb 0.0.44 /tmp/nodes
-#    - reads node to deploy fron /tmp/nodes
+#  Examples:
+#    - deploy.rb proxy 0.0.44
+#    - deploy.rb graphql 1.2.4 /tmp/nodes
+#
+# Deploy Process:
+#
+#  ssh to each server in order and execute ./install-instance.sh <image>
+#    - example: ./install-instance.sh flowvault/proxy:0.6.46
+#
+#  This script will stop the old image and start the new image
+#  and will wait for the healthcheck (expected at /_internal_/healthcheck
+#  to succeed.
+#   - if fails, stop the release
+#   - if succeeds, continue
 #
 
 require 'uri'
@@ -21,7 +33,15 @@ require 'net/http'
 require 'json'
 require 'logger'
 
-PORT = 7000
+class Application
+  attr_reader :name
+  def initialize(name)
+    @name = name
+  end
+  def image
+    "flowvault/%s" % name
+  end
+end
 
 class MultiLog
   def initialize(*targets)
@@ -38,40 +58,69 @@ class MultiLog
 end
 
 # output to both log file and std out
-log_file_path = "/tmp/proxy-#{Time.now.strftime("%Y%m%d%H%M%S")}.log"
+log_file_path = "/tmp/deploy-#{Time.now.strftime("%Y%m%d%H%M%S")}.log"
 log_file = File.open(log_file_path, "a")
 LOGGER = Logger.new(MultiLog.new(STDOUT, log_file))
 
 def latest_tag(owner,repo)
   cmd = "curl --silent https://api.github.com/repos/#{owner}/#{repo}/tags"
-  if latest = JSON.parse(`#{cmd}`).first
-    latest['name'].to_s.strip
+  if latest = JSON.parse(`#{cmd}`)
+    if latest.is_a?(Array)
+      value = latest.first['name'].to_s.strip
+      value.empty? ? nil : value
+    else
+      nil
+    end
   else
     nil
   end
 end
 
-version = ARGV.shift.to_s.strip
-if version.empty?
-  default = latest_tag("flowvault", "proxy")
-  default_message = default ? " Default[#{default}]" : nil
+Applications = [Application.new("graphql"), Application.new("proxy")]
 
-  while version.empty?
-    print "Specify version to deploy#{default_message}: "
-    version = $stdin.gets.strip
-    if version.strip.empty?
-      version = default
+module Console
+  def Console.ask(message, opts = {})
+    default = opts[:default]
+    m = "#{message}"
+    if default
+      m << " Default[#{default}]"
     end
-    if version.to_s.strip.empty?
-      LOGGER.info "\nEnter a valid version\n"
+    print "#{m}: "
+    input = $stdin.gets.strip
+    if input.strip.empty?
+      input = default
+    end
+    if input.to_s.strip.empty?
+      LOGGER.info "\nEnter a valid value.\n"
+      Console.ask(message, opts)
+    else
+      input
     end
   end
 end
 
+application = ARGV.shift.to_s.strip
+version = ARGV.shift.to_s.strip
 nodes_file = ARGV.shift.to_s.strip
 if nodes_file.empty?
   dir = File.dirname(__FILE__)
   nodes_file = File.join(dir, 'nodes')
+end
+
+app = Applications.find { |a| a.name == application }
+while app.nil?
+  if !application_name.empty?
+    LOGGER.info "ERROR: Invalid application[%s]. Must be one of: %s" % [application, Applications.map(&:name)]
+  end
+  application = Console.ask("Specify application (%s)" % [Applications.map(&:name).join(", ")])
+  app = Applications.find { |a| a.name == application }
+end
+
+if version.empty?
+  default = latest_tag("flowvault", app.name)
+  while version.empty?
+    version = Console.ask("Specify version to deploy", :default => default)
+  end
 end
 
 if !File.exists?(nodes_file)
@@ -85,9 +134,9 @@ if nodes.empty?
   exit(1)
 end
 
-# Installs and starts software
-def deploy(node, version)
-  cmd = "ssh #{node} ./deploy-proxy.sh #{version}"
+# Installs and starts software on an instance
+def install_instance(node, app, version)
+  cmd = "ssh #{node} ./install-instance.sh #{app.image}:#{version}"
   LOGGER.info "==> #{cmd}"
 
   begin
@@ -138,8 +187,8 @@ start = Time.now
 nodes.each_with_index do |node, index|
   LOGGER.info node
   label = "node #{index+1}/#{nodes.size}"
-  LOGGER.info "  - Deploying version #{version} to #{label}"
-  deploy(node, version)
+  LOGGER.info "  - Deploying #{app.image}:#{version} to #{label}"
+  install_instance(node, app, version)
 
   uri = "http://#{node}:#{PORT}/_internal_/healthcheck"
   url = URI.parse(uri)
@@ -164,4 +213,4 @@ duration = Time.now - start
 
 LOGGER.info ""
 LOGGER.info "Logs found in: #{log_file_path}"
-LOGGER.info "Proxy version %s deployed successfully. Total duration: %s seconds" % [version, duration.to_i]
+LOGGER.info "Application %s version %s deployed successfully. Total duration: %s seconds" % [app.name, version, duration.to_i]
