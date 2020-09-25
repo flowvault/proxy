@@ -10,12 +10,6 @@ sealed trait Route {
   def path: String
 
   /**
-   * TODO: Remove after investigation
-   * see: https://flowio.atlassian.net/browse/CORE-1104
-   */
-  def isShopifyWebhook: Boolean = path.startsWith("/shopify/webhook/events/shops")
-
-  /**
     * Returns true if this route matches the specified method and path
     */
   def matches(incomingMethod: Method, incomingPath: String): Boolean
