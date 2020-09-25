@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
-import io.flow.log.RollbarLogger
 import javax.inject.Inject
 import lib._
 import play.api.libs.ws.WSClient
@@ -80,7 +79,6 @@ class ServerProxyModule extends AbstractModule {
 
 class ServerProxyImpl @Inject()(
   implicit val system: ActorSystem,
-  logger: RollbarLogger,
   wsClient: WSClient,
   urlFormEncodedHandler: handlers.UrlFormEncodedHandler,
   applicationJsonHandler: handlers.ApplicationJsonHandler,
