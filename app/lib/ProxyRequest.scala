@@ -147,8 +147,6 @@ case class ProxyRequest(
     "api" + UUID.randomUUID.toString.replaceAll("-", "") // make easy to cut & paste
   }
 
-  val createdAtMillis: Long = System.currentTimeMillis()
-
   /**
     * path is everything up to the ? - e.g. /users/
     */

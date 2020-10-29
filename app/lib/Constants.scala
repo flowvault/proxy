@@ -21,6 +21,8 @@ object Constants {
     val FlowServer = "X-Flow-Server"
     val FlowHost = "X-Flow-Host"
     val FlowIp = "X-Flow-Ip"
+    val FlowProxyResponseTime = "X-Flow-Proxy-Response-Time"
+    val FlowProxyServiceTiming = "X-Flow-Proxy-Service-Timing"
 
     val ContentType = "Content-Type"
     val ContentLength = "Content-Length"

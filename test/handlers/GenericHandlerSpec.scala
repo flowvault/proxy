@@ -2,9 +2,10 @@ package handlers
 
 import helpers.HandlerBasePlaySpec
 import lib.{Constants, Method}
+import org.scalatest.OptionValues
 import play.api.libs.json._
 
-class GenericHandlerSpec extends HandlerBasePlaySpec {
+class GenericHandlerSpec extends HandlerBasePlaySpec with OptionValues {
 
   private[this] def genericHandler = app.injector.instanceOf[GenericHandler]
 
@@ -33,6 +34,12 @@ class GenericHandlerSpec extends HandlerBasePlaySpec {
     val sim = simulate(genericHandler, Method.Get, "/file.pdf")
     sim.result.header.status must equal(200)
     sim.contentType must equal(Some("application/pdf; charset=utf-8"))
+  }
+
+  "adds server timing" in {
+    val sim = simulate(genericHandler, Method.Get, "/users/1")
+    sim.status must equal(200)
+    sim.header(Constants.Headers.FlowProxyServiceTiming).value must fullyMatch regex "test;\\d+"
   }
 
   "propagates 404" in {
@@ -75,8 +82,7 @@ class GenericHandlerSpec extends HandlerBasePlaySpec {
     val js = envelope.bodyAsJson
     (js \ "status").as[JsNumber].value.intValue must equal(201)
     (js \ "body").as[JsObject] must equal(Json.obj("id" -> 1))
-    (js \ "headers").as[JsObject].value.keys.toSeq.sorted must equal(
-      Seq("Date", "X-Flow-Request-Id", "X-Flow-Server")
-    )
+    (js \ "headers").as[JsObject].value.keys must contain theSameElementsAs
+      Seq("Date", "X-Flow-Request-Id", "X-Flow-Server", "X-Flow-Proxy-Service-Timing")
   }
 }

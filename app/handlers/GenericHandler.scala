@@ -5,6 +5,7 @@ import io.apibuilder.validation.{EncodingOptions, FormData, MultiService}
 import io.flow.log.RollbarLogger
 import javax.inject.{Inject, Singleton}
 import lib._
+import lib.timed.TimedFuture
 import org.joda.time.DateTime
 import play.api.http.HttpEntity
 import play.api.http.Status.{UNPROCESSABLE_ENTITY, UNSUPPORTED_MEDIA_TYPE}
@@ -103,12 +104,13 @@ class GenericHandler @Inject() (
   private[this] def processResponse(
     server: Server,
     request: ProxyRequest,
-    response: Future[WSResponse]
-  ): Future[Result] = {
-    response.map { response =>
-      val duration = System.currentTimeMillis() - request.createdAtMillis
+    response: => Future[WSResponse]
+  ): Future[Result] =
+    TimedFuture(response).map { timedResponse =>
+      val response = timedResponse.value
+      val durationMs = timedResponse.durationMs
       if (enableAuditLogging) {
-        logResponse(request, server, response, duration)
+        logResponse(request, server, response, durationMs)
       }
 
       /**
@@ -129,7 +131,8 @@ class GenericHandler @Inject() (
         Set(Constants.Headers.ContentType, Constants.Headers.ContentLength)
       ) ++ Map(
         Constants.Headers.FlowRequestId -> Seq(request.requestId),
-        Constants.Headers.FlowServer -> Seq(server.name)
+        Constants.Headers.FlowServer -> Seq(server.name),
+        Constants.Headers.FlowProxyServiceTiming -> Seq(server.name + ";" + durationMs)
       )
 
       if (request.responseEnvelope || response.status == 422) {
@@ -152,10 +155,7 @@ class GenericHandler @Inject() (
           }
         }
       }
-    }.recover {
-      case ex: Throwable => throw new Exception(ex)
     }
-  }
 
 
   /**
@@ -314,4 +314,5 @@ class GenericHandler @Inject() (
         None
     }
   }
+
 }

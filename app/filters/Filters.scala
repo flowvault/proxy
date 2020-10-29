@@ -3,6 +3,8 @@ package filters
 import javax.inject.Inject
 import akka.stream.Materializer
 import io.flow.log.RollbarLogger
+import lib.Constants
+import lib.timed.TimedFuture
 import play.api.http.HttpFilters
 import play.api.mvc._
 import play.filters.cors.CORSFilter
@@ -33,12 +35,11 @@ class LoggingFilter @Inject() (
   def apply(nextFilter: RequestHeader => Future[Result])
            (requestHeader: RequestHeader): Future[Result] = {
 
-    val startTime = System.currentTimeMillis
     val headerMap = requestHeader.headers.toMap
 
-    nextFilter(requestHeader).map { result =>
-      val endTime = System.currentTimeMillis
-      val requestTime = endTime - startTime
+    TimedFuture(nextFilter(requestHeader)).map { timedResult =>
+      val result = timedResult.value
+      val requestTime = timedResult.durationMs
 
       val line = Seq(
         requestHeader.method,
@@ -67,7 +68,11 @@ class LoggingFilter @Inject() (
             .filterKeys(LoggedHeaders.contains))
         .info(line)
 
-      result.withHeaders("Request-Time" -> requestTime.toString)
+      val requestTimeStr = requestTime.toString
+      result
+        .withHeaders("Request-Time" -> requestTimeStr)
+        .withHeaders(Constants.Headers.FlowProxyResponseTime -> requestTimeStr)
+
     }
   }
 }
