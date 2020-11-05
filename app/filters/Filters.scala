@@ -42,6 +42,7 @@ class LoggingFilter @Inject() (
       val requestTime = timedResult.durationMs
 
       val line = Seq(
+        s"HTTP v${requestHeader.version}",
         requestHeader.method,
         s"${requestHeader.host}${requestHeader.path}",
         result.header.status,
@@ -55,6 +56,8 @@ class LoggingFilter @Inject() (
       ).mkString(" ")
 
       logger
+        .withKeyValue("https", requestHeader.secure)
+        .withKeyValue("http_version", requestHeader.version)
         .withKeyValue("method", requestHeader.method)
         .withKeyValue("host", requestHeader.host)
         .withKeyValue("path", requestHeader.path)
