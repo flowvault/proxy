@@ -6,3 +6,4 @@ logs/
 *.swo
 .DS_Store
 native/
+.bsp/
