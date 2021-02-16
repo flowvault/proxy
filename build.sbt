@@ -18,7 +18,7 @@ lazy val root = project
       "com.pauldijou" %% "jwt-play-json" % "4.3.0",
       "commons-codec" % "commons-codec" % "1.15",
       "io.apibuilder" %% "apibuilder-validation" % "0.4.21",
-      "io.flow" %% "lib-play-graphite-play28" % "0.1.87-zipkin5",
+      "io.flow" %% "lib-play-graphite-play28" % "0.1.88",
       "io.flow" %% "lib-usage-play28" % "0.1.15",
       "org.typelevel" %% "cats-core" % "2.3.1",
       "org.yaml" % "snakeyaml" % "1.27",
