@@ -8,7 +8,6 @@ lazy val root = project
   .in(file("."))
   .enablePlugins(PlayScala)
   .enablePlugins(NewRelic, JavaAgent)
-  .enablePlugins(PlayAkkaHttp2Support)
   .settings(commonSettings: _*)
   .settings(
     libraryDependencies ++= Seq(
