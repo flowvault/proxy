@@ -3,7 +3,7 @@ package filters
 import javax.inject.Inject
 import akka.stream.Materializer
 import io.flow.log.RollbarLogger
-import lib.Constants
+import lib.{Constants, Index, Method, ProxyConfigFetcher}
 import lib.timed.TimedFuture
 import play.api.http.HttpFilters
 import play.api.mvc._
@@ -19,10 +19,13 @@ class CorsWithLoggingFilter @javax.inject.Inject() (corsFilter: CORSFilter, logg
 }
 
 class LoggingFilter @Inject() (
-  logger: RollbarLogger
+  logger: RollbarLogger,
+  proxyConfigFetcher: ProxyConfigFetcher,
 ) (
   implicit val mat: Materializer, ec: ExecutionContext
 ) extends Filter {
+
+  lazy val index: Index = proxyConfigFetcher.current()
 
   private val LoggedHeaders = Seq(
     "User-Agent",
@@ -40,6 +43,7 @@ class LoggingFilter @Inject() (
     TimedFuture(nextFilter(requestHeader)).map { timedResult =>
       val result = timedResult.value
       val requestTime = timedResult.durationMs
+      val operation = index.resolve(Method(requestHeader.method), requestHeader.path)
 
       val line = Seq(
         s"HTTP v${requestHeader.version}",
@@ -55,20 +59,24 @@ class LoggingFilter @Inject() (
         ).mkString(",")
       ).mkString(" ")
 
+      val loggedRequestHeaders = headerMap
+        .map { case (key, value) => key.toLowerCase -> value }
+        .view
+        .filterKeys(LoggedHeaders.contains)
+
       logger
         .withKeyValue("https", requestHeader.secure)
         .withKeyValue("http_version", requestHeader.version)
         .withKeyValue("method", requestHeader.method)
         .withKeyValue("host", requestHeader.host)
-        .withKeyValue("path", requestHeader.path)
+        .withKeyValue("path", requestHeader.path)  // /foobar-sandbox/orders
         .withKeyValue("query_params", requestHeader.queryString)
         .withKeyValue("http_code", result.header.status)
         .withKeyValue("request_time_ms", requestTime)
-        .withKeyValue("request_headers",
-          headerMap
-            .map { case (key, value) => key.toLowerCase -> value }
-            .view
-            .filterKeys(LoggedHeaders.contains))
+        .withKeyValue("request_headers", loggedRequestHeaders)
+        .withKeyValue("config_path", operation.map(_.route.path)) // /:organization_id/orders
+        .withKeyValue("config_server", operation.map(_.server.name))
+        .withKeyValue("config_host", operation.map(_.server.host))
         .info(line)
 
       val requestTimeStr = requestTime.toString

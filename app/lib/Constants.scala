@@ -58,7 +58,7 @@ object Constants {
       CfVisitor
     )
 
-    val namesToWhitelist: Set[String] = Set(
+    val namesToAllow: Set[String] = Set(
       // cloudflare headers
       CfRay,
       CfConnectingIp,

@@ -44,7 +44,7 @@ class ErrorHandler @Inject() (
 
     // add Authorization as header to remove
     val headerKeys = request.headers.keys.toSeq
-    val headers = Util.filterKeys(request.headers.toMap, Constants.Headers.namesToWhitelist)
+    val headers = Util.filterKeys(request.headers.toMap, Constants.Headers.namesToAllow)
 
     // attempt better grouping of errors
     val fingerprint = Seq(
