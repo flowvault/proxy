@@ -8,6 +8,8 @@ import io.flow.log.RollbarLogger
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.session.v0.{Client => SessionClient}
 import io.flow.token.v0.{Client => TokenClient}
+import kamon.Kamon
+
 import javax.inject.{Inject, Singleton}
 import lib._
 import play.api.mvc._
@@ -103,6 +105,7 @@ class ReverseProxy @Inject () (
       }
 
       case Some(route) => {
+        Kamon.currentSpan().name(s"${route.route.method}-${route.route.path}")
         internalHandleValid(request, route)
       }
     }

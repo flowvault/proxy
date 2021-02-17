@@ -1,5 +1,7 @@
 package controllers
 
+import kamon.Kamon
+
 import javax.inject.Inject
 import lib.Constants
 import play.api.OptionalDevContext
@@ -39,6 +41,10 @@ class Router @Inject() (
 
   override def routes = new AbstractPartialFunction[RequestHeader, Handler] {
     override def applyOrElse[A <: RequestHeader, B >: Handler](request: A, default: A => B) = {
+      val span = Kamon.currentSpan()
+      span.name(request.path)
+      span.takeSamplingDecision()
+
       (request.method, request.path, request.headers.get(Constants.Headers.FlowServer)) match {
         case ("GET", "/_internal_/healthcheck", None) => internal.getHealthcheck
         case ("GET", "/_internal_/healthcheck/checkout", None) => internal.getHealthcheckCheckout
