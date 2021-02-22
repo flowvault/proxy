@@ -3,7 +3,7 @@ package filters
 import javax.inject.Inject
 import akka.stream.Materializer
 import io.flow.log.RollbarLogger
-import lib.{Constants, Index, Method, ProxyConfigFetcher}
+import lib.{Constants, Hacks, Index, Method, ProxyConfigFetcher}
 import lib.timed.TimedFuture
 import play.api.http.HttpFilters
 import play.api.mvc._
@@ -64,6 +64,10 @@ class LoggingFilter @Inject() (
         .view
         .filterKeys(LoggedHeaders.contains)
 
+      val convertToLatencyMetric = operation.exists { op =>
+        Hacks.shouldConvertToLatencyMetric(requestHeader.method, op.route.path)
+      }
+
       logger
         .withKeyValue("https", requestHeader.secure)
         .withKeyValue("http_version", requestHeader.version)
@@ -77,6 +81,7 @@ class LoggingFilter @Inject() (
         .withKeyValue("config_path", operation.map(_.route.path)) // /:organization_id/orders
         .withKeyValue("config_server", operation.map(_.server.name))
         .withKeyValue("config_host", operation.map(_.server.host))
+        .withKeyValue("convert_to_metric", convertToLatencyMetric)
         .info(line)
 
       val requestTimeStr = requestTime.toString
