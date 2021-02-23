@@ -68,7 +68,7 @@ class LoggingFilter @Inject() (
         Hacks.shouldConvertToLatencyMetric(requestHeader.method, op.route.path)
       }
 
-      logger
+      val log = logger
         .withKeyValue("https", requestHeader.secure)
         .withKeyValue("http_version", requestHeader.version)
         .withKeyValue("method", requestHeader.method)
@@ -81,8 +81,10 @@ class LoggingFilter @Inject() (
         .withKeyValue("config_path", operation.map(_.route.path)) // /:organization_id/orders
         .withKeyValue("config_server", operation.map(_.server.name))
         .withKeyValue("config_host", operation.map(_.server.host))
-        .withKeyValue("convert_to_metric", convertToLatencyMetric)
-        .info(line)
+
+      if (convertToLatencyMetric) {
+        log.withKeyValue("convert_to_metric", convertToLatencyMetric).info(line)
+      } else log.info(line)
 
       val requestTimeStr = requestTime.toString
       result
