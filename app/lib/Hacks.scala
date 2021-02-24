@@ -13,8 +13,6 @@ object Hacks {
     "GET /:organization/experiences/:experience_key/price/books",
     "GET /:organization/experiences/:key/items/:number/price",
     "GET /:organization/experiences/items",
-    "GET /:organization/order-details",
-    "GET /:organization/order-details/:number",
     "GET /:organization/orders",
     "GET /:organization/orders/:number",
     "GET /:organization/orders/:number/allocations",
