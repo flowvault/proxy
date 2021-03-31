@@ -148,10 +148,9 @@ class GenericHandler @Inject() (
 
           case Some(length) => {
             Results.Status(response.status).
-              sendEntity(
-                HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType.toStringWithEncoding))
-              ).
-              withHeaders(Util.toFlatSeq(responseHeaders): _*)
+              sendEntity(HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), None)).
+              withHeaders(Util.toFlatSeq(responseHeaders): _*).
+              as(contentType.toStringWithEncoding)
           }
         }
       }
