@@ -37,7 +37,7 @@
     <logger name="io.flow.token.v0.Client" level="WARN" />
     <logger name="io.flow.organization.v0.Client" level="WARN" />
     <logger name="io.flow.session.v0.Client" level="WARN" />
-    <logger name="akka.actor.ActorSystemImpl" level="ERROR" />
+    <logger name="akka.actor.ActorSystemImpl" level="WARN" />
 
     <!-- Off these ones as they are annoying, and anyway we manage configuration ourselves -->
     <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF" />
