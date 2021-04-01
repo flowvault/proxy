@@ -30,9 +30,10 @@ object Util {
     data: Headers,
     toKeep: Set[String]
   ): Map[String, Seq[String]] = {
-    toKeep.map { key =>
-      key -> data.getAll(key)
-    }.toMap
+    (for {
+      key <- toKeep
+      if data.hasHeader(key)
+    } yield key -> data.getAll(key)).toMap
   }
 
 }

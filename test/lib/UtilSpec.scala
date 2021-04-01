@@ -49,7 +49,7 @@ class UtilSpec extends BasePlaySpec {
       ),
       Set("a", "Foo2")
     )
-    parts.keys.toSeq must equal(Seq("foo2"))
+    parts.keys.toSeq must equal(Seq("Foo2"))
   }
 
   "query with multiple values" in {
