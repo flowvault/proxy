@@ -53,4 +53,4 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
   resolvers += "Artifactory" at "https://flow.jfrog.io/flow/libs-release/"
 )
-version := "0.6.63"
+version := "0.6.64"
