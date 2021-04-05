@@ -126,16 +126,14 @@ class GenericHandler @Inject() (
       val contentLength: Option[String] = response.header("Content-Length")
 
       // Remove content type (to avoid adding twice below) then add common Flow headers
-      // response.headers is a case-insensitive Map
-      val responseHeaders =
-        ((response.headers
-          - Constants.Headers.ContentType)
-          - Constants.Headers.ContentLength
-          ++ Map(
-            Constants.Headers.FlowRequestId -> Seq(request.requestId),
-            Constants.Headers.FlowServer -> Seq(server.name),
-            Constants.Headers.FlowProxyServiceTiming -> Seq(server.name + ";" + durationMs)
-          )).view.mapValues(_.toSeq).toMap
+      val responseHeaders = Util.removeKeys(
+        response.headers.map { case (k, v) => k -> v.toSeq },
+        Set(Constants.Headers.ContentType, Constants.Headers.ContentLength)
+      ) ++ Map(
+        Constants.Headers.FlowRequestId -> Seq(request.requestId),
+        Constants.Headers.FlowServer -> Seq(server.name),
+        Constants.Headers.FlowProxyServiceTiming -> Seq(server.name + ";" + durationMs)
+      )
 
       if (request.responseEnvelope || response.status == 422) {
         request.response(response.status, safeBody(request, response).getOrElse(""), contentType, responseHeaders)
@@ -144,7 +142,7 @@ class GenericHandler @Inject() (
           case None => {
             Results.Status(response.status).
               chunked(response.bodyAsSource).
-              withHeaders(Util.toFlatSeq(responseHeaders.to(Map)): _*).
+              withHeaders(Util.toFlatSeq(responseHeaders): _*).
               as(contentType.toStringWithEncoding)
           }
 
@@ -189,12 +187,12 @@ class GenericHandler @Inject() (
       }
     ).flatten
 
-    val cleanHeaders = Util.removeHeaders(
-      request.headers,
+    val cleanHeaders = Util.removeKeys(
+      request.headers.toMap,
       Constants.Headers.namesToRemove,
     )
 
-    headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
+    headersToAdd.foldLeft(new Headers(Util.toFlatSeq(cleanHeaders))) { case (h, addl) => h.add(addl) }
   }
 
   /**

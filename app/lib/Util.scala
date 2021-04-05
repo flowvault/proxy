@@ -1,7 +1,5 @@
 package lib
 
-import play.api.mvc.Headers
-
 object Util {
 
   def toFlatSeq(data: Map[String, Seq[String]]): Seq[(String, String)] = {
@@ -19,21 +17,22 @@ object Util {
     }
   }
 
-  def removeHeaders(
-    headers: Headers,
-    toRemove: Set[String],
-  ): Headers = {
-    headers.remove(toRemove.toSeq: _*)
+  def removeKeys(
+    data: Map[String, Seq[String]],
+    keys: Set[String],
+  ): Map[String, Seq[String]] = {
+    data.filter { case (k, _) =>
+      !keys.contains(k)
+    }
   }
 
-  def filterHeaders(
-    data: Headers,
-    toKeep: Set[String]
+  def filterKeys(
+    data: Map[String, Seq[String]],
+    keys: Set[String]
   ): Map[String, Seq[String]] = {
-    (for {
-      key <- toKeep
-      if data.hasHeader(key)
-    } yield key -> data.getAll(key)).toMap
+    data.filter { case (k, _) =>
+      keys.contains(k)
+    }
   }
 
 }

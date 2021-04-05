@@ -266,7 +266,7 @@ case class ProxyRequest(
     status: Int,
     body: String,
     contentType: ContentType,
-    headers: Map[String, Seq[String]] = Map()
+    headers: Map[String,Seq[String]] = Map()
   ): Result = {
     if (responseEnvelope) {
       internalResponse(
@@ -285,16 +285,17 @@ case class ProxyRequest(
     }
   }
 
+  private[this] val HeadersToRemove = Set(Constants.Headers.ContentLength, Constants.Headers.ContentType)
   private[this] def internalResponse(
     status: Int,
     body: String,
     contentType: ContentType,
     headers: Map[String,Seq[String]]
   ): Result = {
+    val responseHeaders = Util.removeKeys(headers, HeadersToRemove)
+
     Status(status)(body).
-      withHeaders(Util.toFlatSeq(headers): _*).
-      discardingHeader(Constants.Headers.ContentLength).
-      discardingHeader(Constants.Headers.ContentType).
+      withHeaders(Util.toFlatSeq(responseHeaders): _*).
       as(contentType.toStringWithEncoding)
   }
 

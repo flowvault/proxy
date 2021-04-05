@@ -86,10 +86,20 @@ class LoggingFilter @Inject() (
         log.withKeyValue("convert_to_metric", convertToLatencyMetric).info(line)
       } else log.info(line)
 
-      val requestTimeStr = requestTime.toString
-      result
-        .withHeaders("Request-Time" -> requestTimeStr)
-        .withHeaders(Constants.Headers.FlowProxyResponseTime -> requestTimeStr)
+      // hack to remove auto-added application/json
+      // fix warning:
+      // "Explicitly set HTTP header 'Content-Type: application/json' is ignored, explicit `Content-Type` header is not allowed."
+      val headersWithoutContentType = result
+        .header
+        .headers
+        .toSeq
+        .filterNot(x => x._1.toLowerCase == "content-type")
+        .toMap ++
+        Map("Request-Time" -> requestTime.toString) ++
+        Map(Constants.Headers.FlowProxyResponseTime -> requestTime.toString)
+
+      val newResultHeader = result.header.copy(headers = headersWithoutContentType)
+      result.copy(header = newResultHeader)
     }
   }
 }

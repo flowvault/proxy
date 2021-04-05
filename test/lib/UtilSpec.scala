@@ -1,7 +1,6 @@
 package lib
 
 import helpers.BasePlaySpec
-import play.api.mvc.Headers
 
 class UtilSpec extends BasePlaySpec {
 
@@ -30,26 +29,26 @@ class UtilSpec extends BasePlaySpec {
     parts.keys.toSeq must equal(Seq("foo"))
   }
 
-  "removeHeaders" in {
-    val parts = Util.removeHeaders(
-      Headers(
-        "foo" -> "bar",
-        "foo2" -> "baz",
+  "removeKeys" in {
+    val parts = Util.removeKeys(
+      Map[String, Seq[String]](
+        "foo" -> Seq("bar"),
+        "foo2" -> Seq("baz")
       ),
-      Set("a", "Foo2")
+      Set("a", "foo2")
     )
     parts.keys.toSeq must equal(Seq("foo"))
   }
 
-  "filterHeaders" in {
-    val parts = Util.filterHeaders(
-      Headers(
-        "foo" -> "bar",
-        "foo2" -> "baz",
+  "filterKeys" in {
+    val parts = Util.filterKeys(
+      Map[String, Seq[String]](
+        "foo" -> Seq("bar"),
+        "foo2" -> Seq("baz")
       ),
-      Set("a", "Foo2")
+      Set("a", "foo2")
     )
-    parts.keys.toSeq must equal(Seq("Foo2"))
+    parts.keys.toSeq must equal(Seq("foo2"))
   }
 
   "query with multiple values" in {
