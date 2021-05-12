@@ -1,6 +1,6 @@
 package auth
 
-import com.github.ghik.silencer.silent
+import scala.annotation.nowarn
 import io.flow.organization.v0.interfaces.Client
 import io.flow.organization.v0.models.OrganizationAuthorizationForm
 import lib.{Constants, FlowAuth, ResolvedToken}
@@ -47,14 +47,14 @@ trait OrganizationAuth extends LoggingHelper {
             environment = env
           ),
           requestHeaders = flowAuth.headers(token)
-        ): @silent
+        ): @nowarn
       }
 
       case (_, _) => {
         organizationClient.organizationAuthorizations.getByOrganization(
           organization = organization,
           requestHeaders = flowAuth.headers(token)
-        ): @silent
+        ): @nowarn
       }
     }
 
@@ -63,7 +63,7 @@ trait OrganizationAuth extends LoggingHelper {
         token.copy(
           organizationId = Some(organization),
           environment = Some(orgAuth.environment),
-          role = orgAuth.role: @silent
+          role = orgAuth.role: @nowarn
         )
       )
     }.recover {
