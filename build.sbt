@@ -19,6 +19,7 @@ lazy val allScalacOptions = Seq(
 lazy val root = project
   .in(file("."))
   .enablePlugins(PlayScala)
+  .enablePlugins(SbtTwirl)
   .enablePlugins(NewRelic, JavaAgent)
   .settings(commonSettings: _*)
   .settings(
