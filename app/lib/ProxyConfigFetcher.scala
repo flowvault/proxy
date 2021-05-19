@@ -1,14 +1,13 @@
 package lib
 
-import java.net.URI
-
 import cats.data.Validated.{Invalid, Valid}
-import cats.data.{NonEmptyChain, ValidatedNec}
+import cats.data.ValidatedNec
 import cats.implicits._
 import io.apibuilder.validation.util.ValidatedUrlDownloader
 import io.flow.log.RollbarLogger
-import javax.inject.{Inject, Singleton}
 
+import java.net.URI
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 import scala.io.Source
 
@@ -25,10 +24,10 @@ case class ProxyConfig(
 
   def merge(other: ProxyConfig): ProxyConfig = {
     other.servers.find { s => servers.exists(_.name == s.name) } match {
-      case None => //
       case Some(existing) => {
         sys.error(s"Duplicate server named[${existing.name}] -- cannot merge configuration files")
       }
+      case _ => //
     }
 
     ProxyConfig(
@@ -49,9 +48,9 @@ case class InternalProxyConfig(
 ) {
 
   def validate(): ValidatedNec[String, ProxyConfig] = {
-    val errorsV = errors match {
+    val errorsV = errors.toList match {
       case Nil => ().validNec
-      case e :: rest => NonEmptyChain(e, rest: _*).invalid
+      case _ => errors.map(_.invalidNec).traverse(identity)
     }
 
     val uriV = uri match {

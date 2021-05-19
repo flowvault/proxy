@@ -1,10 +1,10 @@
 package auth
 
-import scala.annotation.nowarn
 import io.flow.organization.v0.interfaces.Client
 import io.flow.organization.v0.models.OrganizationAuthorizationForm
 import lib.{Constants, FlowAuth, ResolvedToken}
 
+import scala.annotation.nowarn
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -33,6 +33,7 @@ trait OrganizationAuth extends LoggingHelper {
     }
   }
 
+  @nowarn("msg=deprecated")
   private[this] def doAuthorizeOrganization(
     token: ResolvedToken,
     organization: String
@@ -47,14 +48,14 @@ trait OrganizationAuth extends LoggingHelper {
             environment = env
           ),
           requestHeaders = flowAuth.headers(token)
-        ): @nowarn
+        )
       }
 
       case (_, _) => {
         organizationClient.organizationAuthorizations.getByOrganization(
           organization = organization,
           requestHeaders = flowAuth.headers(token)
-        ): @nowarn
+        )
       }
     }
 
@@ -63,7 +64,7 @@ trait OrganizationAuth extends LoggingHelper {
         token.copy(
           organizationId = Some(organization),
           environment = Some(orgAuth.environment),
-          role = orgAuth.role: @nowarn
+          role = orgAuth.role
         )
       )
     }.recover {
